@@ -1,5 +1,5 @@
 import {
-  assessLoan, LOAN_DEFAULTS, maxPrincipal, monthlyInstalment,
+  assessLoan, LOAN_DEFAULTS, maxPrincipal, monthlyInstalment, parseRatePct, parseYears,
 } from '@/domain/loan';
 
 describe('monthlyInstalment', () => {
@@ -84,5 +84,31 @@ describe('assessLoan', () => {
     expect(at(500001)).toBe('tight');
     expect(at(650000)).toBe('tight');
     expect(at(650001)).toBe('not-suitable');
+  });
+});
+
+describe('parseRatePct', () => {
+  test('accepts rates from 0 to 30 with up to two decimals', () => {
+    expect(parseRatePct('4.5')).toBe(4.5);
+    expect(parseRatePct('0')).toBe(0);
+    expect(parseRatePct(' 3.25 ')).toBe(3.25);
+    expect(parseRatePct('30')).toBe(30);
+  });
+  test('rejects blank, text, negatives, too many decimals and rates above 30', () => {
+    for (const bad of ['', '  ', 'abc', '-1', '4.555', '30.01', '31', '4,5', '.']) {
+      expect(parseRatePct(bad)).toBeNull();
+    }
+  });
+});
+
+describe('parseYears', () => {
+  test('whole years from 1 up to the maximum', () => {
+    expect(parseYears('35', 35)).toBe(35);
+    expect(parseYears('1', 35)).toBe(1);
+  });
+  test('rejects zero, above the maximum, decimals and text', () => {
+    for (const bad of ['0', '36', '1.5', '', 'x', '-3']) {
+      expect(parseYears(bad, 35)).toBeNull();
+    }
   });
 });

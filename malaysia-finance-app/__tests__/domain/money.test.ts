@@ -1,4 +1,4 @@
-import { formatRM, parseRM, rmToSen, senToInput } from '@/domain/money';
+import { formatRM, parsePercent, parseRM, rmToSen, senToInput } from '@/domain/money';
 
 describe('parseRM', () => {
   test('parses thousands separators and one decimal', () => {
@@ -49,5 +49,19 @@ describe('senToInput', () => {
     expect(senToInput(5)).toBe('0.05');
     expect(senToInput(123450)).toBe('1234.50');
     expect(parseRM(senToInput(987654))).toBe(987654);
+  });
+});
+
+describe('parsePercent', () => {
+  test('reads 0 to max with up to two decimals', () => {
+    expect(parsePercent('100', 100)).toBe(100);
+    expect(parsePercent('9', 100)).toBe(9);
+    expect(parsePercent('11.25', 100)).toBe(11.25);
+    expect(parsePercent('0', 30)).toBe(0);
+  });
+  test('rejects above max, bad text and too many decimals', () => {
+    for (const [text, max] of [['100.01', 100], ['101', 100], ['31', 30], ['abc', 100], ['', 100], ['1.234', 100], ['-5', 100]] as const) {
+      expect(parsePercent(text, max)).toBeNull();
+    }
   });
 });

@@ -35,3 +35,11 @@ export function senToInput(sen: Sen): string {
   const abs = Math.abs(sen);
   return `${Math.floor(abs / 100)}.${(abs % 100).toString().padStart(2, '0')}`;
 }
+
+/** A percentage typed by the user, from 0 to `max`, with up to two decimals. Null when invalid. */
+export function parsePercent(text: string, max: number): number | null {
+  const trimmed = text.trim();
+  if (!/^(\d{1,3}(\.\d{1,2})?|\.\d{1,2})$/.test(trimmed)) return null;
+  const value = Number(trimmed);
+  return value >= 0 && value <= max ? value : null;
+}

@@ -1,4 +1,4 @@
-import type { Sen } from './money';
+import { parsePercent, type Sen } from './money';
 
 export type LoanKind = 'home' | 'car' | 'personal';
 export type LoanMethod = 'reducing' | 'flat';
@@ -80,4 +80,17 @@ export function assessLoan(i: {
     else result.verdict = 'comfortable';
   }
   return result;
+}
+
+/** Interest rate typed by the user: 0 to 30 with up to two decimals, as a percentage a year. */
+export function parseRatePct(text: string): number | null {
+  return parsePercent(text, 30);
+}
+
+/** Loan term typed by the user: a whole number of years from 1 to `maxYears`. */
+export function parseYears(text: string, maxYears: number): number | null {
+  const trimmed = text.trim();
+  if (!/^\d{1,3}$/.test(trimmed)) return null;
+  const years = Number(trimmed);
+  return years >= 1 && years <= maxYears ? years : null;
 }
