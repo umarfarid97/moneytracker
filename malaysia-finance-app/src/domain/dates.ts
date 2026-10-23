@@ -18,3 +18,53 @@ export function daysLeftInMonth(date: string): number {
   const [y, m, d] = date.split('-').map(Number);
   return daysInMonth(y, m) - d + 1;
 }
+
+const pad2 = (n: number) => n.toString().padStart(2, '0');
+const parts = (date: string) => date.split('-').map(Number) as [number, number, number];
+const fromUtc = (d: Date) => `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+
+export function addDays(date: string, days: number): string {
+  const [y, m, d] = parts(date);
+  return fromUtc(new Date(Date.UTC(y, m - 1, d + days)));
+}
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+/** "Today", "Yesterday", otherwise "Tue 20 Oct". */
+export function dayLabel(date: string, today: string): string {
+  if (date === today) return 'Today';
+  if (date === addDays(today, -1)) return 'Yesterday';
+  const [y, m, d] = parts(date);
+  const weekday = WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  return `${weekday} ${d} ${MONTHS[m - 1].slice(0, 3)}`;
+}
+
+/** "October 2026" from `2026-10`. */
+export function monthLabel(month: string): string {
+  const [y, m] = month.split('-').map(Number);
+  return `${MONTHS[m - 1]} ${y}`;
+}
+
+/** Moves a `YYYY-MM` key by a number of months. */
+export function shiftMonth(month: string, by: number): string {
+  const [y, m] = month.split('-').map(Number);
+  const index = y * 12 + (m - 1) + by;
+  return `${Math.floor(index / 12)}-${pad2((index % 12) + 1)}`;
+}
+
+/** True for a real calendar date written as `YYYY-MM-DD`. */
+export function isValidDate(date: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+  const [y, m, d] = parts(date);
+  return m >= 1 && m <= 12 && d >= 1 && d <= daysInMonth(y, m);
+}
+
+/** "Sat 24 Oct". */
+export function shortDate(date: string): string {
+  const [y, m, d] = parts(date);
+  return `${WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]} ${d} ${MONTHS[m - 1].slice(0, 3)}`;
+}

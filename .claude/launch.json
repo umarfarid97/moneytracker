@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "duit-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "malaysia-finance-app", "run", "web"],
+      "port": 8081
+    }
+  ]
+}

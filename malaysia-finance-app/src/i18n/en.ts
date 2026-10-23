@@ -19,6 +19,15 @@ export const en = {
   'home.over': '{amount} over',
   'home.categories': 'Budgets this month',
   'home.empty': 'Nothing spent yet today',
+  'home.todayOver': '{amount} over for today',
+  'home.setBudget': 'Set a budget',
+
+  'spending.monthTotal': '{amount} spent this month',
+  'spending.prevMonth': 'Previous month',
+  'spending.nextMonth': 'Next month',
+  'expense.today': 'Today',
+  'expense.yesterday': 'Yesterday',
+  'common.saveFailed': 'Could not save. Please try again.',
 
   'common.save': 'Save',
   'common.cancel': 'Cancel',

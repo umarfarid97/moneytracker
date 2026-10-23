@@ -15,3 +15,18 @@ export function categoryStatus(spent: Sen, limit: Sen): { left: Sen; status: Sta
 export function dailyAllowance(totalLimitLeft: Sen, daysLeft: number): Sen {
   return Math.floor(Math.max(0, totalLimitLeft) / Math.max(1, daysLeft));
 }
+
+/**
+ * What can still be spent today: the budget left at the start of today spread evenly over the days
+ * remaining (today included), minus what has already gone today. `left` is negative when over.
+ */
+export function todayLeft(i: {
+  monthLimit: Sen;
+  monthSpent: Sen;
+  todaySpent: Sen;
+  daysLeft: number;
+}): { perDay: Sen; left: Sen } {
+  const leftAtStartOfDay = i.monthLimit - (i.monthSpent - i.todaySpent);
+  const perDay = dailyAllowance(leftAtStartOfDay, i.daysLeft);
+  return { perDay, left: perDay - i.todaySpent };
+}

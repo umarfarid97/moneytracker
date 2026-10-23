@@ -1,4 +1,4 @@
-import { formatRM, parseRM, rmToSen } from '@/domain/money';
+import { formatRM, parseRM, rmToSen, senToInput } from '@/domain/money';
 
 describe('parseRM', () => {
   test('parses thousands separators and one decimal', () => {
@@ -40,5 +40,14 @@ describe('rmToSen', () => {
   test('rounds half up', () => {
     expect(rmToSen(1.005)).toBe(101);
     expect(rmToSen(12.5)).toBe(1250);
+  });
+});
+
+describe('senToInput', () => {
+  test('writes sen as editable text that parseRM reads back', () => {
+    expect(senToInput(1250)).toBe('12.50');
+    expect(senToInput(5)).toBe('0.05');
+    expect(senToInput(123450)).toBe('1234.50');
+    expect(parseRM(senToInput(987654))).toBe(987654);
   });
 });

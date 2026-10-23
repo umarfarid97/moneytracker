@@ -29,3 +29,9 @@ export function formatRM(sen: Sen): string {
 export function rmToSen(rm: number): Sen {
   return Math.round((rm + Number.EPSILON) * 100);
 }
+
+/** Sen as editable input text, e.g. 1250 -> "12.50". */
+export function senToInput(sen: Sen): string {
+  const abs = Math.abs(sen);
+  return `${Math.floor(abs / 100)}.${(abs % 100).toString().padStart(2, '0')}`;
+}
