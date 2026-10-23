@@ -9,7 +9,7 @@ export function monthKey(date: string): string {
   return date.slice(0, 7);
 }
 
-function daysInMonth(year: number, month: number): number {
+export function daysInMonth(year: number, month: number): number {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
