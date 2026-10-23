@@ -158,6 +158,25 @@ describe('useBudgets', () => {
     expect(result.current.data).toEqual([{ categoryId: 1, month: '2026-10', limit: 65000 }]);
   });
 
+  test('remove deletes a budget and rolls back when the write fails', async () => {
+    const { wrapper, control } = await setup();
+    const { result } = await renderHook(() => useBudgets('2026-10'), { wrapper });
+    await waitFor(() => expect(result.current).not.toBeNull());
+    await act(async () => {
+      await result.current.set({ categoryId: 1, month: '2026-10', limit: 60000 });
+    });
+    control.fail = true;
+    await act(async () => {
+      await expect(result.current.remove(1)).rejects.toThrow();
+    });
+    expect(result.current.data).toHaveLength(1);
+    control.fail = false;
+    await act(async () => {
+      await result.current.remove(1);
+    });
+    expect(result.current.data).toEqual([]);
+  });
+
   test('copyFromLast copies last month without overwriting limits already set', async () => {
     const { wrapper } = await setup();
     const { result } = await renderHook(() => useBudgets('2026-10'), { wrapper });

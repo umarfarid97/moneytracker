@@ -21,3 +21,7 @@ export function listAllBudgets(db: Db): Promise<Budget[]> {
     'SELECT category_id AS categoryId, month, limit_sen AS "limit" FROM budgets ORDER BY month, category_id',
   );
 }
+
+export async function deleteBudget(db: Db, categoryId: number, month: string): Promise<void> {
+  await db.run('DELETE FROM budgets WHERE category_id = ? AND month = ?', [categoryId, month]);
+}

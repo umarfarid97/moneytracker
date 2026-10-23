@@ -36,6 +36,7 @@ export const en = {
   'common.add': 'Add',
   'common.close': 'Close',
   'common.dismiss': 'Dismiss',
+  'common.back': 'Back',
   'common.amount': 'Amount',
   'common.note': 'Note',
   'common.category': 'Category',

@@ -31,7 +31,7 @@ export function Tile({ title, leftText, status, tintName, onPress }: Props) {
         <AppText variant="smallStrong" color={tint.ink}>
           {title}
         </AppText>
-        <AppText variant="section" color={tint.ink}>
+        <AppText variant="section" color={tint.ink} style={{ fontSize: 17, lineHeight: 22 }}>
           {leftText}
         </AppText>
       </View>

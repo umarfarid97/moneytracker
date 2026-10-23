@@ -6,7 +6,7 @@ import { openDb } from '@/db/client';
 import {
   addCategory, deleteCategory, listCategories, renameCategory,
 } from '@/db/repos/categories';
-import { listAllBudgets, setBudget } from '@/db/repos/budgets';
+import { deleteBudget, listAllBudgets, setBudget } from '@/db/repos/budgets';
 import {
   addCommitment, deleteCommitment, listCommitments, updateCommitment,
 } from '@/db/repos/commitments';
@@ -62,6 +62,7 @@ export type DataContextValue = {
   /** Latest budgets, readable inside async callbacks without a stale closure. */
   getBudgets: () => Budget[];
   setBudget: (b: Budget) => Promise<void>;
+  removeBudget: (categoryId: number, month: string) => Promise<void>;
   commitments: Commitment[];
   commitmentOps: CollectionOps<Commitment, Omit<Commitment, 'id'>>;
   reliefClaims: ReliefClaim[];
@@ -174,6 +175,16 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
         ]);
         try {
           await setBudget(db, b);
+        } catch (e) {
+          setBudgets(before);
+          throw e;
+        }
+      },
+      async removeBudget(categoryId, month) {
+        const before = budgetsRef.current;
+        setBudgets((prev) => prev.filter((x) => !(x.categoryId === categoryId && x.month === month)));
+        try {
+          await deleteBudget(db, categoryId, month);
         } catch (e) {
           setBudgets(before);
           throw e;
