@@ -22,5 +22,7 @@ export type AppTextProps = TextProps & {
 
 export function AppText({ variant = 'body', tone = 'text', color, style, ...rest }: AppTextProps) {
   const { c } = useTheme();
-  return <Text {...rest} style={[VARIANTS[variant], { color: color ?? c[tone] }, style]} />;
+  // Big figures shrink to fit on one line instead of wrapping.
+  const fit = variant === 'kpi' ? { numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: 0.6 } : null;
+  return <Text {...fit} {...rest} style={[VARIANTS[variant], { color: color ?? c[tone] }, style]} />;
 }

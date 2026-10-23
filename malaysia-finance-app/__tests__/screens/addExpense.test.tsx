@@ -3,6 +3,8 @@ import AddExpense from '@/app/add-expense';
 import { addExpenseRow, CAT, freshDb, renderWithData } from './helpers';
 
 jest.mock('@/hooks/useToday', () => ({ useToday: () => '2026-10-24' }));
+jest.mock('@/receipts', () => ({ pickReceipt: jest.fn() }));
+const { pickReceipt } = jest.requireMock('@/receipts');
 const { router, useLocalSearchParams } = jest.requireMock('expo-router');
 
 beforeEach(() => {
@@ -45,6 +47,36 @@ describe('AddExpense (new)', () => {
     expect(screen.getByLabelText('Date').props.value).toBe('2026-10-23');
     await fireEvent.changeText(screen.getByLabelText('Date'), '2026-02-30');
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+  });
+});
+
+describe('AddExpense (receipt)', () => {
+  test('a photo can be attached, saved with the expense and removed', async () => {
+    pickReceipt.mockResolvedValue('file:///docs/receipts/r1.jpg');
+    const db = await freshDb();
+    await renderWithData(db, <AddExpense />);
+    await waitFor(() => expect(screen.getByLabelText('Amount')).toBeTruthy());
+    await fireEvent.changeText(screen.getByLabelText('Amount'), '8');
+    await fireEvent.press(screen.getByRole('button', { name: 'Take photo' }));
+    await waitFor(() => expect(screen.getByText('Receipt attached')).toBeTruthy());
+    expect(pickReceipt).toHaveBeenCalledWith('camera');
+    await fireEvent.press(screen.getByRole('button', { name: 'Remove photo' }));
+    expect(screen.queryByText('Receipt attached')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Choose photo' }));
+    await waitFor(() => expect(screen.getByText('Receipt attached')).toBeTruthy());
+    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(router.back).toHaveBeenCalled());
+    const row = await db.get<{ receipt_uri: string }>('SELECT receipt_uri FROM expenses');
+    expect(row!.receipt_uri).toBe('file:///docs/receipts/r1.jpg');
+  });
+
+  test('cancelling the picker leaves no receipt', async () => {
+    pickReceipt.mockResolvedValue(null);
+    const db = await freshDb();
+    await renderWithData(db, <AddExpense />);
+    await waitFor(() => expect(screen.getByLabelText('Amount')).toBeTruthy());
+    await fireEvent.press(screen.getByRole('button', { name: 'Choose photo' }));
+    expect(screen.queryByText('Receipt attached')).toBeNull();
   });
 });
 

@@ -11,6 +11,7 @@ import { AmountInput } from '@/ui/AmountInput';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { Chip } from '@/ui/Chip';
+import { ReceiptField } from '@/ui/ReceiptField';
 import { Screen } from '@/ui/Screen';
 import { controlHeight, fontFamily, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
@@ -28,6 +29,7 @@ export default function AddExpense() {
   const [categoryId, setCategoryId] = useState<number>(categories[0]?.id ?? 1);
   const [date, setDate] = useState(today);
   const [note, setNote] = useState('');
+  const [receiptUri, setReceiptUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -37,6 +39,7 @@ export default function AddExpense() {
     setCategoryId(existing.categoryId);
     setDate(existing.date);
     setNote(existing.note);
+    setReceiptUri(existing.receiptUri);
     // Prefill once per expense id, not on every later edit of that expense.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing?.id]);
@@ -49,8 +52,8 @@ export default function AddExpense() {
     setBusy(true);
     setError(null);
     try {
-      if (existing) await update({ ...existing, amount, categoryId, date, note: note.trim() });
-      else await add({ amount, categoryId, date, note: note.trim(), receiptUri: null });
+      if (existing) await update({ ...existing, amount, categoryId, date, note: note.trim(), receiptUri });
+      else await add({ amount, categoryId, date, note: note.trim(), receiptUri });
       router.back();
     } catch {
       setError(t('common.saveFailed'));
@@ -128,6 +131,7 @@ export default function AddExpense() {
           style={field}
         />
       </View>
+      <ReceiptField uri={receiptUri} onChange={setReceiptUri} />
       {error ? (
         <AppText variant="small" tone="negative">
           {error}
