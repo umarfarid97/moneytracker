@@ -3,7 +3,7 @@ import AddExpense from '@/app/add-expense';
 import { addExpenseRow, CAT, freshDb, renderWithData } from './helpers';
 
 jest.mock('@/hooks/useToday', () => ({ useToday: () => '2026-10-24' }));
-jest.mock('@/receipts', () => ({ pickReceipt: jest.fn() }));
+jest.mock('@/receipts', () => ({ pickReceipt: jest.fn(), resolveReceiptUri: (u: string) => u }));
 const { pickReceipt } = jest.requireMock('@/receipts');
 const { router, useLocalSearchParams } = jest.requireMock('expo-router');
 

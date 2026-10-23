@@ -1,14 +1,15 @@
 import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
-import { LATEST_TAX_YEAR } from '@/data/tax';
 import { formatRM } from '@/domain/money';
 import { capReliefClaims } from '@/domain/reliefs';
 import { useReliefClaims } from '@/hooks/useReliefClaims';
+import { useTaxYear } from '@/hooks/useTaxYear';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { Chip } from '@/ui/Chip';
 import { ProgressBar } from '@/ui/ProgressBar';
 import { Screen } from '@/ui/Screen';
 import { radius, statusStyle } from '@/ui/theme';
@@ -16,8 +17,8 @@ import { useTheme } from '@/ui/useTheme';
 
 export default function Tax() {
   const { c, scheme } = useTheme();
-  const data = LATEST_TAX_YEAR;
-  const { data: claims } = useReliefClaims(data.ya);
+  const { year, setYear, options, data, notice } = useTaxYear();
+  const { data: claims } = useReliefClaims(year);
   const summary = useMemo(() => capReliefClaims(claims, data.reliefs), [claims, data]);
   const automatic = data.automaticReliefs.reduce((sum, r) => sum + r.amount, 0);
   const warn = statusStyle('tight', scheme);
@@ -27,8 +28,18 @@ export default function Tax() {
       <View style={{ gap: 4 }}>
         <AppText variant="title">{t('tax.title')}</AppText>
         <AppText variant="bodyStrong" tone="muted">
-          {t('tax.year', { ya: data.ya })}
+          {t('tax.year', { ya: year })}
         </AppText>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+          {options.map((y) => (
+            <Chip key={y} label={String(y)} selected={y === year} onPress={() => setYear(y)} />
+          ))}
+        </View>
+        {notice ? (
+          <AppText variant="small" tone="muted" style={{ marginTop: 4 }}>
+            {notice}
+          </AppText>
+        ) : null}
       </View>
       <Card style={{ gap: 4 }}>
         <AppText variant="small" tone="muted">

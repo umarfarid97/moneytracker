@@ -1,5 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
-import { pickReceipt, receiptExtension, storeReceipt } from '@/receipts';
+import { pickReceipt, receiptExtension, resolveReceiptUri, storeReceipt } from '@/receipts';
 
 const copies: { from: string; to: string }[] = [];
 const createdDirs: string[] = [];
@@ -19,6 +19,9 @@ jest.mock('expo-file-system', () => {
     uri: string;
     constructor(...parts: (string | { uri: string })[]) {
       this.uri = parts.map((p) => (typeof p === 'string' ? p : p.uri)).join('/').replace(/([^:/])\/+/g, '$1/');
+    }
+    get name() {
+      return this.uri.split('/').pop() as string;
     }
     async copy(dest: { uri: string }) {
       copies.push({ from: this.uri, to: dest.uri });
@@ -54,7 +57,18 @@ describe('storeReceipt', () => {
     const uri = await storeReceipt('file:///cache/IMG_1.png', 1700000000000);
     expect(createdDirs).toEqual(['file:///docs/receipts']);
     expect(copies).toEqual([{ from: 'file:///cache/IMG_1.png', to: 'file:///docs/receipts/receipt-1700000000000.png' }]);
-    expect(uri).toBe('file:///docs/receipts/receipt-1700000000000.png');
+    // Stored relative to the documents folder: iOS changes the app container path on update or restore.
+    expect(uri).toBe('receipts/receipt-1700000000000.png');
+  });
+});
+
+describe('resolveReceiptUri', () => {
+  test('turns a stored relative path into a full uri under the current documents folder', () => {
+    expect(resolveReceiptUri('receipts/receipt-5.jpg')).toBe('file:///docs/receipts/receipt-5.jpg');
+  });
+  test('leaves full uris from older saves untouched', () => {
+    expect(resolveReceiptUri('file:///old/container/receipts/a.jpg')).toBe('file:///old/container/receipts/a.jpg');
+    expect(resolveReceiptUri('content://media/1')).toBe('content://media/1');
   });
 });
 
@@ -62,7 +76,7 @@ describe('pickReceipt', () => {
   test('library: returns the stored uri of the chosen picture', async () => {
     picker.launchImageLibraryAsync.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///cache/a.jpg' }] } as never);
     const uri = await pickReceipt('library', 5);
-    expect(uri).toBe('file:///docs/receipts/receipt-5.jpg');
+    expect(uri).toBe('receipts/receipt-5.jpg');
   });
 
   test('cancelling returns null and copies nothing', async () => {
@@ -80,7 +94,7 @@ describe('pickReceipt', () => {
   test('camera: with permission it stores the photo', async () => {
     picker.requestCameraPermissionsAsync.mockResolvedValue({ granted: true } as never);
     picker.launchCameraAsync.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///cache/c.jpg' }] } as never);
-    expect(await pickReceipt('camera', 7)).toBe('file:///docs/receipts/receipt-7.jpg');
+    expect(await pickReceipt('camera', 7)).toBe('receipts/receipt-7.jpg');
   });
 
   test('a storage failure returns null instead of crashing', async () => {

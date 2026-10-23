@@ -3,9 +3,14 @@ import Tax from '@/app/(tabs)/tax';
 import type { Db } from '@/db/types';
 import { freshDb, renderWithData } from './helpers';
 
+let mockToday = '2025-12-01';
+jest.mock('@/hooks/useToday', () => ({ useToday: () => mockToday }));
 const { router } = jest.requireMock('expo-router');
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockToday = '2025-12-01';
+});
 
 async function claim(db: Db, reliefId: string, amount: number, receipt: string | null = null) {
   await db.run('INSERT INTO relief_claims (relief_id, year, amount, receipt_uri) VALUES (?, 2025, ?, ?)', [
@@ -61,5 +66,29 @@ describe('Tax reliefs tab', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Tax calculator' })).toBeTruthy());
     await fireEvent.press(screen.getByRole('button', { name: 'Tax calculator' }));
     expect(router.push).toHaveBeenCalledWith('/tax-calculator');
+  });
+});
+
+describe('Tax year selection (review finding: 2026 receipts were filed under 2025)', () => {
+  test('defaults to the current year, says when LHDN figures for it are not out, and hides other years claims', async () => {
+    mockToday = '2026-10-24';
+    const db = await freshDb();
+    await claim(db, 'lifestyle', 100000, 'x');
+    await renderWithData(db, <Tax />);
+    await waitFor(() => expect(screen.getByText('Year of assessment 2026')).toBeTruthy());
+    expect(screen.getByText('LHDN has not published YA 2026 figures yet, so YA 2025 rates and limits are used.')).toBeTruthy();
+    expect(screen.getByTestId('total-relief').props.children).toBe('RM 9,000.00');
+  });
+
+  test('the year chips switch between this year and last year', async () => {
+    mockToday = '2026-10-24';
+    const db = await freshDb();
+    await claim(db, 'lifestyle', 100000, 'x');
+    await renderWithData(db, <Tax />);
+    await waitFor(() => expect(screen.getByRole('button', { name: '2025' })).toBeTruthy());
+    await fireEvent.press(screen.getByRole('button', { name: '2025' }));
+    expect(screen.getByText('Year of assessment 2025')).toBeTruthy();
+    expect(screen.queryByText(/has not published/)).toBeNull();
+    expect(screen.getByTestId('total-relief').props.children).toBe('RM 10,000.00');
   });
 });

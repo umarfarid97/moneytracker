@@ -73,3 +73,35 @@ describe('scheduleReminders', () => {
     await expect(scheduleReminders([c(1, 'Astro', 8900, 24)], now)).resolves.toBe(0);
   });
 });
+
+describe('scheduleReminders overlapping runs (review finding: reminders fired twice)', () => {
+  test('two runs started together leave exactly one reminder per active commitment', async () => {
+    const scheduled: string[] = [];
+    const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
+    n.cancelAllScheduledNotificationsAsync.mockImplementation(async () => {
+      await tick();
+      scheduled.length = 0;
+    });
+    n.scheduleNotificationAsync.mockImplementation((async (req: { content: { title: string } }) => {
+      await tick();
+      scheduled.push(req.content.title);
+    }) as never);
+    const list = [c(1, 'TNB', 12000, 24), c(2, 'Astro', 8900, 25), c(3, 'Car', 85000, 26)];
+    await Promise.all([scheduleReminders(list, now), scheduleReminders(list, now)]);
+    expect(scheduled.sort()).toEqual(['Astro is due tomorrow', 'Car is due tomorrow', 'TNB is due tomorrow']);
+  });
+
+  test('a later run replaces an earlier one that is still waiting, using the newest list', async () => {
+    const scheduled: string[] = [];
+    n.cancelAllScheduledNotificationsAsync.mockImplementation(async () => {
+      scheduled.length = 0;
+    });
+    n.scheduleNotificationAsync.mockImplementation((async (req: { content: { title: string } }) => {
+      scheduled.push(req.content.title);
+    }) as never);
+    const first = scheduleReminders([c(1, 'Old', 100, 24)], now);
+    const second = scheduleReminders([c(2, 'New', 200, 24)], now);
+    await Promise.all([first, second]);
+    expect(scheduled).toEqual(['New is due tomorrow']);
+  });
+});

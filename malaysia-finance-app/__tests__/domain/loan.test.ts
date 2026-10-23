@@ -112,3 +112,14 @@ describe('parseYears', () => {
     }
   });
 });
+
+describe('assessLoan without a requested amount (review finding)', () => {
+  const home = { kind: 'home' as const, ratePct: 4.5, months: 360, method: 'reducing' as const };
+  test('says not-suitable when commitments already use up the limit', () => {
+    expect(assessLoan({ netMonthly: 500000, commitments: 400000, ...home }).verdict).toBe('not-suitable');
+    expect(assessLoan({ netMonthly: 500000, commitments: 325000, ...home }).verdict).toBe('not-suitable');
+  });
+  test('has no verdict while there is room to borrow', () => {
+    expect(assessLoan({ netMonthly: 500000, commitments: 324999, ...home }).verdict).toBeUndefined();
+  });
+});

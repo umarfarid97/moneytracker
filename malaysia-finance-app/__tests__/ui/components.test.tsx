@@ -80,6 +80,15 @@ describe('ProgressBar', () => {
 });
 
 describe('Sheet', () => {
+  test('lifts its content above the keyboard (review finding: the keyboard covered Save)', async () => {
+    await render(
+      <Sheet visible title="Add" onClose={() => {}}>
+        <Text>inside</Text>
+      </Sheet>,
+    );
+    expect(screen.getByTestId('sheet-keyboard-avoider')).toBeTruthy();
+  });
+
   test('renders children only while visible and closes from the close button', async () => {
     const onClose = jest.fn();
     const { rerender } = await render(

@@ -73,6 +73,8 @@ export function assessLoan(i: {
     maxPrincipal: maxPrincipal(maxInstalment, i.ratePct, i.months, i.method),
     comfortablePrincipal: maxPrincipal(comfortableInstalment, i.ratePct, i.months, i.method),
   };
+  // Nothing is left to borrow once commitments use up the limit, whether or not an amount was typed.
+  if (i.requestedPrincipal === undefined && maxInstalment === 0) result.verdict = 'not-suitable';
   if (i.requestedPrincipal !== undefined) {
     const total = i.commitments + monthlyInstalment(i.requestedPrincipal, i.ratePct, i.months, i.method);
     if (net === 0 || total * 100 > net * DSR_PCT) result.verdict = 'not-suitable';

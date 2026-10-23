@@ -69,6 +69,9 @@ export type DataContextValue = {
   reliefClaimOps: CollectionOps<ReliefClaim, Omit<ReliefClaim, 'id'>>;
   profile: Profile;
   saveProfile: (p: Profile) => Promise<void>;
+  /** Year of assessment picked on the tax screens (null = the current year). */
+  taxYearChoice: number | null;
+  setTaxYearChoice: (year: number | null) => void;
 };
 
 const DataContext = createContext<DataContextValue | null>(null);
@@ -101,6 +104,7 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
   const [db, setDb] = useState<Db | null>(injected ?? null);
   const [failure, setFailure] = useState<Error | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [taxYearChoice, setTaxYearChoice] = useState<number | null>(null);
 
   const [categories, setCategories] = useSyncedState<Category[]>([]);
   const [expenses, setExpenses, expensesRef] = useSyncedState<Expense[]>([]);
@@ -150,7 +154,7 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
     }, byId);
 
     return {
-      db, categories, expenses, budgets, commitments, reliefClaims, profile,
+      db, categories, expenses, budgets, commitments, reliefClaims, profile, taxYearChoice, setTaxYearChoice,
       expenseOps, commitmentOps, reliefClaimOps,
       getBudgets: () => budgetsRef.current,
       categoryOps: {
@@ -201,7 +205,7 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
         }
       },
     };
-  }, [db, loaded, profile, categories, expenses, budgets, commitments, reliefClaims, apply]);
+  }, [db, loaded, profile, categories, expenses, budgets, commitments, reliefClaims, taxYearChoice, apply]);
 
   if (failure) throw failure;
   if (!value) return null;

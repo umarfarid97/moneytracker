@@ -2,12 +2,15 @@ import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import Relief from '@/app/relief/[id]';
 import { freshDb, renderWithData } from './helpers';
 
-jest.mock('@/receipts', () => ({ pickReceipt: jest.fn() }));
+let mockToday = '2025-12-01';
+jest.mock('@/hooks/useToday', () => ({ useToday: () => mockToday }));
+jest.mock('@/receipts', () => ({ pickReceipt: jest.fn(), resolveReceiptUri: (u: string) => u }));
 const { pickReceipt } = jest.requireMock('@/receipts');
 const { useLocalSearchParams } = jest.requireMock('expo-router');
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockToday = '2025-12-01';
   useLocalSearchParams.mockReturnValue({ id: 'lifestyle' });
 });
 
@@ -41,6 +44,17 @@ describe('Relief page', () => {
     ]);
     expect(screen.getByText('Receipt missing')).toBeTruthy();
     expect(screen.getByLabelText('Amount').props.value).toBe('');
+  });
+
+  test('a claim made in 2026 is filed under year 2026, not 2025', async () => {
+    mockToday = '2026-10-24';
+    const db = await freshDb();
+    await renderWithData(db, <Relief />);
+    await waitFor(() => expect(screen.getByLabelText('Amount')).toBeTruthy());
+    await fireEvent.changeText(screen.getByLabelText('Amount'), '200');
+    await fireEvent.press(screen.getByRole('button', { name: 'Add claim' }));
+    await waitFor(async () => expect((await claimsIn(db)).length).toBe(1));
+    expect((await claimsIn(db))[0].year).toBe(2026);
   });
 
   test('attaches a receipt photo to the claim', async () => {

@@ -14,14 +14,21 @@ export function receiptExtension(uri: string): string {
 
 /**
  * Copies a picture out of the picker's temporary cache into the app's documents folder, which is kept
- * until the app is deleted. Returns the permanent uri to save with the claim or expense.
+ * until the app is deleted. Returns the path relative to that folder to save with the claim or expense
+ * (use resolveReceiptUri to show it), because the folder's absolute path can change when iOS updates the app.
  */
 export async function storeReceipt(sourceUri: string, now: number = Date.now()): Promise<string> {
   const dir = new Directory(Paths.document, 'receipts');
   if (!dir.exists) dir.create({ idempotent: true, intermediates: true });
   const dest = new File(dir, `receipt-${now}.${receiptExtension(sourceUri)}`);
   await new File(sourceUri).copy(dest);
-  return dest.uri;
+  return `receipts/${dest.name}`;
+}
+
+/** Full uri for a stored receipt path; uris saved by earlier versions (already absolute) pass through. */
+export function resolveReceiptUri(stored: string): string {
+  if (/^[a-z][a-z0-9+.-]*:/i.test(stored)) return stored;
+  return new File(Paths.document, stored).uri;
 }
 
 /** Takes a photo or chooses one, stores it, and returns its uri. Null when cancelled, refused or failed. */

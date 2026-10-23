@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
-import { Modal, Pressable, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { t } from '@/i18n/t';
@@ -47,6 +47,12 @@ export function Sheet({ visible, title, onClose, children }: Props) {
         <Animated.View style={[{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: '#000' }, backdropStyle]}>
           <Pressable accessibilityLabel={t('common.dismiss')} style={{ flex: 1 }} onPress={onClose} />
         </Animated.View>
+        <KeyboardAvoidingView
+          testID="sheet-keyboard-avoider"
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1, justifyContent: 'flex-end' }}
+          pointerEvents="box-none"
+        >
         <GestureDetector gesture={drag}>
           <Animated.View
             style={[
@@ -66,6 +72,7 @@ export function Sheet({ visible, title, onClose, children }: Props) {
             {children}
           </Animated.View>
         </GestureDetector>
+        </KeyboardAvoidingView>
       </GestureHandlerRootView>
     </Modal>
   );

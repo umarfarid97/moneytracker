@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { Switch, View } from 'react-native';
-import { LATEST_TAX_YEAR } from '@/data/tax';
 import { formatRM, parseRM, senToInput } from '@/domain/money';
 import { capReliefClaims } from '@/domain/reliefs';
 import { calculateTaxBill } from '@/domain/taxBill';
 import { useProfile } from '@/hooks/useProfile';
 import { useReliefClaims } from '@/hooks/useReliefClaims';
+import { useTaxYear } from '@/hooks/useTaxYear';
 import { t } from '@/i18n/t';
 import { AmountInput } from '@/ui/AmountInput';
 import { AppText } from '@/ui/AppText';
@@ -31,9 +31,9 @@ function Row({ label, value, testID, strong }: { label: string; value: string; t
 
 export default function TaxCalculator() {
   const { c } = useTheme();
-  const data = LATEST_TAX_YEAR;
+  const { year, data, notice } = useTaxYear();
   const { data: profile } = useProfile();
-  const { data: claims } = useReliefClaims(data.ya);
+  const { data: claims } = useReliefClaims(year);
 
   const [text, setText] = useState<Record<Field, string>>(() => ({
     salary: profile.grossMonthly > 0 ? senToInput(profile.grossMonthly * 12) : '',
@@ -73,8 +73,13 @@ export default function TaxCalculator() {
       <View style={{ gap: 4 }}>
         <AppText variant="title">{t('taxCalc.title')}</AppText>
         <AppText variant="bodyStrong" tone="muted">
-          {t('tax.year', { ya: data.ya })}
+          {t('tax.year', { ya: year })}
         </AppText>
+        {notice ? (
+          <AppText variant="small" tone="muted">
+            {notice}
+          </AppText>
+        ) : null}
       </View>
 
       <Card style={{ gap: 12 }}>

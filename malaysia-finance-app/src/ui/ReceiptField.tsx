@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Image, View } from 'react-native';
-import { pickReceipt, type ReceiptSource } from '@/receipts';
+import { pickReceipt, resolveReceiptUri, type ReceiptSource } from '@/receipts';
 import { t } from '@/i18n/t';
 import { AppText } from './AppText';
 import { Button } from './Button';
@@ -33,7 +33,7 @@ export function ReceiptField({ uri, onChange }: Props) {
       {uri ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <Image
-            source={{ uri }}
+            source={{ uri: resolveReceiptUri(uri) }}
             accessibilityLabel={t('expense.receipt')}
             style={{ width: 64, height: 64, borderRadius: radius.sm }}
           />

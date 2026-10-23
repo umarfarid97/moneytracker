@@ -1,10 +1,10 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { TextInput, View } from 'react-native';
-import { LATEST_TAX_YEAR } from '@/data/tax';
 import { formatRM, parseRM } from '@/domain/money';
 import { capReliefClaims } from '@/domain/reliefs';
 import { useReliefClaims } from '@/hooks/useReliefClaims';
+import { useTaxYear } from '@/hooks/useTaxYear';
 import { t } from '@/i18n/t';
 import { AmountInput } from '@/ui/AmountInput';
 import { AppText } from '@/ui/AppText';
@@ -19,9 +19,9 @@ import { useTheme } from '@/ui/useTheme';
 export default function ReliefPage() {
   const { c, scheme } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const data = LATEST_TAX_YEAR;
+  const { year, data } = useTaxYear();
   const def = data.reliefs.find((r) => r.id === id);
-  const { data: allClaims, add, remove } = useReliefClaims(data.ya);
+  const { data: allClaims, add, remove } = useReliefClaims(year);
   const summary = useMemo(() => capReliefClaims(allClaims, data.reliefs), [allClaims, data]);
 
   const [amountText, setAmountText] = useState('');
@@ -50,7 +50,7 @@ export default function ReliefPage() {
     setBusy(true);
     setError(null);
     try {
-      await add({ reliefId: def.id, year: data.ya, amount, receiptUri, note: note.trim() });
+      await add({ reliefId: def.id, year, amount, receiptUri, note: note.trim() });
       setAmountText('');
       setNote('');
       setReceiptUri(null);

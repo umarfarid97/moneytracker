@@ -65,3 +65,16 @@ describe('parsePercent', () => {
     }
   });
 });
+
+describe('parseRM thousands separators (review finding: "12,50" must not become RM 1,250)', () => {
+  test('commas are accepted only as proper groups of three digits', () => {
+    expect(parseRM('1,234')).toBe(123400);
+    expect(parseRM('12,345,678.90')).toBe(1234567890);
+    expect(parseRM('999,999.5')).toBe(99999950);
+  });
+  test('a decimal comma or misplaced comma is rejected, not read as thousands', () => {
+    for (const bad of ['12,50', '1,2,3', '1,23', ',5', '1,2345', '12,5', '1,234,56']) {
+      expect(parseRM(bad)).toBeNull();
+    }
+  });
+});

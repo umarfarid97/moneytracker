@@ -6,7 +6,10 @@ const MAX_SEN: Sen = 999_999_999_999;
 
 /** Parse user text like "1,234.5" into sen. Returns null when invalid. */
 export function parseRM(input: string): Sen | null {
-  const text = input.trim().replace(/,/g, '');
+  const raw = input.trim();
+  // Commas only count as thousands separators in proper groups of three ("12,50" is not RM 1,250).
+  if (raw.includes(',') && !/^\d{1,3}(,\d{3})+(\.\d*)?$/.test(raw)) return null;
+  const text = raw.replace(/,/g, '');
   if (!/^(\d+\.?\d{0,2}|\.\d{1,2})$/.test(text)) return null;
   const [whole = '', frac = ''] = text.split('.');
   const sen = Number(whole || '0') * 100 + Number(frac.padEnd(2, '0') || '0');

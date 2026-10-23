@@ -2,7 +2,13 @@ import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import TaxCalculator from '@/app/tax-calculator';
 import { freshDb, renderWithData } from './helpers';
 
-beforeEach(() => jest.clearAllMocks());
+let mockToday = '2025-12-01';
+jest.mock('@/hooks/useToday', () => ({ useToday: () => mockToday }));
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockToday = '2025-12-01';
+});
 
 async function ready() {
   await waitFor(() => expect(screen.getByLabelText('Salary for the year')).toBeTruthy());
@@ -79,6 +85,14 @@ describe('Tax calculator', () => {
     await db.run('UPDATE profile SET gross_monthly = 500000 WHERE id = 1');
     await renderWithData(db, <TaxCalculator />);
     await waitFor(() => expect(screen.getByLabelText('Salary for the year').props.value).toBe('60000.00'));
+  });
+
+  test('for a year without published figures it says which figures it used', async () => {
+    mockToday = '2026-10-24';
+    const db = await freshDb();
+    await renderWithData(db, <TaxCalculator />);
+    await ready();
+    expect(screen.getByText('LHDN has not published YA 2026 figures yet, so YA 2025 rates and limits are used.')).toBeTruthy();
   });
 
   test('an invalid amount shows a message and is treated as zero', async () => {

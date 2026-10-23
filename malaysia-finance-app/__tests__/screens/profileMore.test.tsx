@@ -15,6 +15,7 @@ describe('More tab', () => {
     for (const [label, path] of [
       ['Income profile', '/profile'],
       ['Budget', '/budget'],
+      ['Categories', '/categories'],
       ['Tax calculator', '/tax-calculator'],
       ['Loan calculator', '/loan-calculator'],
     ] as const) {

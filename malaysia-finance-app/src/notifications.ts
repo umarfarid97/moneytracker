@@ -32,7 +32,7 @@ async function ensurePermission(): Promise<boolean> {
  * Only the next occurrence is scheduled, so call this at launch and whenever commitments change.
  * Returns how many reminders were scheduled; never throws, because reminders are a convenience.
  */
-export async function scheduleReminders(commitments: Commitment[], now: Date = new Date()): Promise<number> {
+async function replaceReminders(commitments: Commitment[], now: Date): Promise<number> {
   try {
     const active = commitments.filter((c) => c.active);
     if (active.length === 0) {
@@ -61,4 +61,19 @@ export async function scheduleReminders(commitments: Commitment[], now: Date = n
   } catch {
     return 0;
   }
+}
+
+let queue: Promise<unknown> = Promise.resolve();
+let latestRequest = 0;
+
+/**
+ * Replaces every scheduled reminder with one per active commitment (see replaceReminders).
+ * Runs one at a time, and a run that is still waiting when a newer request arrives is skipped, so
+ * overlapping calls (an optimistic add changes the list twice) can never leave duplicate reminders.
+ */
+export function scheduleReminders(commitments: Commitment[], now: Date = new Date()): Promise<number> {
+  const ticket = ++latestRequest;
+  const run = queue.then(() => (ticket === latestRequest ? replaceReminders(commitments, now) : 0));
+  queue = run.catch(() => undefined);
+  return run;
 }

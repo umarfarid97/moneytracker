@@ -73,3 +73,21 @@ describe('capReliefClaims', () => {
     expect(cap([])).toEqual({ perRelief: {}, total: 0, missingReceipts: [] });
   });
 });
+
+describe('medical relief sub-caps (review finding: dental and vaccination are RM 1,000 each)', () => {
+  test('dental and vaccination are separate reliefs capped at RM 1,000, inside the RM 10,000 medical group', () => {
+    const limit = (id: string) => YA2025.reliefs.find((r) => r.id === id)?.limit;
+    expect(limit('medical-dental')).toBe(100000);
+    expect(limit('medical-vaccination')).toBe(100000);
+    const r = cap([claim('medical-dental', 300000), claim('medical-vaccination', 250000)]);
+    expect(r.perRelief['medical-dental'].allowed).toBe(100000);
+    expect(r.perRelief['medical-vaccination'].allowed).toBe(100000);
+    expect(r.total).toBe(200000);
+  });
+  test('the whole medical group still stops at RM 10,000', () => {
+    const r = cap([
+      claim('medical-serious', 950000), claim('medical-dental', 100000), claim('medical-vaccination', 100000),
+    ]);
+    expect(r.total).toBe(1000000);
+  });
+});

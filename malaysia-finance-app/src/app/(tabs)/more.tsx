@@ -8,9 +8,10 @@ import { Screen } from '@/ui/Screen';
 import { radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
-const ITEMS: { label: StringKey; path: '/profile' | '/budget' | '/tax-calculator' | '/loan-calculator' }[] = [
+const ITEMS: { label: StringKey; path: '/profile' | '/budget' | '/categories' | '/tax-calculator' | '/loan-calculator' }[] = [
   { label: 'more.profile', path: '/profile' },
   { label: 'more.budget', path: '/budget' },
+  { label: 'more.categories', path: '/categories' },
   { label: 'more.taxCalc', path: '/tax-calculator' },
   { label: 'more.loan', path: '/loan-calculator' },
 ];
