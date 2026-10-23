@@ -10,4 +10,6 @@ module.exports = {
   // Windows: avoid spawning `find` for the haste crawl (crashes with ENOTCONN here).
   haste: { ...require('jest-expo/jest-preset').haste, forceNodeFilesystemAPI: true },
   watchman: false,
+  // Slow Windows disks and a running dev server can push the first render of a suite past the 5s default.
+  testTimeout: 30000,
 };
