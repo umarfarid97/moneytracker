@@ -1,5 +1,6 @@
 module.exports = {
   preset: 'jest-expo',
+  setupFiles: ['<rootDir>/test-support/jest.setup.js'],
   testMatch: ['<rootDir>/__tests__/**/*.test.(ts|tsx)'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
@@ -7,6 +8,6 @@ module.exports = {
     '^\./(setupHMR|setupFastRefresh|messageSocket)$': '<rootDir>/test-support/empty.js',
   },
   // Windows: avoid spawning `find` for the haste crawl (crashes with ENOTCONN here).
-  haste: { forceNodeFilesystemAPI: true },
+  haste: { ...require('jest-expo/jest-preset').haste, forceNodeFilesystemAPI: true },
   watchman: false,
 };
