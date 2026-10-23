@@ -31,3 +31,7 @@ export function listExpensesByDate(db: Db, date: string): Promise<Expense[]> {
 export function listExpensesByMonth(db: Db, month: string): Promise<Expense[]> {
   return db.all<Expense>(`${SELECT} WHERE substr(date, 1, 7) = ? ORDER BY date DESC, id DESC`, [month]);
 }
+
+export function listAllExpenses(db: Db): Promise<Expense[]> {
+  return db.all<Expense>(`${SELECT} ORDER BY date DESC, id DESC`);
+}

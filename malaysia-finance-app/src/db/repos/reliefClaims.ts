@@ -27,3 +27,10 @@ export async function updateReliefClaim(db: Db, c: ReliefClaim): Promise<void> {
 export async function deleteReliefClaim(db: Db, id: number): Promise<void> {
   await db.run('DELETE FROM relief_claims WHERE id = ?', [id]);
 }
+
+export function listAllReliefClaims(db: Db): Promise<ReliefClaim[]> {
+  return db.all<ReliefClaim>(
+    `SELECT id, relief_id AS reliefId, year, amount, receipt_uri AS receiptUri, note
+     FROM relief_claims ORDER BY id`,
+  );
+}

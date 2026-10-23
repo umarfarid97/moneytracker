@@ -15,3 +15,9 @@ export async function setBudget(db: Db, b: Budget): Promise<void> {
     [b.categoryId, b.month, b.limit],
   );
 }
+
+export function listAllBudgets(db: Db): Promise<Budget[]> {
+  return db.all<Budget>(
+    'SELECT category_id AS categoryId, month, limit_sen AS "limit" FROM budgets ORDER BY month, category_id',
+  );
+}
