@@ -104,7 +104,7 @@ export default function LoanCalculator() {
               <AppText variant="small" tone="muted">
                 {t('loan.range')}
               </AppText>
-              <AppText testID="range" variant="kpi">
+              <AppText testID="range" variant="section">
                 {`${formatRM(result.comfortablePrincipal)} to ${formatRM(result.maxPrincipal)}`}
               </AppText>
             </View>

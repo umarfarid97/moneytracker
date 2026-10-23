@@ -18,7 +18,7 @@ describe('Tax reliefs tab', () => {
     const db = await freshDb();
     await renderWithData(db, <Tax />);
     await waitFor(() => expect(screen.getByText('Year of assessment 2025')).toBeTruthy());
-    expect(screen.getByText('Total relief RM 9,000.00')).toBeTruthy();
+    expect(screen.getByTestId('total-relief').props.children).toBe('RM 9,000.00');
     expect(screen.getByText('Individual and dependent relatives')).toBeTruthy();
     expect(screen.getByText('Claimed automatically')).toBeTruthy();
     expect(screen.getByText('Lifestyle: books, computer/phone/tablet, internet, skill courses')).toBeTruthy();
@@ -30,7 +30,7 @@ describe('Tax reliefs tab', () => {
     const db = await freshDb();
     await claim(db, 'lifestyle', 300000, 'file:///r.jpg');
     await renderWithData(db, <Tax />);
-    await waitFor(() => expect(screen.getByText('Total relief RM 11,500.00')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('total-relief').props.children).toBe('RM 11,500.00'));
     expect(screen.getByText('RM 2,500.00 of RM 2,500.00')).toBeTruthy();
     expect(screen.getByText('RM 500.00 is above the limit and cannot be claimed')).toBeTruthy();
     expect(screen.queryByText('Receipt missing')).toBeNull();
@@ -41,7 +41,7 @@ describe('Tax reliefs tab', () => {
     await claim(db, 'lifestyle', 100000, null);
     await claim(db, 'epf', 400000, null);
     await renderWithData(db, <Tax />);
-    await waitFor(() => expect(screen.getByText('Total relief RM 14,000.00')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('total-relief').props.children).toBe('RM 14,000.00'));
     expect(screen.getAllByText('Receipt missing')).toHaveLength(1);
   });
 

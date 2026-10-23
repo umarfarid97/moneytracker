@@ -12,7 +12,7 @@ type Props = { children: ReactNode; onDelete: () => void };
 export function SwipeRow({ children, onDelete }: Props) {
   const { c } = useTheme();
   return (
-    <View style={{ borderRadius: radius.control, overflow: 'hidden' }}>
+    <View style={{ borderRadius: radius.control, overflow: 'hidden', backgroundColor: c.surface }}>
     <Swipeable
       overshootRight={false}
       friction={2}

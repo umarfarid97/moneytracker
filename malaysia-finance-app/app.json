@@ -8,7 +8,8 @@
     "scheme": "duit",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "my.duit.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +18,8 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "my.duit.app"
     },
     "web": {
       "output": "single",
@@ -31,6 +33,20 @@
           "backgroundColor": "#1d5fd6",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#1d5fd6"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Duit uses your photos so you can attach receipts to spending and tax claims.",
+          "cameraPermission": "Duit uses the camera so you can photograph receipts.",
+          "microphonePermission": false
         }
       ]
     ],

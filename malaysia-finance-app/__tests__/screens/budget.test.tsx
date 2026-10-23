@@ -29,7 +29,7 @@ describe('Budget', () => {
     await waitFor(() => expect(screen.getByLabelText('Makan')).toBeTruthy());
     await fireEvent.changeText(screen.getByLabelText('Makan'), '600');
     await fireEvent.changeText(screen.getByLabelText('Transport'), '35.50');
-    expect(screen.getByText('Total RM 635.50')).toBeTruthy();
+    expect(screen.getByTestId('budget-total').props.children).toBe('RM 635.50');
     await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(router.back).toHaveBeenCalled());
     expect(await budgetsIn(db)).toEqual([

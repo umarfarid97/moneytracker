@@ -28,7 +28,7 @@ describe('Commitments screen', () => {
     expect(screen.getByText('Due today')).toBeTruthy();
     expect(screen.getByText('Due tomorrow')).toBeTruthy();
     expect(screen.getByText('Due in 8 days')).toBeTruthy();
-    expect(screen.getByText('RM 1,439.00 every month')).toBeTruthy();
+    expect(screen.getByTestId('commitments-total').props.children).toBe('RM 1,439.00');
     const names = screen.getAllByTestId('commitment-name').map((n) => n.props.children);
     expect(names).toEqual(['Astro', 'Gym', 'Rumah']);
   });
@@ -40,7 +40,7 @@ describe('Commitments screen', () => {
     await renderWithData(db, <Commitments />);
     await waitFor(() => expect(screen.getByText('Old gym')).toBeTruthy());
     expect(screen.getByText('Paused')).toBeTruthy();
-    expect(screen.getByText('RM 89.00 every month')).toBeTruthy();
+    expect(screen.getByTestId('commitments-total').props.children).toBe('RM 89.00');
     const names = screen.getAllByTestId('commitment-name').map((n) => n.props.children);
     expect(names).toEqual(['Astro', 'Old gym']);
   });

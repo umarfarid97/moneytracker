@@ -71,7 +71,9 @@ export default function Budget() {
         <AppText variant="small" tone="muted">
           {t('budget.month')}
         </AppText>
-        <AppText variant="kpi">{t('budget.total', { amount: formatRM(total) })}</AppText>
+        <AppText testID="budget-total" variant="kpi">
+          {formatRM(total)}
+        </AppText>
       </Card>
       <Button title={t('budget.copyLast')} variant="secondary" onPress={() => copyFromLast().catch(() => setError(t('common.saveFailed')))} />
       <View style={{ gap: 16 }}>

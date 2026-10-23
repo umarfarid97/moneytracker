@@ -30,8 +30,13 @@ export default function Tax() {
           {t('tax.year', { ya: data.ya })}
         </AppText>
       </View>
-      <Card>
-        <AppText variant="kpi">{t('tax.totalRelief', { amount: formatRM(automatic + summary.total) })}</AppText>
+      <Card style={{ gap: 4 }}>
+        <AppText variant="small" tone="muted">
+          {t('tax.totalRelief')}
+        </AppText>
+        <AppText testID="total-relief" variant="kpi">
+          {formatRM(automatic + summary.total)}
+        </AppText>
       </Card>
       <Button title={t('taxCalc.title')} onPress={() => router.push('/tax-calculator')} />
 

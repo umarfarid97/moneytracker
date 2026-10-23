@@ -38,8 +38,8 @@ const Row = memo(function Row({
         accessibilityRole="button"
         onPress={() => onOpen(expense)}
         style={{
+          // The rounded corners come from SwipeRow, so the hidden Delete action never shows at the edges.
           backgroundColor: c.surface,
-          borderRadius: radius.control,
           paddingHorizontal: 16,
           minHeight: 64,
           flexDirection: 'row',

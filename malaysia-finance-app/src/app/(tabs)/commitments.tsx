@@ -47,7 +47,12 @@ export default function Commitments() {
     <Screen fab>
       <AppText variant="title">{t('commitments.title')}</AppText>
       <Card style={{ gap: 4 }}>
-        <AppText variant="kpi">{t('commitments.total', { amount: formatRM(monthlyCommitmentTotal(data)) })}</AppText>
+        <AppText variant="small" tone="muted">
+          {t('commitments.total')}
+        </AppText>
+        <AppText testID="commitments-total" variant="kpi">
+          {formatRM(monthlyCommitmentTotal(data))}
+        </AppText>
       </Card>
       <Button title={t('commitments.add')} onPress={() => openSheet(null)} />
       {rows.length === 0 ? (

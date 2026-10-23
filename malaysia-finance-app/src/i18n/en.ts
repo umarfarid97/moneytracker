@@ -52,11 +52,10 @@ export const en = {
 
   'budget.title': 'Budget',
   'budget.month': 'Monthly budget',
-  'budget.total': 'Total {amount}',
   'budget.copyLast': 'Copy last month',
 
   'commitments.title': 'Monthly commitments',
-  'commitments.total': '{amount} every month',
+  'commitments.total': 'Total every month',
   'commitments.dueToday': 'Due today',
   'commitments.dueIn': 'Due in {days} days',
   'commitments.dueTomorrow': 'Due tomorrow',
@@ -75,7 +74,7 @@ export const en = {
 
   'tax.title': 'Tax reliefs',
   'tax.year': 'Year of assessment {ya}',
-  'tax.totalRelief': 'Total relief {amount}',
+  'tax.totalRelief': 'Total relief',
   'tax.missingReceipt': 'Receipt missing',
   'tax.notClaimable': '{amount} is above the limit and cannot be claimed',
   'tax.automatic': 'Claimed automatically',
