@@ -1,4 +1,4 @@
-import { daysUntil, monthlyCommitmentTotal, nextDueDate } from '@/domain/commitments';
+import { daysUntil, monthlyCommitmentTotal, nextDueDate, nextReminder } from '@/domain/commitments';
 import type { Commitment } from '@/domain/types';
 
 describe('nextDueDate', () => {
@@ -36,5 +36,39 @@ describe('monthlyCommitmentTotal', () => {
   });
   test('sums active commitments only', () => {
     expect(monthlyCommitmentTotal([c(100, true), c(250, true), c(999, false)])).toBe(350);
+  });
+});
+
+describe('nextReminder', () => {
+  // 09:00 in Kuala Lumpur (UTC+8) is 01:00 UTC.
+  test('fires at 09:00 KL the day before the due date', () => {
+    const r = nextReminder(24, new Date('2026-10-20T04:00:00Z'));
+    expect(r.dueDate).toBe('2026-10-24');
+    expect(r.fireAt.toISOString()).toBe('2026-10-23T01:00:00.000Z');
+  });
+
+  test('if that moment has passed, uses next month so a reminder is never in the past', () => {
+    // 2026-10-23 10:00 KL = 02:00Z, after the 09:00 KL reminder for the 24th
+    const r = nextReminder(24, new Date('2026-10-23T02:00:00Z'));
+    expect(r.dueDate).toBe('2026-11-24');
+    expect(r.fireAt.toISOString()).toBe('2026-11-23T01:00:00.000Z');
+  });
+
+  test('a due date on the 1st reminds on the last day of the previous month', () => {
+    const r = nextReminder(1, new Date('2026-10-28T04:00:00Z'));
+    expect(r.dueDate).toBe('2026-11-01');
+    expect(r.fireAt.toISOString()).toBe('2026-10-31T01:00:00.000Z');
+  });
+
+  test('day 31 in a short month is due on the last day', () => {
+    const r = nextReminder(31, new Date('2026-11-02T04:00:00Z'));
+    expect(r.dueDate).toBe('2026-11-30');
+    expect(r.fireAt.toISOString()).toBe('2026-11-29T01:00:00.000Z');
+  });
+
+  test('uses the Kuala Lumpur date, not the UTC date', () => {
+    // 2026-10-23 17:00Z is already 2026-10-24 01:00 KL, so the 24th is due today and its reminder has passed
+    const r = nextReminder(24, new Date('2026-10-23T17:00:00Z'));
+    expect(r.dueDate).toBe('2026-11-24');
   });
 });
