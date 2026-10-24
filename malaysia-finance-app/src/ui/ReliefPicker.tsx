@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
 import type { ReliefDef } from '@/data/tax/types';
 import { t } from '@/i18n/t';
 import { AppText } from './AppText';
@@ -72,8 +72,7 @@ export function ReliefPicker({ reliefs, value, onChange }: Props) {
             fontSize: 16,
           }}
         />
-        <ScrollView style={{ maxHeight: 360 }} keyboardShouldPersistTaps="handled">
-          <View>
+        <View>
             <Pressable accessibilityRole="button" onPress={() => choose(null)} style={row}>
               <AppText variant="bodyStrong" tone="muted">
                 {t('relief.none')}
@@ -86,8 +85,7 @@ export function ReliefPicker({ reliefs, value, onChange }: Props) {
                 </AppText>
               </Pressable>
             ))}
-          </View>
-        </ScrollView>
+        </View>
       </Sheet>
     </>
   );

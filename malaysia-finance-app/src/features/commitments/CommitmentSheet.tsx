@@ -1,12 +1,17 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Switch, TextInput, View } from 'react-native';
+import { resolveTaxData } from '@/data/tax';
 import { parseRM, senToInput } from '@/domain/money';
 import type { Commitment, CommitmentKind, NewCommitment } from '@/domain/types';
+import { useCategories } from '@/hooks/useCategories';
+import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+import { useToday } from '@/hooks/useToday';
 import { t } from '@/i18n/t';
 import { AmountInput } from '@/ui/AmountInput';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { Chip } from '@/ui/Chip';
+import { ReliefPicker } from '@/ui/ReliefPicker';
 import { Sheet } from '@/ui/Sheet';
 import { controlHeight, fontFamily, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
@@ -27,11 +32,22 @@ const KINDS: CommitmentKind[] = ['bill', 'loan', 'subscription'];
 /** Mount with a fresh `key` each time it opens so the fields start from `existing`. */
 export function CommitmentSheet({ visible, existing, onClose, onSave, onDelete }: Props) {
   const { c } = useTheme();
+  const today = useToday();
+  const { data: categories } = useCategories();
+  const { data: methods } = usePaymentMethods();
+  const reliefs = useMemo(() => resolveTaxData(Number(today.slice(0, 4))).data.reliefs, [today]);
+
   const [name, setName] = useState(existing?.name ?? '');
   const [amountText, setAmountText] = useState(existing ? senToInput(existing.amount) : '');
   const [dayText, setDayText] = useState(existing ? String(existing.dayOfMonth) : '');
   const [kind, setKind] = useState<CommitmentKind>(existing?.kind ?? 'bill');
   const [active, setActive] = useState(existing?.active ?? true);
+  const [categoryId, setCategoryId] = useState<number | null>(
+    existing ? existing.categoryId : (categories.find((cat) => cat.name === 'Bil')?.id ?? null),
+  );
+  const [methodId, setMethodId] = useState<number | null>(existing ? existing.paymentMethodId : (methods[0]?.id ?? null));
+  const [reliefId, setReliefId] = useState<string | null>(existing?.reliefId ?? null);
+  const [auto, setAuto] = useState(existing?.autoRecord ?? false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -96,6 +112,48 @@ export function CommitmentSheet({ visible, existing, onClose, onSave, onDelete }
             <Chip key={k} label={t(`commitments.kind.${k}`)} selected={kind === k} onPress={() => setKind(k)} />
           ))}
         </View>
+
+        <View style={{ gap: 8 }}>
+          <AppText variant="smallStrong">{t('commitments.recordsAs')}</AppText>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {categories.map((cat) => (
+              <Chip
+                key={cat.id}
+                label={cat.name}
+                accessibilityLabel={`Bill category ${cat.name}`}
+                selected={cat.id === categoryId}
+                onPress={() => setCategoryId(cat.id)}
+              />
+            ))}
+          </View>
+        </View>
+        <View style={{ gap: 8 }}>
+          <AppText variant="smallStrong">{t('method.field')}</AppText>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {methods.map((m) => (
+              <Chip
+                key={m.id}
+                label={m.name}
+                accessibilityLabel={`Bill method ${m.name}`}
+                selected={m.id === methodId}
+                onPress={() => setMethodId(m.id)}
+              />
+            ))}
+          </View>
+        </View>
+        <View style={{ gap: 8 }}>
+          <AppText variant="smallStrong">{t('relief.field')}</AppText>
+          <ReliefPicker reliefs={reliefs} value={reliefId} onChange={setReliefId} />
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <AppText variant="bodyStrong">{t('commitments.auto')}</AppText>
+            <AppText variant="small" tone="muted">
+              {t('commitments.autoHint')}
+            </AppText>
+          </View>
+          <Switch accessibilityLabel={t('commitments.auto')} value={auto} onValueChange={setAuto} />
+        </View>
         {existing ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <AppText variant="bodyStrong">{t('commitments.active')}</AppText>
@@ -111,7 +169,13 @@ export function CommitmentSheet({ visible, existing, onClose, onSave, onDelete }
           title={t('common.save')}
           disabled={!valid || busy}
           onPress={() =>
-            run(() => onSave({ name: name.trim(), amount: amount ?? 0, dayOfMonth: day, kind, active }))
+            run(() =>
+              onSave({
+                name: name.trim(), amount: amount ?? 0, dayOfMonth: day, kind, active,
+                categoryId, paymentMethodId: methodId, reliefId, autoRecord: auto,
+                startDate: existing?.startDate ?? today,
+              }),
+            )
           }
         />
         {existing && onDelete ? (

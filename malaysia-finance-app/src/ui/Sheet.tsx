@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { t } from '@/i18n/t';
@@ -15,6 +15,7 @@ const DISMISS_DISTANCE = 120;
 /** Bottom sheet: slides up, closes by dragging down, the backdrop or the close button. */
 export function Sheet({ visible, title, onClose, children }: Props) {
   const { c } = useTheme();
+  const { height } = useWindowDimensions();
   const y = useSharedValue(OFFSCREEN);
   const backdrop = useSharedValue(0);
 
@@ -69,7 +70,10 @@ export function Sheet({ visible, title, onClose, children }: Props) {
                 </AppText>
               </Pressable>
             </View>
-            {children}
+            {/* Long forms scroll inside the sheet instead of running off the screen. */}
+            <ScrollView style={{ maxHeight: height * 0.7 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              {children}
+            </ScrollView>
           </Animated.View>
         </GestureDetector>
         </KeyboardAvoidingView>

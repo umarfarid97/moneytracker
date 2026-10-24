@@ -65,8 +65,9 @@ describe('billStatus', () => {
     expect(status(bill({ dayOfMonth: 31 }), '2026-11-30')).toEqual({ state: 'due', dueDate: '2026-11-30', days: 0 });
   });
 
-  test('a bill with no start date counts every due date', () => {
-    expect(status(bill({ startDate: null }), '2026-10-08').state).toBe('overdue');
+  test('a bill with no start date is never shown as due or overdue, only upcoming', () => {
+    expect(status(bill({ startDate: null }), '2026-10-08')).toEqual({ state: 'upcoming', dueDate: '2026-11-05', days: 28 });
+    expect(status(bill({ startDate: null }), '2026-10-05').state).toBe('upcoming');
   });
 });
 
@@ -104,7 +105,11 @@ describe('missedDueDates (what auto-record still has to record)', () => {
   });
 
   test('is capped at a year so an old bill cannot flood the list', () => {
-    expect(missedDueDates(auto({ startDate: null }), '2026-10-24')).toHaveLength(12);
+    expect(missedDueDates(auto({ startDate: '2020-01-01' }), '2026-10-24')).toHaveLength(12);
+  });
+
+  test('a bill with no start date has nothing to catch up on', () => {
+    expect(missedDueDates(auto({ startDate: null }), '2026-10-24')).toEqual([]);
   });
 
   test('uses the last day of short months', () => {

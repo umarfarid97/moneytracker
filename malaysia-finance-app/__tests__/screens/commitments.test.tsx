@@ -12,7 +12,7 @@ const { scheduleReminders } = jest.requireMock('@/notifications');
 beforeEach(() => jest.clearAllMocks());
 
 async function addRow(db: Db, name: string, amount: number, day: number, kind = 'bill', active = 1) {
-  await db.run('INSERT INTO commitments (name, amount, day_of_month, kind, active) VALUES (?, ?, ?, ?, ?)', [
+  await db.run("INSERT INTO commitments (name, amount, day_of_month, kind, active, start_date) VALUES (?, ?, ?, ?, ?, '2026-10-20')", [
     name, amount, day, kind, active,
   ]);
 }

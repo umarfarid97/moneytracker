@@ -35,7 +35,8 @@ export function billStatus(i: { commitment: Commitment; today: string; paidDueDa
   if (!c.active) return { state: 'paused', dueDate: next, days: untilNext };
 
   const prev = previousDueDate(c.dayOfMonth, today);
-  const prevCounts = c.startDate === null || prev >= c.startDate;
+  // Due dates before the bill was added never count; a bill with no start date has no history to judge.
+  const prevCounts = c.startDate !== null && prev >= c.startDate;
   if (prevCounts && !paid.has(prev)) {
     return prev === today
       ? { state: 'due', dueDate: prev, days: 0 }
@@ -58,9 +59,10 @@ export function paidDueDatesFor(commitmentId: number, expenses: Expense[]): stri
  */
 export function missedDueDates(c: Commitment, today: string): string[] {
   const out: string[] = [];
+  if (c.startDate === null) return out;
   let cursor = previousDueDate(c.dayOfMonth, today);
   for (let i = 0; i < 12; i++) {
-    if (c.startDate !== null && cursor < c.startDate) break;
+    if (cursor < c.startDate) break;
     if (c.lastAutoDue !== null && cursor <= c.lastAutoDue) break;
     out.unshift(cursor);
     cursor = previousDueDate(c.dayOfMonth, addDays(cursor, -1));
