@@ -1,0 +1,18 @@
+// Phones keep the appearance choice in expo-sqlite's key-value store; the web build uses appearanceStorage.web.ts.
+import Storage from 'expo-sqlite/kv-store';
+
+export function loadAppearance(): string | null {
+  try {
+    return Storage.getItemSync('appearance');
+  } catch {
+    return null;
+  }
+}
+
+export function saveAppearance(value: string): void {
+  try {
+    Storage.setItemSync('appearance', value);
+  } catch {
+    // Ignore: the choice simply lasts until the app restarts.
+  }
+}

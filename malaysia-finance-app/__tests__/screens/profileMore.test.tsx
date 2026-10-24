@@ -24,6 +24,16 @@ describe('More tab', () => {
       expect(router.push).toHaveBeenLastCalledWith(path);
     }
   });
+
+  test('lets you pick the appearance', async () => {
+    const db = await freshDb();
+    await renderWithData(db, <More />);
+    await waitFor(() => expect(screen.getByText('Appearance')).toBeTruthy());
+    expect(screen.getByRole('button', { name: 'Light', selected: true })).toBeTruthy();
+    await fireEvent.press(screen.getByText('Dark'));
+    expect(screen.getByRole('button', { name: 'Dark', selected: true })).toBeTruthy();
+    await fireEvent.press(screen.getByText('Light'));
+  });
 });
 
 describe('Income profile', () => {

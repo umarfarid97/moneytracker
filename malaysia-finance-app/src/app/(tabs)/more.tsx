@@ -3,7 +3,9 @@ import { router } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { t } from '@/i18n/t';
 import type { StringKey } from '@/i18n/en';
+import { APPEARANCES, setAppearance, useAppearance } from '@/ui/appearance';
 import { AppText } from '@/ui/AppText';
+import { Chip } from '@/ui/Chip';
 import { Screen } from '@/ui/Screen';
 import { radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
@@ -19,6 +21,7 @@ const ITEMS: { label: StringKey; path: '/profile' | '/budget' | '/categories' | 
 
 export default function More() {
   const { c } = useTheme();
+  const appearance = useAppearance();
   return (
     <Screen fab>
       <AppText variant="title">{t('tab.more')}</AppText>
@@ -42,6 +45,14 @@ export default function More() {
             <Ionicons name="chevron-forward" size={20} color={c.muted} />
           </Pressable>
         ))}
+      </View>
+      <View style={{ gap: 8 }}>
+        <AppText variant="section">{t('more.appearance')}</AppText>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {APPEARANCES.map((a) => (
+            <Chip key={a} label={t(`more.appearance.${a}`)} selected={appearance === a} onPress={() => setAppearance(a)} />
+          ))}
+        </View>
       </View>
     </Screen>
   );

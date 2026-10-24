@@ -1,0 +1,16 @@
+// Web build only: the appearance choice lives in localStorage next to the sql.js database.
+export function loadAppearance(): string | null {
+  try {
+    return localStorage.getItem('duit.appearance');
+  } catch {
+    return null;
+  }
+}
+
+export function saveAppearance(value: string): void {
+  try {
+    localStorage.setItem('duit.appearance', value);
+  } catch {
+    // Ignore: storage blocked, the choice lasts for this visit only.
+  }
+}
