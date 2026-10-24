@@ -50,6 +50,7 @@ export default function Tax() {
         </AppText>
       </Card>
       <Button title={t('taxCalc.title')} onPress={() => router.push('/tax-calculator')} />
+      <Button title={t('pack.title')} variant="secondary" onPress={() => router.push('/tax-pack')} />
 
       <View style={{ gap: 8 }}>
         {data.automaticReliefs.map((r) => (
