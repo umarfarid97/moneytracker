@@ -3,9 +3,9 @@ import { PressableScale } from './PressableScale';
 import { radius } from './theme';
 import { useTheme } from './useTheme';
 
-type Props = { label: string; selected?: boolean; onPress?: () => void; accessibilityLabel?: string };
+type Props = { label: string; selected?: boolean; onPress?: () => void; accessibilityLabel?: string; compact?: boolean };
 
-export function Chip({ label, selected = false, onPress, accessibilityLabel }: Props) {
+export function Chip({ label, selected = false, onPress, accessibilityLabel, compact = false }: Props) {
   const { c } = useTheme();
   return (
     <PressableScale
@@ -15,9 +15,9 @@ export function Chip({ label, selected = false, onPress, accessibilityLabel }: P
       onPress={onPress}
       pressedScale={0.95}
       style={{
-        minHeight: 36,
-        paddingVertical: 8,
-        paddingHorizontal: 14,
+        minHeight: compact ? 32 : 36,
+        paddingVertical: compact ? 5 : 8,
+        paddingHorizontal: compact ? 12 : 14,
         borderRadius: radius.control,
         justifyContent: 'center',
         backgroundColor: selected ? c.accentSoft : c.track,

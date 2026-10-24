@@ -11,12 +11,15 @@ type Props = {
   scroll?: boolean;
   /** Shows the floating "add spending" button. */
   fab?: boolean;
+  /** Tighter padding and spacing, for forms that should fit one phone screen. */
+  compact?: boolean;
 };
 
 /** Page frame: ground colour, safe area, 20px padding, 16px between blocks. */
-export function Screen({ children, scroll = true, fab = false }: Props) {
+export function Screen({ children, scroll = true, fab = false, compact = false }: Props) {
   const { c } = useTheme();
-  const content = { padding: space.pad, gap: space.gap, paddingBottom: fab ? 100 : space.pad };
+  const pad = compact ? space.gap : space.pad;
+  const content = { padding: pad, gap: compact ? space.m - 2 : space.gap, paddingBottom: fab ? 100 : pad };
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.ground }}>
       {scroll ? (

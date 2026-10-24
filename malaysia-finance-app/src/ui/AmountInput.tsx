@@ -11,17 +11,18 @@ type Props = {
   /** Called on every edit with the text and the parsed amount (null when empty or invalid). */
   onChange: (text: string, sen: Sen | null) => void;
   autoFocus?: boolean;
+  compact?: boolean;
 };
 
-export function AmountInput({ label, value, onChange, autoFocus }: Props) {
+export function AmountInput({ label, value, onChange, autoFocus, compact = false }: Props) {
   const { c } = useTheme();
   const invalid = value.trim() !== '' && parseRM(value) === null;
   return (
-    <View style={{ gap: 8 }}>
+    <View style={{ gap: compact ? 4 : 8 }}>
       <AppText variant="smallStrong">{label}</AppText>
       <View
         style={{
-          height: controlHeight,
+          height: compact ? 44 : controlHeight,
           borderRadius: radius.control,
           backgroundColor: c.surface,
           borderWidth: 1,

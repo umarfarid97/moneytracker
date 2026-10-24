@@ -10,10 +10,11 @@ type Props = {
   /** Stored picture uri, or null when none. */
   uri: string | null;
   onChange: (uri: string | null) => void;
+  compact?: boolean;
 };
 
 /** Attach a receipt: take a photo or choose one; shows the picture once attached. */
-export function ReceiptField({ uri, onChange }: Props) {
+export function ReceiptField({ uri, onChange, compact = false }: Props) {
   const [busy, setBusy] = useState(false);
 
   async function pick(source: ReceiptSource) {
@@ -28,27 +29,27 @@ export function ReceiptField({ uri, onChange }: Props) {
   }
 
   return (
-    <View style={{ gap: 8 }}>
+    <View style={{ gap: compact ? 4 : 8 }}>
       <AppText variant="smallStrong">{t('expense.receipt')}</AppText>
       {uri ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <Image
             source={{ uri: resolveReceiptUri(uri) }}
             accessibilityLabel={t('expense.receipt')}
-            style={{ width: 64, height: 64, borderRadius: radius.sm }}
+            style={{ width: compact ? 44 : 64, height: compact ? 44 : 64, borderRadius: radius.sm }}
           />
           <AppText variant="bodyStrong" style={{ flex: 1 }}>
             {t('receipt.attached')}
           </AppText>
-          <Button title={t('receipt.remove')} variant="secondary" onPress={() => onChange(null)} />
+          <Button title={t('receipt.remove')} variant="secondary" compact={compact} onPress={() => onChange(null)} />
         </View>
       ) : (
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <View style={{ flex: 1 }}>
-            <Button title={t('receipt.take')} variant="secondary" disabled={busy} onPress={() => pick('camera')} />
+            <Button title={t('receipt.take')} variant="secondary" compact={compact} disabled={busy} onPress={() => pick('camera')} />
           </View>
           <View style={{ flex: 1 }}>
-            <Button title={t('receipt.choose')} variant="secondary" disabled={busy} onPress={() => pick('library')} />
+            <Button title={t('receipt.choose')} variant="secondary" compact={compact} disabled={busy} onPress={() => pick('library')} />
           </View>
         </View>
       )}

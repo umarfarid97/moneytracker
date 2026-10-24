@@ -12,10 +12,11 @@ type Props = {
   reliefs: ReliefDef[];
   value: string | null;
   onChange: (reliefId: string | null) => void;
+  compact?: boolean;
 };
 
 /** A field that opens a searchable list of tax reliefs; "No tax relief" clears the choice. */
-export function ReliefPicker({ reliefs, value, onChange }: Props) {
+export function ReliefPicker({ reliefs, value, onChange, compact = false }: Props) {
   const { c } = useTheme();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -40,7 +41,7 @@ export function ReliefPicker({ reliefs, value, onChange }: Props) {
         accessibilityLabel={t('relief.field')}
         onPress={() => setOpen(true)}
         style={{
-          minHeight: controlHeight,
+          minHeight: compact ? 44 : controlHeight,
           borderRadius: radius.control,
           backgroundColor: c.surface,
           borderWidth: 1,
@@ -50,7 +51,7 @@ export function ReliefPicker({ reliefs, value, onChange }: Props) {
           justifyContent: 'center',
         }}
       >
-        <AppText variant="bodyStrong" tone={selected ? 'text' : 'muted'}>
+        <AppText variant="bodyStrong" tone={selected ? 'text' : 'muted'} numberOfLines={compact ? 2 : undefined}>
           {selected ? selected.name : t('relief.valueNone')}
         </AppText>
       </PressableScale>

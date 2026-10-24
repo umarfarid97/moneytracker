@@ -10,9 +10,10 @@ type Props = {
   disabled?: boolean;
   /** Overrides the spoken name when the title alone is ambiguous (e.g. several Delete buttons). */
   accessibilityLabel?: string;
+  compact?: boolean;
 };
 
-export function Button({ title, onPress, variant = 'primary', disabled = false, accessibilityLabel }: Props) {
+export function Button({ title, onPress, variant = 'primary', disabled = false, accessibilityLabel, compact = false }: Props) {
   const { c } = useTheme();
   const primary = variant === 'primary';
   return (
@@ -23,7 +24,7 @@ export function Button({ title, onPress, variant = 'primary', disabled = false, 
       disabled={disabled}
       onPress={onPress}
       style={{
-        height: controlHeight,
+        height: compact ? 44 : controlHeight,
         borderRadius: radius.control,
         paddingHorizontal: 20,
         alignItems: 'center',
