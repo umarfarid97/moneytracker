@@ -68,3 +68,9 @@ export function shortDate(date: string): string {
   const [y, m, d] = parts(date);
   return `${WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]} ${d} ${MONTHS[m - 1].slice(0, 3)}`;
 }
+
+/** "10 Jun". */
+export function dayMonth(date: string): string {
+  const [, m, d] = parts(date);
+  return `${d} ${MONTHS[m - 1].slice(0, 3)}`;
+}

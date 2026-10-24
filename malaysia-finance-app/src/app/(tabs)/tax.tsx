@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 import { formatRM } from '@/domain/money';
 import { capReliefClaims } from '@/domain/reliefs';
-import { useReliefClaims } from '@/hooks/useReliefClaims';
+import { useAllReliefClaims } from '@/hooks/useAllReliefClaims';
 import { useTaxYear } from '@/hooks/useTaxYear';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
@@ -18,7 +18,7 @@ import { useTheme } from '@/ui/useTheme';
 export default function Tax() {
   const { c, scheme } = useTheme();
   const { year, setYear, options, data, notice } = useTaxYear();
-  const { data: claims } = useReliefClaims(year);
+  const { data: claims } = useAllReliefClaims(year);
   const summary = useMemo(() => capReliefClaims(claims, data.reliefs), [claims, data]);
   const automatic = data.automaticReliefs.reduce((sum, r) => sum + r.amount, 0);
   const warn = statusStyle('tight', scheme);

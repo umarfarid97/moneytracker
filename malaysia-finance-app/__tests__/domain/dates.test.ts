@@ -1,4 +1,4 @@
-import { addDays, dayLabel, shortDate, daysLeftInMonth, isValidDate, monthKey, monthLabel, shiftMonth, todayKL } from '@/domain/dates';
+import { addDays, dayLabel, dayMonth, shortDate, daysLeftInMonth, isValidDate, monthKey, monthLabel, shiftMonth, todayKL } from '@/domain/dates';
 
 describe('todayKL', () => {
   test('rolls to the next day after 16:00 UTC (00:00 in Kuala Lumpur)', () => {
@@ -67,5 +67,12 @@ describe('shortDate', () => {
   test('weekday, day and month', () => {
     expect(shortDate('2026-10-24')).toBe('Sat 24 Oct');
     expect(shortDate('2027-01-01')).toBe('Fri 1 Jan');
+  });
+});
+
+describe('dayMonth', () => {
+  test('day and short month', () => {
+    expect(dayMonth('2025-06-10')).toBe('10 Jun');
+    expect(dayMonth('2026-12-01')).toBe('1 Dec');
   });
 });

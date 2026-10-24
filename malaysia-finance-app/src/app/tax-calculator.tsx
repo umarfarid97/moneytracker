@@ -4,7 +4,7 @@ import { formatRM, parseRM, senToInput } from '@/domain/money';
 import { capReliefClaims } from '@/domain/reliefs';
 import { calculateTaxBill } from '@/domain/taxBill';
 import { useProfile } from '@/hooks/useProfile';
-import { useReliefClaims } from '@/hooks/useReliefClaims';
+import { useAllReliefClaims } from '@/hooks/useAllReliefClaims';
 import { useTaxYear } from '@/hooks/useTaxYear';
 import { t } from '@/i18n/t';
 import { AmountInput } from '@/ui/AmountInput';
@@ -33,7 +33,7 @@ export default function TaxCalculator() {
   const { c } = useTheme();
   const { year, data, notice } = useTaxYear();
   const { data: profile } = useProfile();
-  const { data: claims } = useReliefClaims(year);
+  const { data: claims } = useAllReliefClaims(year);
 
   const [text, setText] = useState<Record<Field, string>>(() => ({
     salary: profile.grossMonthly > 0 ? senToInput(profile.grossMonthly * 12) : '',
