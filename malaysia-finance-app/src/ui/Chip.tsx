@@ -15,7 +15,8 @@ export function Chip({ label, selected = false, onPress, accessibilityLabel }: P
       onPress={onPress}
       pressedScale={0.95}
       style={{
-        height: 36,
+        minHeight: 36,
+        paddingVertical: 8,
         paddingHorizontal: 14,
         borderRadius: radius.control,
         justifyContent: 'center',

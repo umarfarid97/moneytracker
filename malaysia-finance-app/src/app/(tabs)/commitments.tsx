@@ -90,10 +90,8 @@ export default function Commitments() {
             const payable = status.state === 'due' || status.state === 'overdue' || status.state === 'upcoming';
             const late = status.state === 'overdue';
             return (
-              <Pressable
+              <View
                 key={item.id}
-                accessibilityRole="button"
-                onPress={() => item.id > 0 && openSheet(item)}
                 style={{
                   backgroundColor: c.surface,
                   borderRadius: radius.control,
@@ -107,14 +105,19 @@ export default function Commitments() {
                   opacity: item.active ? 1 : 0.6,
                 }}
               >
-                <View style={{ flex: 1, gap: 2 }}>
+                {/* The row and the Mark paid action are siblings: buttons must not be nested. */}
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => item.id > 0 && openSheet(item)}
+                  style={{ flex: 1, gap: 2 }}
+                >
                   <AppText testID="commitment-name" variant="bodyStrong" numberOfLines={1}>
                     {item.name}
                   </AppText>
                   <AppText variant="small" tone={late ? 'negative' : 'muted'}>
                     {statusLabel(status)}
                   </AppText>
-                </View>
+                </Pressable>
                 <View style={{ alignItems: 'flex-end', gap: 2 }}>
                   <AppText variant="bodyStrong">{formatRM(item.amount)}</AppText>
                   {payable && item.id > 0 ? (
@@ -135,7 +138,7 @@ export default function Commitments() {
                     </AppText>
                   )}
                 </View>
-              </Pressable>
+              </View>
             );
           })}
         </View>
