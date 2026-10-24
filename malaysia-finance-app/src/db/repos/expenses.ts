@@ -1,21 +1,39 @@
-import type { Expense } from '@/domain/types';
+import { withExpenseDefaults, type Expense, type NewExpense } from '@/domain/types';
 import type { Db } from '../types';
 
-const SELECT =
-  'SELECT id, amount, category_id AS categoryId, date, note, receipt_uri AS receiptUri FROM expenses';
+const SELECT = `SELECT id, amount, category_id AS categoryId, date, note, receipt_uri AS receiptUri,
+  payment_method_id AS paymentMethodId, relief_id AS reliefId, relief_amount AS reliefAmount,
+  commitment_id AS commitmentId, due_date AS dueDate FROM expenses`;
 
-export async function addExpense(db: Db, input: Omit<Expense, 'id'>): Promise<Expense> {
-  const r = await db.run(
-    'INSERT INTO expenses (amount, category_id, date, note, receipt_uri) VALUES (?, ?, ?, ?, ?)',
-    [input.amount, input.categoryId, input.date, input.note, input.receiptUri],
-  );
-  return { id: r.lastInsertRowId, ...input };
+const COLUMNS =
+  'amount, category_id, date, note, receipt_uri, payment_method_id, relief_id, relief_amount, commitment_id, due_date';
+
+const values = (e: Omit<Expense, 'id'>) => [
+  e.amount, e.categoryId, e.date, e.note, e.receiptUri, e.paymentMethodId, e.reliefId, e.reliefAmount,
+  e.commitmentId, e.dueDate,
+];
+
+export async function addExpense(db: Db, input: NewExpense): Promise<Expense> {
+  const full = withExpenseDefaults(input);
+  const r = await db.run(`INSERT INTO expenses (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, values(full));
+  return { id: r.lastInsertRowId, ...full };
+}
+
+/**
+ * Records spending for a bill's due date. If that due date already has its spending (marked paid or
+ * auto-recorded earlier) nothing is inserted and null is returned, so a bill can never be recorded twice.
+ */
+export async function addBillExpense(db: Db, input: NewExpense): Promise<Expense | null> {
+  const full = withExpenseDefaults(input);
+  const r = await db.run(`INSERT OR IGNORE INTO expenses (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, values(full));
+  return r.changes === 0 ? null : { id: r.lastInsertRowId, ...full };
 }
 
 export async function updateExpense(db: Db, e: Expense): Promise<void> {
   await db.run(
-    'UPDATE expenses SET amount = ?, category_id = ?, date = ?, note = ?, receipt_uri = ? WHERE id = ?',
-    [e.amount, e.categoryId, e.date, e.note, e.receiptUri, e.id],
+    `UPDATE expenses SET amount = ?, category_id = ?, date = ?, note = ?, receipt_uri = ?,
+       payment_method_id = ?, relief_id = ?, relief_amount = ?, commitment_id = ?, due_date = ? WHERE id = ?`,
+    [...values(e), e.id],
   );
 }
 

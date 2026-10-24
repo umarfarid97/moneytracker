@@ -1,30 +1,39 @@
-import type { Commitment } from '@/domain/types';
+import { withCommitmentDefaults, type Commitment, type NewCommitment } from '@/domain/types';
 import type { Db } from '../types';
 
-type Row = Omit<Commitment, 'active'> & { active: number };
+type Row = Omit<Commitment, 'active' | 'autoRecord'> & { active: number; autoRecord: number };
 
-const SELECT =
-  'SELECT id, name, amount, day_of_month AS dayOfMonth, kind, active FROM commitments';
+const SELECT = `SELECT id, name, amount, day_of_month AS dayOfMonth, kind, active,
+  category_id AS categoryId, payment_method_id AS paymentMethodId, relief_id AS reliefId,
+  auto_record AS autoRecord, start_date AS startDate, last_auto_due AS lastAutoDue FROM commitments`;
 
-const toCommitment = (r: Row): Commitment => ({ ...r, active: r.active === 1 });
+const toCommitment = (r: Row): Commitment => ({ ...r, active: r.active === 1, autoRecord: r.autoRecord === 1 });
+
+const values = (c: Omit<Commitment, 'id'>) => [
+  c.name, c.amount, c.dayOfMonth, c.kind, c.active ? 1 : 0, c.categoryId, c.paymentMethodId, c.reliefId,
+  c.autoRecord ? 1 : 0, c.startDate, c.lastAutoDue,
+];
 
 export async function listCommitments(db: Db): Promise<Commitment[]> {
   const rows = await db.all<Row>(`${SELECT} ORDER BY day_of_month, id`);
   return rows.map(toCommitment);
 }
 
-export async function addCommitment(db: Db, input: Omit<Commitment, 'id'>): Promise<Commitment> {
+export async function addCommitment(db: Db, input: NewCommitment): Promise<Commitment> {
+  const full = withCommitmentDefaults(input);
   const r = await db.run(
-    'INSERT INTO commitments (name, amount, day_of_month, kind, active) VALUES (?, ?, ?, ?, ?)',
-    [input.name, input.amount, input.dayOfMonth, input.kind, input.active ? 1 : 0],
+    `INSERT INTO commitments (name, amount, day_of_month, kind, active, category_id, payment_method_id,
+       relief_id, auto_record, start_date, last_auto_due) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    values(full),
   );
-  return { id: r.lastInsertRowId, ...input };
+  return { id: r.lastInsertRowId, ...full };
 }
 
 export async function updateCommitment(db: Db, c: Commitment): Promise<void> {
   await db.run(
-    'UPDATE commitments SET name = ?, amount = ?, day_of_month = ?, kind = ?, active = ? WHERE id = ?',
-    [c.name, c.amount, c.dayOfMonth, c.kind, c.active ? 1 : 0, c.id],
+    `UPDATE commitments SET name = ?, amount = ?, day_of_month = ?, kind = ?, active = ?, category_id = ?,
+       payment_method_id = ?, relief_id = ?, auto_record = ?, start_date = ?, last_auto_due = ? WHERE id = ?`,
+    [...values(c), c.id],
   );
 }
 

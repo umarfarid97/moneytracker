@@ -65,6 +65,34 @@ export const MIGRATIONS: string[] = [
     ('Pendidikan', 'book', 7),
     ('Lain-lain', 'dots', 8);
   `,
+  // 2: payment methods, relief tags on spending, bills that record spending
+  `
+  CREATE TABLE payment_methods (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    kind TEXT NOT NULL CHECK (kind IN ('cash', 'debit', 'credit', 'ewallet', 'transfer')),
+    sort_order INTEGER NOT NULL
+  );
+  INSERT INTO payment_methods (name, kind, sort_order) VALUES
+    ('Cash', 'cash', 1),
+    ('Debit card', 'debit', 2),
+    ('Credit card', 'credit', 3),
+    ('E-wallet', 'ewallet', 4),
+    ('Online transfer', 'transfer', 5);
+  ALTER TABLE expenses ADD COLUMN payment_method_id INTEGER;
+  ALTER TABLE expenses ADD COLUMN relief_id TEXT;
+  ALTER TABLE expenses ADD COLUMN relief_amount INTEGER;
+  ALTER TABLE expenses ADD COLUMN commitment_id INTEGER;
+  ALTER TABLE expenses ADD COLUMN due_date TEXT;
+  CREATE UNIQUE INDEX idx_expenses_bill ON expenses(commitment_id, due_date) WHERE commitment_id IS NOT NULL;
+  ALTER TABLE commitments ADD COLUMN category_id INTEGER;
+  ALTER TABLE commitments ADD COLUMN payment_method_id INTEGER;
+  ALTER TABLE commitments ADD COLUMN relief_id TEXT;
+  ALTER TABLE commitments ADD COLUMN auto_record INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE commitments ADD COLUMN start_date TEXT;
+  ALTER TABLE commitments ADD COLUMN last_auto_due TEXT;
+  UPDATE commitments SET start_date = date('now', '+8 hours');
+  `,
 ];
 
 /** Brings the database up to date. Each step runs in its own transaction. */

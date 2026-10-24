@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Switch, TextInput, View } from 'react-native';
 import { parseRM, senToInput } from '@/domain/money';
-import type { Commitment, CommitmentKind } from '@/domain/types';
+import type { Commitment, CommitmentKind, NewCommitment } from '@/domain/types';
 import { t } from '@/i18n/t';
 import { AmountInput } from '@/ui/AmountInput';
 import { AppText } from '@/ui/AppText';
@@ -11,7 +11,7 @@ import { Sheet } from '@/ui/Sheet';
 import { controlHeight, fontFamily, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
-export type CommitmentInput = Omit<Commitment, 'id'>;
+export type CommitmentInput = NewCommitment;
 
 type Props = {
   visible: boolean;

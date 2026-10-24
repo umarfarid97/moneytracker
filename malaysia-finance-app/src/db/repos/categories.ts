@@ -31,6 +31,7 @@ export async function deleteCategory(db: Db, id: number): Promise<void> {
   if (!fallback) throw new Error(`"${FALLBACK_CATEGORY}" category is missing`);
   await db.transaction(async () => {
     await db.run('UPDATE expenses SET category_id = ? WHERE category_id = ?', [fallback.id, id]);
+    await db.run('UPDATE commitments SET category_id = ? WHERE category_id = ?', [fallback.id, id]);
     await db.run('DELETE FROM budgets WHERE category_id = ?', [id]);
     await db.run('DELETE FROM categories WHERE id = ?', [id]);
   });

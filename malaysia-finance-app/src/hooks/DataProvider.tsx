@@ -18,8 +18,10 @@ import {
   addReliefClaim, deleteReliefClaim, listAllReliefClaims, updateReliefClaim,
 } from '@/db/repos/reliefClaims';
 import type { Db } from '@/db/types';
-import type {
-  Budget, Category, Commitment, Expense, Profile, ReliefClaim,
+import {
+  withCommitmentDefaults, withExpenseDefaults,
+  type Budget, type Category, type Commitment, type Expense, type NewCommitment, type NewExpense,
+  type Profile, type ReliefClaim,
 } from '@/domain/types';
 import { makeOptimisticOps, type CollectionOps } from './optimistic';
 
@@ -57,14 +59,14 @@ export type DataContextValue = {
     remove: (id: number) => Promise<void>;
   };
   expenses: Expense[];
-  expenseOps: CollectionOps<Expense, Omit<Expense, 'id'>>;
+  expenseOps: CollectionOps<Expense, NewExpense>;
   budgets: Budget[];
   /** Latest budgets, readable inside async callbacks without a stale closure. */
   getBudgets: () => Budget[];
   setBudget: (b: Budget) => Promise<void>;
   removeBudget: (categoryId: number, month: string) => Promise<void>;
   commitments: Commitment[];
-  commitmentOps: CollectionOps<Commitment, Omit<Commitment, 'id'>>;
+  commitmentOps: CollectionOps<Commitment, NewCommitment>;
   reliefClaims: ReliefClaim[];
   reliefClaimOps: CollectionOps<ReliefClaim, Omit<ReliefClaim, 'id'>>;
   profile: Profile;
@@ -141,17 +143,17 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
       add: (input) => addExpense(db, input),
       update: (e) => updateExpense(db, e),
       remove: (id) => deleteExpense(db, id),
-    }, byNewest);
+    }, byNewest, withExpenseDefaults);
     const commitmentOps = makeOptimisticOps(commitmentsRef, setCommitments, {
       add: (input) => addCommitment(db, input),
       update: (c) => updateCommitment(db, c),
       remove: (id) => deleteCommitment(db, id),
-    }, byDay);
+    }, byDay, withCommitmentDefaults);
     const reliefClaimOps = makeOptimisticOps(claimsRef, setReliefClaims, {
       add: (input) => addReliefClaim(db, input),
       update: (c) => updateReliefClaim(db, c),
       remove: (id) => deleteReliefClaim(db, id),
-    }, byId);
+    }, byId, (input: Omit<ReliefClaim, 'id'>) => input);
 
     return {
       db, categories, expenses, budgets, commitments, reliefClaims, profile, taxYearChoice, setTaxYearChoice,

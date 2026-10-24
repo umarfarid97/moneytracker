@@ -5,6 +5,7 @@ const cat = (id: number, name: string): Category => ({ id, name, icon: 'x', sort
 const categories = [cat(1, 'Makan'), cat(2, 'Transport'), cat(3, 'Hiburan')];
 const exp = (id: number, categoryId: number, amount: number, date: string): Expense => ({
   id, amount, categoryId, date, note: '', receiptUri: null,
+  paymentMethodId: null, reliefId: null, reliefAmount: null, commitmentId: null, dueDate: null,
 });
 const budget = (categoryId: number, limit: number, month = '2026-10'): Budget => ({ categoryId, month, limit });
 

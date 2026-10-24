@@ -19,17 +19,19 @@ let tempId = 0;
  * A failed write puts state back as it was and rethrows, so the UI never shows data that was not saved.
  * New items carry a negative temporary id until the database returns the real one.
  */
-export function makeOptimisticOps<T extends { id: number }, In extends Omit<T, 'id'>>(
+export function makeOptimisticOps<T extends { id: number }, In>(
   itemsRef: MutableRefObject<T[]>,
   setItems: Dispatch<SetStateAction<T[]>>,
   persist: Persist<T, In>,
   compare: (a: T, b: T) => number,
+  /** Fills in the fields a caller may leave out, so unsaved items look like saved ones. */
+  normalize: (input: In) => Omit<T, 'id'>,
 ): CollectionOps<T, In> {
   const sorted = (list: T[]) => [...list].sort(compare);
 
   return {
     async add(input) {
-      const temp = { ...input, id: --tempId } as unknown as T;
+      const temp = { ...normalize(input), id: --tempId } as unknown as T;
       setItems((prev) => sorted([temp, ...prev]));
       try {
         const saved = await persist.add(input);
