@@ -42,7 +42,7 @@ describe('Spending: search', () => {
     await fireEvent.changeText(screen.getByLabelText('Search spending'), 'klinik');
     expect(shown()).toEqual(['Klinik Dr Ali']);
     await fireEvent.changeText(screen.getByLabelText('Search spending'), 'credit card');
-    expect(shown()).toEqual(['Klinik Dr Ali', 'Farmasi']);
+    expect(shown()).toEqual(['Farmasi', 'Klinik Dr Ali']); // newest first within a day
     await fireEvent.changeText(screen.getByLabelText('Search spending'), 'zzz');
     expect(screen.getByText('Nothing matches these filters')).toBeTruthy();
     await fireEvent.changeText(screen.getByLabelText('Search spending'), '');
