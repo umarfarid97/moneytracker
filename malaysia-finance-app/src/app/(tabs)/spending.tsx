@@ -194,22 +194,23 @@ export default function Spending() {
                 autoCapitalize="none"
                 style={{
                   flex: 1,
+                  minWidth: 0,
                   height: controlHeight,
                   borderRadius: radius.control,
-                  backgroundColor: c.surface,
-                  borderWidth: 1,
-                  borderColor: c.control,
+                  backgroundColor: c.track,
                   paddingHorizontal: 14,
                   color: c.text,
                   fontFamily: fontFamily.medium,
                   fontSize: 16,
                 }}
               />
-              <Button
-                title={filterCount > 0 ? t('spending.filtersCount', { count: filterCount }) : t('spending.filters')}
-                variant="secondary"
-                onPress={() => setFiltersOpen(true)}
-              />
+              <View style={{ flexShrink: 0 }}>
+                <Button
+                  title={filterCount > 0 ? t('spending.filtersCount', { count: filterCount }) : t('spending.filters')}
+                  variant="secondary"
+                  onPress={() => setFiltersOpen(true)}
+                />
+              </View>
             </View>
             {narrowed && inMonth.length > 0 ? (
               <AppText variant="small" tone="muted">

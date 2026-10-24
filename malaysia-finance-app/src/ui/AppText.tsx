@@ -5,13 +5,13 @@ import { useTheme } from './useTheme';
 type Variant = 'title' | 'section' | 'kpi' | 'body' | 'bodyStrong' | 'small' | 'smallStrong';
 
 const VARIANTS: Record<Variant, TextStyle> = {
-  title: { fontFamily: fontFamily.semibold, fontSize: fontSize.title, lineHeight: 34 },
-  section: { fontFamily: fontFamily.semibold, fontSize: fontSize.section, lineHeight: 26 },
-  kpi: { fontFamily: fontFamily.semibold, fontSize: fontSize.kpi, lineHeight: 38, fontVariant: ['tabular-nums'] },
-  body: { fontFamily: fontFamily.regular, fontSize: fontSize.body, lineHeight: 22 },
-  bodyStrong: { fontFamily: fontFamily.medium, fontSize: fontSize.body, lineHeight: 22, fontVariant: ['tabular-nums'] },
-  small: { fontFamily: fontFamily.regular, fontSize: fontSize.small, lineHeight: 20 },
-  smallStrong: { fontFamily: fontFamily.medium, fontSize: fontSize.small, lineHeight: 20, fontVariant: ['tabular-nums'] },
+  title: { fontFamily: fontFamily.semibold, fontWeight: '700', fontSize: fontSize.title, lineHeight: 38, letterSpacing: 0.4 },
+  section: { fontFamily: fontFamily.semibold, fontWeight: '700', fontSize: fontSize.section, lineHeight: 26, letterSpacing: 0.2 },
+  kpi: { fontFamily: fontFamily.semibold, fontWeight: '700', fontSize: fontSize.kpi, lineHeight: 42, letterSpacing: 0.3, fontVariant: ['tabular-nums'] },
+  body: { fontFamily: fontFamily.regular, fontWeight: '400', fontSize: fontSize.body, lineHeight: 22 },
+  bodyStrong: { fontFamily: fontFamily.medium, fontWeight: '600', fontSize: fontSize.body, lineHeight: 22, fontVariant: ['tabular-nums'] },
+  small: { fontFamily: fontFamily.regular, fontWeight: '400', fontSize: fontSize.small, lineHeight: 20 },
+  smallStrong: { fontFamily: fontFamily.medium, fontWeight: '600', fontSize: fontSize.small, lineHeight: 20, fontVariant: ['tabular-nums'] },
 };
 
 export type AppTextProps = TextProps & {

@@ -30,9 +30,7 @@ export default function Home() {
 
   return (
     <Screen fab>
-      <AppText variant="small" tone="muted">
-        {shortDate(today)}
-      </AppText>
+      <AppText variant="title">{shortDate(today)}</AppText>
       <Card style={{ gap: 4 }}>
         <AppText variant="small" tone="muted">
           {t('home.today')}

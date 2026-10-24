@@ -18,12 +18,12 @@ export function Chip({ label, selected = false, onPress, accessibilityLabel, com
         minHeight: compact ? 32 : 36,
         paddingVertical: compact ? 5 : 8,
         paddingHorizontal: compact ? 12 : 14,
-        borderRadius: radius.control,
+        borderRadius: radius.pill,
         justifyContent: 'center',
-        backgroundColor: selected ? c.accentSoft : c.track,
+        backgroundColor: selected ? c.accent : c.track,
       }}
     >
-      <AppText variant="smallStrong" color={selected ? c.accentInk : c.text}>
+      <AppText variant="smallStrong" color={selected ? c.onAccent : c.text}>
         {label}
       </AppText>
     </PressableScale>

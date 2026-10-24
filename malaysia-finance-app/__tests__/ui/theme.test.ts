@@ -43,8 +43,8 @@ describe('categoryTint', () => {
 });
 
 describe('design rules', () => {
-  test('one large card radius stepping down', () => {
-    expect(radius).toEqual({ card: 20, control: 10, sm: 8, xs: 5 });
+  test('one large card radius stepping down to a capsule', () => {
+    expect(radius).toEqual({ card: 22, control: 14, sm: 10, xs: 6, pill: 999 });
   });
 });
 

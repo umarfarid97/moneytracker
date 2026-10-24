@@ -35,7 +35,7 @@ export function Tile({ title, leftText, status, tintName, onPress }: Props) {
           {leftText}
         </AppText>
       </View>
-      <View style={{ alignSelf: 'flex-start', backgroundColor: pill.bg, borderRadius: radius.sm, paddingHorizontal: 10, paddingVertical: 4 }}>
+      <View style={{ alignSelf: 'flex-start', backgroundColor: pill.bg, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 3 }}>
         <AppText variant="smallStrong" color={pill.ink}>
           {t(`status.${status}`)}
         </AppText>

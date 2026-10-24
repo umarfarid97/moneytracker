@@ -56,14 +56,14 @@ export function Sheet({ visible, title, onClose, children }: Props) {
         >
         <Animated.View
           style={[
-            { backgroundColor: c.surface, borderTopLeftRadius: radius.card, borderTopRightRadius: radius.card, padding: 20, paddingBottom: 32, gap: 16 },
+            { backgroundColor: c.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, paddingBottom: 32, gap: 16 },
             sheetStyle,
           ]}
         >
           {/* Only the handle and title row drag the sheet closed, so scrolling the content below never closes it. */}
           <GestureDetector gesture={drag}>
             <View style={{ gap: 16 }}>
-              <View style={{ alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: c.control }} />
+              <View style={{ alignSelf: 'center', width: 36, height: 5, borderRadius: 3, backgroundColor: c.control }} />
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <AppText variant="section">{title}</AppText>
                 <Pressable accessibilityRole="button" accessibilityLabel={t('common.close')} onPress={onClose} hitSlop={12}>

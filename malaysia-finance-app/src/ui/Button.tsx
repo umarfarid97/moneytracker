@@ -25,15 +25,15 @@ export function Button({ title, onPress, variant = 'primary', disabled = false, 
       onPress={onPress}
       style={{
         height: compact ? 44 : controlHeight,
-        borderRadius: radius.control,
+        borderRadius: compact ? radius.control : radius.control,
         paddingHorizontal: 20,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: primary ? c.accent : c.track,
+        backgroundColor: primary ? c.accent : c.accentSoft,
         opacity: disabled ? 0.5 : 1,
       }}
     >
-      <AppText variant="bodyStrong" color={primary ? c.onAccent : c.text}>
+      <AppText variant="bodyStrong" color={primary ? c.onAccent : c.accentInk}>
         {title}
       </AppText>
     </PressableScale>

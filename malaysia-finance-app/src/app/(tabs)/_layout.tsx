@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { Platform } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { t } from '@/i18n/t';
 import type { StringKey } from '@/i18n/en';
 import { fontFamily } from '@/ui/theme';
@@ -24,10 +24,11 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: c.accent,
         tabBarInactiveTintColor: c.muted,
-        tabBarLabelStyle: { fontFamily: fontFamily.medium, fontSize: 12 },
+        tabBarLabelStyle: { fontFamily: fontFamily.medium, fontWeight: '500', fontSize: 11 },
         tabBarStyle: {
           backgroundColor: c.surface,
-          borderTopWidth: 0,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: c.border,
           elevation: 0,
           shadowOpacity: 0,
           // Browser previews have no safe-area inset, so give the labels room.

@@ -1,67 +1,80 @@
 /**
- * Design direction (design-taste-frontend, app style "Pastel consumer"):
- * - Pale category tiles; ink is the dark of the tile's own hue. Tints only on tiles, chips and marks;
- *   panels that hold lists stay on the plain surface.
- * - One large card radius (20) stepping down to 10, 8, 5. No shadows or gradients on anything at rest.
- * - Manrope 400/500/600, tabular figures for money. Sentence case, no tracked capitals.
- * - Spending is set in ink, never red; red appears only for an "over budget" status.
- * - One gap value (16) horizontally and vertically; page padding 20.
- * Dark mode keeps the same structure with darkened tints and lightened inks.
+ * Design direction: iOS system look for a modern SaaS app.
+ * - Grouped-grey ground with white (dark: elevated grey) rounded cards and soft shadows; hairline separators.
+ * - iOS blue accent, SF system font with real weights, bold large titles, tabular figures for money.
+ * - Capsule chips and status pills, filled primary buttons and tinted secondary buttons.
+ * - Pale category tiles keep their own hue; spending is set in ink, red only for "over budget".
+ * Dark mode follows iOS: true black ground, #1c1c1e cards.
  */
+import { Platform, type ViewStyle } from 'react-native';
 import type { Status } from '@/domain/budget';
 
 export type Scheme = 'light' | 'dark';
 
 export const palette = {
   light: {
-    ground: '#f3f5f7',
+    ground: '#f2f2f7',
     surface: '#ffffff',
-    raised: '#f2f8fd',
-    border: '#e6e6e6',
-    control: '#d6d9dd',
-    track: '#e7eaee',
-    text: '#1b1d1f',
-    muted: '#5c6064',
-    accent: '#1d5fd6',
+    raised: '#f7f7fa',
+    border: '#e3e3e8',
+    control: '#d1d1d6',
+    track: '#ececf1',
+    text: '#111114',
+    muted: '#66666d',
+    accent: '#0a6cf0',
     onAccent: '#ffffff',
-    accentSoft: '#dcf1ff',
-    accentInk: '#0a3a80',
-    positive: '#2f7a45',
-    negative: '#c41c29',
-    warning: '#92400e',
+    accentSoft: '#e4efff',
+    accentInk: '#0553c4',
+    positive: '#1f7a3d',
+    negative: '#d1242f',
+    warning: '#a14a05',
   },
   dark: {
-    ground: '#0e1113',
-    surface: '#171a1d',
-    raised: '#1d2125',
-    border: '#2a2f34',
-    control: '#3a4046',
-    track: '#2a2f34',
-    text: '#eef0f2',
-    muted: '#a3a9af',
-    accent: '#7db1ff',
-    onAccent: '#0b1a33',
-    accentSoft: '#12304f',
-    accentInk: '#bcdcff',
-    positive: '#6cc58a',
-    negative: '#ff8a8f',
-    warning: '#f0b36a',
+    ground: '#000000',
+    surface: '#1c1c1e',
+    raised: '#2c2c2e',
+    border: '#38383a',
+    control: '#48484a',
+    track: '#2c2c2e',
+    text: '#f5f5f7',
+    muted: '#9a9aa1',
+    accent: '#3b8cff',
+    onAccent: '#04122b',
+    accentSoft: '#0e2a52',
+    accentInk: '#9cc8ff',
+    positive: '#5fd283',
+    negative: '#ff7b80',
+    warning: '#f5b565',
   },
 } as const;
 
 export type Palette = (typeof palette)[Scheme];
 
-export const radius = { card: 20, control: 10, sm: 8, xs: 5 } as const;
+export const radius = { card: 22, control: 14, sm: 10, xs: 6, pill: 999 } as const;
 export const space = { xs: 4, s: 8, m: 12, gap: 16, pad: 20, xl: 24, xxl: 32 } as const;
-export const controlHeight = 48;
+export const controlHeight = 50;
 
-export const fontFamily = {
-  regular: 'Manrope_400Regular',
-  medium: 'Manrope_500Medium',
-  semibold: 'Manrope_600SemiBold',
-} as const;
+const SYSTEM_FONT = Platform.select({
+  ios: 'System',
+  android: 'sans-serif',
+  default: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+}) as string;
+/** All weights share the system font; weight comes from fontWeight (see AppText). */
+export const fontFamily = { regular: SYSTEM_FONT, medium: SYSTEM_FONT, semibold: SYSTEM_FONT } as const;
 
-export const fontSize = { title: 28, section: 20, kpi: 32, body: 16, small: 14 } as const;
+export const fontSize = { title: 32, section: 20, kpi: 36, body: 16, small: 14 } as const;
+
+/** Soft iOS-style elevation for cards; dark mode relies on the lighter surface instead. */
+export function elevation(scheme: Scheme): ViewStyle {
+  if (scheme === 'dark') return {};
+  return {
+    shadowColor: '#1c2a4a',
+    shadowOpacity: 0.07,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  };
+}
 
 const TINTS: Record<Scheme, Record<string, { bg: string; ink: string }>> = {
   light: {
