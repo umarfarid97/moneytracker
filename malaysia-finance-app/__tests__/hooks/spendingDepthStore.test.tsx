@@ -162,3 +162,34 @@ describe('runAutoRecord', () => {
 });
 
 export type { Db };
+
+describe('runAutoRecord under concurrency (review findings)', () => {
+  async function auto() {
+    const ctx = await setup();
+    const { result } = await renderHook(() => ({ data: useData(), bills: useCommitments(), ex: useExpenses() }), { wrapper: ctx.wrapper });
+    await ready(result);
+    await act(async () => {
+      await result.current.bills.add({ name: 'Astro', amount: 8900, dayOfMonth: 5, kind: 'subscription', active: true, autoRecord: true, startDate: '2026-08-05' });
+    });
+    return result;
+  }
+
+  test('two runs started together record each due date once and report it once', async () => {
+    const result = await auto();
+    let counts: number[] = [];
+    await act(async () => {
+      counts = await Promise.all([result.current.data.runAutoRecord('2026-10-24'), result.current.data.runAutoRecord('2026-10-24')]);
+    });
+    expect(counts.reduce((a, b) => a + b, 0)).toBe(3);
+    expect(result.current.ex.data.filter((e) => e.note === 'Astro')).toHaveLength(3);
+  });
+
+  test('an edit saved while a run is in progress is not overwritten', async () => {
+    const result = await auto();
+    await act(async () => {
+      const bill = result.current.bills.data[0];
+      await Promise.all([result.current.data.runAutoRecord('2026-10-24'), result.current.bills.update({ ...bill, name: 'Astro Go', amount: 9900 })]);
+    });
+    expect(result.current.bills.data[0]).toMatchObject({ name: 'Astro Go', amount: 9900, lastAutoDue: '2026-10-05' });
+  });
+});

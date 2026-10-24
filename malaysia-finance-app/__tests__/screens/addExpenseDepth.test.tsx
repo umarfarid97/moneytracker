@@ -163,3 +163,20 @@ describe('AddExpense (budget warning)', () => {
     expect(notifyBudgetAlert).toHaveBeenCalledWith('Makan', { status: 'tight', spent: 8500, limit: 10000 });
   });
 });
+
+describe('AddExpense (claimable part after clearing the relief)', () => {
+  test('a leftover claimable amount cannot silently block saving', async () => {
+    const db = await freshDb();
+    await ready(db);
+    await fireEvent.changeText(screen.getByLabelText('Amount'), '200');
+    await pickRelief('lifestyle', LIFESTYLE);
+    await fireEvent.changeText(screen.getByLabelText('Claimable amount (optional)'), '50');
+    await fireEvent.press(screen.getByRole('button', { name: 'Tax relief' }));
+    await fireEvent.press(screen.getByText('No tax relief'));
+    await fireEvent.changeText(screen.getByLabelText('Amount'), '30');
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(router.back).toHaveBeenCalled());
+    expect(await saved(db)).toMatchObject({ relief_id: null, relief_amount: null, amount: 3000 });
+  });
+});

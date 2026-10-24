@@ -155,3 +155,53 @@ describe('Bills: automatic recording', () => {
     expect((await billSpending(db)).length).toBe(3);
   });
 });
+
+describe('Bills: editing cannot invent payments (review findings)', () => {
+  async function editAndWatch(db: TestDb, edit: () => Promise<void>) {
+    await render(
+      <DataProvider db={db}>
+        <BillsSync />
+        <Commitments />
+      </DataProvider>,
+    );
+    await waitFor(() => expect(screen.getByText('Astro')).toBeTruthy());
+    await fireEvent.press(screen.getByText('Astro'));
+    await edit();
+    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Save' })).toBeNull());
+    await new Promise((resolve) => setTimeout(resolve, 80));
+  }
+
+  test('resuming a paused automatic bill does not record the months it was paused', async () => {
+    const db = await freshDb();
+    await bill(db, { name: 'Astro', amount: 8900, day: 5, start: '2026-01-02', active: 0, auto: 1 });
+    await db.run("UPDATE commitments SET last_auto_due = '2026-07-05'");
+    await editAndWatch(db, async () => {
+      await fireEvent(screen.getByLabelText('Active'), 'valueChange', true);
+    });
+    expect(await billSpending(db)).toEqual([]);
+    expect((await db.get<{ start_date: string }>('SELECT start_date FROM commitments'))!.start_date).toBe('2026-10-24');
+  });
+
+  test('switching automatic recording on later does not back-fill the months you entered by hand', async () => {
+    const db = await freshDb();
+    await bill(db, { name: 'Astro', amount: 8900, day: 5, start: '2026-01-02', auto: 0 });
+    await editAndWatch(db, async () => {
+      await fireEvent(screen.getByLabelText('Record automatically on the due date'), 'valueChange', true);
+    });
+    expect(await billSpending(db)).toEqual([]);
+  });
+
+  test('changing the day after paying does not record or flag the same month again', async () => {
+    const db = await freshDb();
+    await bill(db, { name: 'Astro', amount: 8900, day: 5, start: '2026-01-02', auto: 1 });
+    await db.run("UPDATE commitments SET last_auto_due = '2026-10-05'");
+    await db.run("INSERT INTO expenses (amount, category_id, date, note, commitment_id, due_date) VALUES (8900, 3, '2026-10-05', 'Astro', 1, '2026-10-05')");
+    await editAndWatch(db, async () => {
+      await fireEvent.changeText(screen.getByLabelText('Day of month'), '20');
+    });
+    expect((await billSpending(db)).length).toBe(1);
+    expect(screen.queryByText(/Overdue/)).toBeNull();
+    expect(screen.getByText('Due in 27 days')).toBeTruthy();
+  });
+});

@@ -54,28 +54,31 @@ export function Sheet({ visible, title, onClose, children }: Props) {
           style={{ flex: 1, justifyContent: 'flex-end' }}
           pointerEvents="box-none"
         >
-        <GestureDetector gesture={drag}>
-          <Animated.View
-            style={[
-              { backgroundColor: c.surface, borderTopLeftRadius: radius.card, borderTopRightRadius: radius.card, padding: 20, paddingBottom: 32, gap: 16 },
-              sheetStyle,
-            ]}
-          >
-            <View style={{ alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: c.control }} />
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <AppText variant="section">{title}</AppText>
-              <Pressable accessibilityRole="button" accessibilityLabel={t('common.close')} onPress={onClose} hitSlop={12}>
-                <AppText variant="bodyStrong" tone="muted">
-                  {t('common.close')}
-                </AppText>
-              </Pressable>
+        <Animated.View
+          style={[
+            { backgroundColor: c.surface, borderTopLeftRadius: radius.card, borderTopRightRadius: radius.card, padding: 20, paddingBottom: 32, gap: 16 },
+            sheetStyle,
+          ]}
+        >
+          {/* Only the handle and title row drag the sheet closed, so scrolling the content below never closes it. */}
+          <GestureDetector gesture={drag}>
+            <View style={{ gap: 16 }}>
+              <View style={{ alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: c.control }} />
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <AppText variant="section">{title}</AppText>
+                <Pressable accessibilityRole="button" accessibilityLabel={t('common.close')} onPress={onClose} hitSlop={12}>
+                  <AppText variant="bodyStrong" tone="muted">
+                    {t('common.close')}
+                  </AppText>
+                </Pressable>
+              </View>
             </View>
-            {/* Long forms scroll inside the sheet instead of running off the screen. */}
-            <ScrollView style={{ maxHeight: height * 0.7 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              {children}
-            </ScrollView>
-          </Animated.View>
-        </GestureDetector>
+          </GestureDetector>
+          {/* Long forms scroll inside the sheet instead of running off the screen. */}
+          <ScrollView style={{ maxHeight: height * 0.7 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            {children}
+          </ScrollView>
+        </Animated.View>
         </KeyboardAvoidingView>
       </GestureHandlerRootView>
     </Modal>

@@ -72,7 +72,7 @@ describe('reliefPackCsv', () => {
     const header = lines.findIndex((l) => l.startsWith('Relief,Date,Description'));
     expect(header).toBeGreaterThan(0);
     expect(lines[header + 1]).toBe(
-      '"Lifestyle: books, computer/phone/tablet, internet, skill courses",2025-06-10,"Phone, case ""new""",1200.00,1000.00,receipts/a.jpg,Spending',
+      '"Lifestyle: books, computer/phone/tablet, internet, skill courses",2025-06-10,"Phone, case ""new""",1200.00,1000.00,a.jpg,Spending',
     );
   });
 
@@ -85,5 +85,16 @@ describe('reliefPackCsv', () => {
     expect(lines.some((l) => l.startsWith('Relief,Limit (RM),Claimed (RM),Allowed (RM)'))).toBe(true);
     expect(lines.some((l) => l.endsWith(',2500.00,1050.00,1050.00'))).toBe(true);
     expect(lines[lines.length - 1]).toBe('Total relief,10050.00');
+  });
+});
+
+describe('reliefPackCsv privacy (review finding: device file paths were exported)', () => {
+  test('the receipt column shows only the file name', () => {
+    const p = pack([exp({ id: 1, reliefId: 'lifestyle', receiptUri: 'receipts/receipt-123.jpg' }), exp({ id: 2, reliefId: 'sports', receiptUri: 'file:///data/user/0/app/files/receipts/old.jpg' })]);
+    const csv = reliefPackCsv(p);
+    expect(csv).toContain(',receipt-123.jpg,Spending');
+    expect(csv).toContain(',old.jpg,Spending');
+    expect(csv).not.toContain('file://');
+    expect(csv).not.toContain('receipts/');
   });
 });

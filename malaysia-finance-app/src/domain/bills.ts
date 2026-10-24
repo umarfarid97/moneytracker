@@ -69,3 +69,20 @@ export function missedDueDates(c: Commitment, today: string): string[] {
   }
   return out;
 }
+
+/**
+ * Adjusts a bill that is being edited so the edit cannot invent payments:
+ * - resuming a paused bill, or changing its day of month, starts its schedule today (months paused, or
+ *   already paid under the old day, are not due again);
+ * - switching automatic recording on starts from the latest due date, so earlier months that were
+ *   entered by hand are not recorded a second time.
+ * New bills (`old` is null) and ordinary edits are returned unchanged.
+ */
+export function applyBillChange(old: Commitment | null, next: Commitment, today: string): Commitment {
+  if (!old) return next;
+  const resumed = !old.active && next.active;
+  const dayChanged = old.dayOfMonth !== next.dayOfMonth;
+  if (resumed || dayChanged) return { ...next, startDate: today, lastAutoDue: null };
+  if (!old.autoRecord && next.autoRecord) return { ...next, lastAutoDue: previousDueDate(next.dayOfMonth, today) };
+  return next;
+}

@@ -111,7 +111,8 @@ export function reliefPackCsv(pack: ReliefPack): string {
   rows.push([], ['Relief', 'Date', 'Description', 'Amount spent (RM)', 'Claimed (RM)', 'Receipt', 'Source']);
   for (const s of pack.sections) {
     for (const it of s.items) {
-      const receipt = it.receipt === 'missing' ? 'Missing' : it.receiptUri ?? 'Not needed';
+      // Only the file name: a full path would expose where the app keeps its files and means nothing to the reader.
+      const receipt = it.receipt === 'missing' ? 'Missing' : it.receiptUri?.split('/').pop() ?? 'Not needed';
       rows.push([
         s.name, it.date ?? '', it.note, senToInput(it.spent), senToInput(it.amount), receipt,
         it.source === 'spending' ? 'Spending' : 'Typed in',

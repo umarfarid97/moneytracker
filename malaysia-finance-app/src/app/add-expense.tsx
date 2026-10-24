@@ -61,9 +61,10 @@ export default function AddExpense() {
   }, [existing?.id]);
 
   const amount = parseRM(amountText);
-  const claim = claimText.trim() === '' ? null : parseRM(claimText);
+  // The claimable part only matters while a relief is chosen; a leftover value must not block saving.
+  const claim = reliefId === null || claimText.trim() === '' ? null : parseRM(claimText);
   const claimTooBig = claim !== null && amount !== null && claim > amount;
-  const claimInvalid = claimText.trim() !== '' && claim === null;
+  const claimInvalid = reliefId !== null && claimText.trim() !== '' && claim === null;
   const dateOk = isValidDate(date);
   const valid = amount !== null && amount > 0 && dateOk && !claimTooBig && !claimInvalid;
 

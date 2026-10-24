@@ -91,3 +91,21 @@ describe('medical relief sub-caps (review finding: dental and vaccination are RM
     expect(r.total).toBe(1000000);
   });
 });
+
+describe('per-child reliefs with spending (review finding: every spending row was counted as a new child)', () => {
+  const fromSpending = (n: number, amount: number): ReliefClaim[] =>
+    Array.from({ length: n }, (_, i) => ({ id: -(i + 1), reliefId: 'child-higher-ed', year: 2025, amount, receiptUri: null, note: '' }));
+
+  test('all spending tagged to a per-child relief counts as one child, capped at the per-child limit', () => {
+    const r = cap(fromSpending(12, 100000)); // 12 monthly fees of RM1,000
+    expect(r.perRelief['child-higher-ed']).toEqual({ claimed: 1200000, allowed: 800000 });
+  });
+
+  test('claims typed in by hand are still one per child, on top of the spending pool', () => {
+    const manual: ReliefClaim[] = [
+      claim('child-higher-ed', 800000, null), claim('child-higher-ed', 300000, null),
+    ];
+    const r = cap([...fromSpending(3, 500000), ...manual]);
+    expect(r.perRelief['child-higher-ed'].allowed).toBe(800000 + 300000 + 800000);
+  });
+});

@@ -84,9 +84,14 @@ export default function ReliefPage() {
           {t('tax.limit', { amount: formatRM(def.limit) })}
         </AppText>
         {def.perItem ? (
-          <AppText variant="small" tone="muted">
-            {t('tax.eachChild')}
-          </AppText>
+          <>
+            <AppText variant="small" tone="muted">
+              {t('tax.eachChild')}
+            </AppText>
+            <AppText variant="small" tone="muted">
+              {t('tax.eachChildSpending')}
+            </AppText>
+          </>
         ) : null}
         {def.note ? (
           <AppText variant="small" tone="muted">

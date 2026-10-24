@@ -124,6 +124,7 @@ export const en = {
   'tax.noClaims': 'No claims yet',
   'tax.eachChild': 'Add one claim for each child',
   'tax.notFound': 'Relief not found',
+  'tax.eachChildSpending': 'Spending tagged here counts as one child. Add other children as separate claims.',
   'relief.field': 'Tax relief',
   'relief.valueNone': 'None',
   'relief.none': 'No tax relief',

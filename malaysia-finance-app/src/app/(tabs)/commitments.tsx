@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { billStatus, paidDueDatesFor, type BillState, type BillStatus } from '@/domain/bills';
+import { applyBillChange, billStatus, paidDueDatesFor, type BillState, type BillStatus } from '@/domain/bills';
 import { monthlyCommitmentTotal } from '@/domain/commitments';
 import { formatRM } from '@/domain/money';
 import type { Commitment } from '@/domain/types';
@@ -149,7 +149,7 @@ export default function Commitments() {
         existing={sheet.editing}
         onClose={closeSheet}
         onSave={async (input) => {
-          if (sheet.editing) await update({ ...sheet.editing, ...input });
+          if (sheet.editing) await update(applyBillChange(sheet.editing, { ...sheet.editing, ...input }, today));
           else await add(input);
         }}
         onDelete={sheet.editing ? () => remove(sheet.editing!.id) : undefined}

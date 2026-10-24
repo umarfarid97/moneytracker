@@ -20,8 +20,11 @@ export function capReliefClaims(claims: ReliefClaim[], defs: ReliefDef[]): Relie
     const mine = claims.filter((c) => c.reliefId === def.id);
     if (mine.length === 0) continue;
     const claimed = mine.reduce((s, c) => s + c.amount, 0);
+    // Per-child reliefs: each claim typed in by hand is one child. Spending tagged to the relief does not say
+    // which child it is for, so all of it counts as a single child (never more than the per-child limit).
     let allowed = def.perItem
-      ? mine.reduce((s, c) => s + Math.min(c.amount, def.limit), 0)
+      ? mine.filter((c) => c.id > 0).reduce((s, c) => s + Math.min(c.amount, def.limit), 0) +
+        Math.min(mine.filter((c) => c.id <= 0).reduce((s, c) => s + c.amount, 0), def.limit)
       : Math.min(claimed, def.limit);
     if (def.group && def.groupLimit !== undefined) {
       const room = Math.max(0, def.groupLimit - (groupUsed[def.group] ?? 0));

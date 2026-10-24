@@ -1,4 +1,4 @@
-import { billStatus, missedDueDates, paidDueDatesFor, previousDueDate } from '@/domain/bills';
+import { applyBillChange, billStatus, missedDueDates, paidDueDatesFor, previousDueDate } from '@/domain/bills';
 import type { Commitment, Expense } from '@/domain/types';
 
 const bill = (over: Partial<Commitment> = {}): Commitment => ({
@@ -114,5 +114,38 @@ describe('missedDueDates (what auto-record still has to record)', () => {
 
   test('uses the last day of short months', () => {
     expect(missedDueDates(auto({ dayOfMonth: 31, startDate: '2026-09-01' }), '2026-11-30')).toEqual(['2026-09-30', '2026-10-31', '2026-11-30']);
+  });
+});
+
+describe('applyBillChange (review findings: edits must not invent payments)', () => {
+  const old = bill({ autoRecord: true, startDate: '2026-01-02', lastAutoDue: '2026-07-05', active: false });
+  const today = '2026-10-24';
+
+  test('resuming a paused bill starts its schedule today, so the paused months are not recorded', () => {
+    const next = applyBillChange(old, { ...old, active: true }, today);
+    expect(next).toMatchObject({ active: true, startDate: '2026-10-24', lastAutoDue: null });
+    expect(missedDueDates(next, today)).toEqual([]);
+  });
+
+  test('changing the day of month starts the schedule today, so a paid month is not due again', () => {
+    const paid = bill({ autoRecord: true, startDate: '2026-01-02', lastAutoDue: '2026-10-05', dayOfMonth: 5 });
+    const next = applyBillChange(paid, { ...paid, dayOfMonth: 20 }, today);
+    expect(next).toMatchObject({ dayOfMonth: 20, startDate: '2026-10-24', lastAutoDue: null });
+    expect(missedDueDates(next, today)).toEqual([]);
+    expect(billStatus({ commitment: next, today, paidDueDates: [] })).toEqual({ state: 'upcoming', dueDate: '2026-11-20', days: 27 });
+  });
+
+  test('switching automatic recording on does not back-fill earlier months', () => {
+    const manual = bill({ autoRecord: false, startDate: '2026-01-02', lastAutoDue: null });
+    const next = applyBillChange(manual, { ...manual, autoRecord: true }, today);
+    expect(next.lastAutoDue).toBe('2026-10-05');
+    expect(missedDueDates(next, today)).toEqual([]);
+  });
+
+  test('ordinary edits and new bills are left alone', () => {
+    const live = bill({ autoRecord: true, startDate: '2026-01-02', lastAutoDue: '2026-10-05' });
+    expect(applyBillChange(live, { ...live, name: 'Astro Go', amount: 9900 }, today)).toEqual({ ...live, name: 'Astro Go', amount: 9900 });
+    const added = bill({ autoRecord: true, startDate: today });
+    expect(applyBillChange(null, added, today)).toEqual(added);
   });
 });

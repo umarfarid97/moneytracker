@@ -201,7 +201,9 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
         for (const due of dates) {
           if (await payBill(c, due, { amount: c.amount, date: due })) count++;
         }
-        await commitmentOps.update({ ...c, lastAutoDue: dates[dates.length - 1] });
+        // Re-read the bill: it may have been edited (or deleted) while the payments above were saved.
+        const latest = commitmentsRef.current.find((x) => x.id === c.id);
+        if (latest) await commitmentOps.update({ ...latest, lastAutoDue: dates[dates.length - 1] });
       }
       return count;
     };

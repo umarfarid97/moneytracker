@@ -115,3 +115,12 @@ describe('Relief page', () => {
     await waitFor(() => expect(screen.getByText('Relief not found')).toBeTruthy());
   });
 });
+
+describe('Relief page: per-child note', () => {
+  test('explains that tagged spending counts as one child', async () => {
+    useLocalSearchParams.mockReturnValue({ id: 'child-higher-ed' });
+    const db = await freshDb();
+    await renderWithData(db, <Relief />);
+    await waitFor(() => expect(screen.getByText('Spending tagged here counts as one child. Add other children as separate claims.')).toBeTruthy());
+  });
+});
