@@ -77,3 +77,29 @@ export function groupByDay(expenses: Expense[]): DayGroup[] {
     .sort(([a], [b]) => (a < b ? 1 : -1))
     .map(([date, items]) => ({ date, total: sum(items), items }));
 }
+
+const STATUS_RANK: Record<Status, number> = { 'on-track': 0, tight: 1, over: 2 };
+
+export type BudgetAlert = { status: 'tight' | 'over'; spent: Sen; limit: Sen };
+
+/**
+ * Whether adding `amount` to a category moves it to a worse budget status for that month
+ * (on-track to tight, or to over). Returns null when the status does not get worse, so a warning
+ * is sent once per step rather than on every save.
+ */
+export function budgetAlert(i: {
+  expenses: Expense[];
+  budgets: Budget[];
+  categoryId: number;
+  date: string;
+  amount: Sen;
+}): BudgetAlert | null {
+  const month = monthKey(i.date);
+  const budget = i.budgets.find((b) => b.categoryId === i.categoryId && b.month === month);
+  if (!budget) return null;
+  const spent = sum(i.expenses.filter((e) => e.categoryId === i.categoryId && monthKey(e.date) === month));
+  const before = categoryStatus(spent, budget.limit).status;
+  const after = categoryStatus(spent + i.amount, budget.limit).status;
+  if (STATUS_RANK[after] <= STATUS_RANK[before] || after === 'on-track') return null;
+  return { status: after, spent: spent + i.amount, limit: budget.limit };
+}

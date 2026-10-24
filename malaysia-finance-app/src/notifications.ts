@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import { nextReminder } from '@/domain/commitments';
 import { shortDate } from '@/domain/dates';
 import { formatRM } from '@/domain/money';
+import type { BudgetAlert } from '@/domain/summary';
 import type { Commitment } from '@/domain/types';
 import { t } from '@/i18n/t';
 
@@ -76,4 +77,28 @@ export function scheduleReminders(commitments: Commitment[], now: Date = new Dat
   const run = queue.then(() => (ticket === latestRequest ? replaceReminders(commitments, now) : 0));
   queue = run.catch(() => undefined);
   return run;
+}
+
+/** Tells the user a category has reached 80% of its budget or gone over it. Never throws. */
+export async function notifyBudgetAlert(categoryName: string, alert: BudgetAlert): Promise<void> {
+  try {
+    if (!(await ensurePermission())) return;
+    const percent = Math.round((alert.spent * 100) / alert.limit);
+    const left = alert.limit - alert.spent;
+    await Notifications.scheduleNotificationAsync({
+      content:
+        alert.status === 'tight'
+          ? {
+              title: t('budget.alert.tight', { category: categoryName, percent }),
+              body: t('budget.alert.tightBody', { left: formatRM(left), limit: formatRM(alert.limit) }),
+            }
+          : {
+              title: t('budget.alert.over', { category: categoryName }),
+              body: t('budget.alert.overBody', { over: formatRM(-left), limit: formatRM(alert.limit) }),
+            },
+      trigger: null,
+    });
+  } catch {
+    // A missed warning is not worth failing a save for.
+  }
 }

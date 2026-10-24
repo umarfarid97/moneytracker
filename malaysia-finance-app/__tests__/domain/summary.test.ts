@@ -1,4 +1,4 @@
-import { buildHome, groupByDay, monthSpent } from '@/domain/summary';
+import { budgetAlert, buildHome, groupByDay, monthSpent } from '@/domain/summary';
 import type { Budget, Category, Expense } from '@/domain/types';
 
 const cat = (id: number, name: string): Category => ({ id, name, icon: 'x', sortOrder: id });
@@ -76,5 +76,36 @@ describe('groupByDay', () => {
   });
   test('empty list gives no groups', () => {
     expect(groupByDay([])).toEqual([]);
+  });
+});
+
+describe('budgetAlert', () => {
+  const budgets = [budget(1, 10000)];
+  const base = { budgets, categoryId: 1, date: '2026-10-24' };
+
+  test('fires when spending moves a category from on-track to tight', () => {
+    const a = budgetAlert({ ...base, expenses: [exp(1, 1, 5000, '2026-10-02')], amount: 3000 });
+    expect(a).toEqual({ status: 'tight', spent: 8000, limit: 10000 });
+  });
+
+  test('fires when it goes over, including straight from on-track', () => {
+    expect(budgetAlert({ ...base, expenses: [exp(1, 1, 9000, '2026-10-02')], amount: 2000 })).toEqual({ status: 'over', spent: 11000, limit: 10000 });
+    expect(budgetAlert({ ...base, expenses: [], amount: 12000 })).toEqual({ status: 'over', spent: 12000, limit: 10000 });
+  });
+
+  test('does not repeat while the status stays the same', () => {
+    expect(budgetAlert({ ...base, expenses: [exp(1, 1, 8500, '2026-10-02')], amount: 500 })).toBeNull();
+    expect(budgetAlert({ ...base, expenses: [exp(1, 1, 11000, '2026-10-02')], amount: 500 })).toBeNull();
+  });
+
+  test('stays quiet while still on track, or when the category has no budget this month', () => {
+    expect(budgetAlert({ ...base, expenses: [], amount: 1000 })).toBeNull();
+    expect(budgetAlert({ ...base, categoryId: 2, expenses: [], amount: 99999 })).toBeNull();
+    expect(budgetAlert({ ...base, date: '2026-11-02', expenses: [], amount: 99999 })).toBeNull();
+  });
+
+  test('only counts spending in the same category and month', () => {
+    const list = [exp(1, 2, 9000, '2026-10-02'), exp(2, 1, 9000, '2026-09-30')];
+    expect(budgetAlert({ ...base, expenses: list, amount: 3000 })).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import * as Notifications from 'expo-notifications';
-import { scheduleReminders } from '@/notifications';
+import { notifyBudgetAlert, scheduleReminders } from '@/notifications';
 import type { Commitment } from '@/domain/types';
 
 jest.mock('expo-notifications', () => ({
@@ -104,5 +104,30 @@ describe('scheduleReminders overlapping runs (review finding: reminders fired tw
     const second = scheduleReminders([c(2, 'New', 200, 24)], now);
     await Promise.all([first, second]);
     expect(scheduled).toEqual(['New is due tomorrow']);
+  });
+});
+
+describe('notifyBudgetAlert', () => {
+  test('sends one immediate notification saying which category and how it stands', async () => {
+    n.scheduleNotificationAsync.mockResolvedValue('id' as never);
+    await notifyBudgetAlert('Makan', { status: 'tight', spent: 48000, limit: 60000 });
+    expect(n.scheduleNotificationAsync).toHaveBeenCalledTimes(1);
+    const req = n.scheduleNotificationAsync.mock.calls[0][0] as { content: { title: string; body: string }; trigger: unknown };
+    expect(req.trigger).toBeNull();
+    expect(req.content.title).toBe('Makan is at 80% of its budget');
+    expect(req.content.body).toBe('RM 120.00 left of RM 600.00.');
+    await notifyBudgetAlert('Hiburan', { status: 'over', spent: 26000, limit: 20000 });
+    const over = n.scheduleNotificationAsync.mock.calls[1][0] as { content: { title: string; body: string } };
+    expect(over.content.title).toBe('Hiburan is over budget');
+    expect(over.content.body).toBe('RM 60.00 over RM 200.00.');
+  });
+
+  test('does nothing without permission and never throws', async () => {
+    n.getPermissionsAsync.mockResolvedValue({ granted: false, canAskAgain: false } as never);
+    await expect(notifyBudgetAlert('Makan', { status: 'over', spent: 2, limit: 1 })).resolves.toBeUndefined();
+    expect(n.scheduleNotificationAsync).not.toHaveBeenCalled();
+    n.getPermissionsAsync.mockResolvedValue({ granted: true, canAskAgain: true } as never);
+    n.scheduleNotificationAsync.mockRejectedValue(new Error('boom'));
+    await expect(notifyBudgetAlert('Makan', { status: 'over', spent: 2, limit: 1 })).resolves.toBeUndefined();
   });
 });
