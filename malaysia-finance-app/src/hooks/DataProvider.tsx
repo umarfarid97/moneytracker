@@ -11,15 +11,21 @@ import {
   addCommitment, deleteCommitment, listCommitments, updateCommitment,
 } from '@/db/repos/commitments';
 import {
-  addExpense, deleteExpense, listAllExpenses, updateExpense,
+  addBillExpense, addExpense, deleteExpense, listAllExpenses, updateExpense,
 } from '@/db/repos/expenses';
+import {
+  addPaymentMethod, deletePaymentMethod, listPaymentMethods, renamePaymentMethod,
+} from '@/db/repos/paymentMethods';
 import { getProfile, saveProfile } from '@/db/repos/profile';
 import {
   addReliefClaim, deleteReliefClaim, listAllReliefClaims, updateReliefClaim,
 } from '@/db/repos/reliefClaims';
 import type { Db } from '@/db/types';
+import { missedDueDates } from '@/domain/bills';
+import type { Sen } from '@/domain/money';
 import {
   withCommitmentDefaults, withExpenseDefaults,
+  type PaymentKind, type PaymentMethod,
   type Budget, type Category, type Commitment, type Expense, type NewCommitment, type NewExpense,
   type Profile, type ReliefClaim,
 } from '@/domain/types';
@@ -58,8 +64,21 @@ export type DataContextValue = {
     rename: (id: number, name: string) => Promise<void>;
     remove: (id: number) => Promise<void>;
   };
+  paymentMethods: PaymentMethod[];
+  paymentMethodOps: {
+    add: (input: { name: string; kind: PaymentKind }) => Promise<PaymentMethod>;
+    rename: (id: number, name: string) => Promise<void>;
+    remove: (id: number) => Promise<void>;
+  };
   expenses: Expense[];
   expenseOps: CollectionOps<Expense, NewExpense>;
+  /**
+   * Records the spending for one due date of a bill, using the bill's category, payment method and relief.
+   * Returns null (and records nothing) if that due date already has its spending.
+   */
+  payBill: (c: Commitment, dueDate: string, opts: { amount: Sen; date: string }) => Promise<Expense | null>;
+  /** Records the spending for every due date up to today of bills set to record automatically; returns how many. */
+  runAutoRecord: (today: string) => Promise<number>;
   budgets: Budget[];
   /** Latest budgets, readable inside async callbacks without a stale closure. */
   getBudgets: () => Budget[];
@@ -86,15 +105,15 @@ export function useData(): DataContextValue {
 
 type Loaded = {
   categories: Category[]; expenses: Expense[]; budgets: Budget[];
-  commitments: Commitment[]; reliefClaims: ReliefClaim[]; profile: Profile;
+  commitments: Commitment[]; reliefClaims: ReliefClaim[]; profile: Profile; paymentMethods: PaymentMethod[];
 };
 
 async function loadAll(db: Db): Promise<Loaded> {
-  const [categories, expenses, budgets, commitments, reliefClaims, profile] = await Promise.all([
+  const [categories, expenses, budgets, commitments, reliefClaims, profile, paymentMethods] = await Promise.all([
     listCategories(db), listAllExpenses(db), listAllBudgets(db),
-    listCommitments(db), listAllReliefClaims(db), getProfile(db),
+    listCommitments(db), listAllReliefClaims(db), getProfile(db), listPaymentMethods(db),
   ]);
-  return { categories, expenses, budgets, commitments, reliefClaims, profile };
+  return { categories, expenses, budgets, commitments, reliefClaims, profile, paymentMethods };
 }
 
 /**
@@ -114,11 +133,13 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
   const [commitments, setCommitments, commitmentsRef] = useSyncedState<Commitment[]>([]);
   const [reliefClaims, setReliefClaims, claimsRef] = useSyncedState<ReliefClaim[]>([]);
   const [profile, setProfile, profileRef] = useSyncedState<Profile | null>(null);
+  const [paymentMethods, setPaymentMethods] = useSyncedState<PaymentMethod[]>([]);
 
   const apply = useCallback((data: Loaded) => {
     setCategories(data.categories); setExpenses(data.expenses); setBudgets(data.budgets);
     setCommitments(data.commitments); setReliefClaims(data.reliefClaims); setProfile(data.profile);
-  }, [setCategories, setExpenses, setBudgets, setCommitments, setReliefClaims, setProfile]);
+    setPaymentMethods(data.paymentMethods);
+  }, [setCategories, setExpenses, setBudgets, setCommitments, setReliefClaims, setProfile, setPaymentMethods]);
 
   useEffect(() => {
     if (injected) { setDb(injected); return; }
@@ -155,9 +176,55 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
       remove: (id) => deleteReliefClaim(db, id),
     }, byId, (input: Omit<ReliefClaim, 'id'>) => input);
 
+    const billCategoryId = (c: Commitment) =>
+      c.categoryId ??
+      categories.find((x) => x.name === 'Bil')?.id ??
+      categories.find((x) => x.name === 'Lain-lain')?.id ??
+      categories[0]?.id ??
+      1;
+
+    const payBill: DataContextValue['payBill'] = async (c, dueDate, opts) => {
+      const saved = await addBillExpense(db, {
+        amount: opts.amount, categoryId: billCategoryId(c), date: opts.date, note: c.name, receiptUri: null,
+        paymentMethodId: c.paymentMethodId, reliefId: c.reliefId, reliefAmount: null, commitmentId: c.id, dueDate,
+      });
+      if (saved) setExpenses((prev) => [saved, ...prev].sort(byNewest));
+      return saved;
+    };
+
+    const runAutoRecord: DataContextValue['runAutoRecord'] = async (today) => {
+      let count = 0;
+      for (const c of commitmentsRef.current) {
+        if (!c.active || !c.autoRecord) continue;
+        const dates = missedDueDates(c, today);
+        if (dates.length === 0) continue;
+        for (const due of dates) {
+          if (await payBill(c, due, { amount: c.amount, date: due })) count++;
+        }
+        await commitmentOps.update({ ...c, lastAutoDue: dates[dates.length - 1] });
+      }
+      return count;
+    };
+
     return {
       db, categories, expenses, budgets, commitments, reliefClaims, profile, taxYearChoice, setTaxYearChoice,
+      paymentMethods, payBill, runAutoRecord,
       expenseOps, commitmentOps, reliefClaimOps,
+      paymentMethodOps: {
+        async add(input) {
+          const saved = await addPaymentMethod(db, input);
+          setPaymentMethods((prev) => [...prev, saved].sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id));
+          return saved;
+        },
+        async rename(id, name) {
+          await renamePaymentMethod(db, id, name);
+          setPaymentMethods((prev) => prev.map((m) => (m.id === id ? { ...m, name } : m)));
+        },
+        async remove(id) {
+          await deletePaymentMethod(db, id);
+          apply(await loadAll(db));
+        },
+      },
       getBudgets: () => budgetsRef.current,
       categoryOps: {
         async add(input) {
@@ -207,7 +274,7 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
         }
       },
     };
-  }, [db, loaded, profile, categories, expenses, budgets, commitments, reliefClaims, taxYearChoice, apply]);
+  }, [db, loaded, profile, categories, expenses, budgets, commitments, reliefClaims, paymentMethods, taxYearChoice, apply]);
 
   if (failure) throw failure;
   if (!value) return null;

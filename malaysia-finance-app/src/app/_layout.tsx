@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { BillsSync } from '@/features/commitments/BillsSync';
 import { RemindersSync } from '@/features/commitments/RemindersSync';
 import { DataProvider } from '@/hooks/DataProvider';
 import { useTheme } from '@/ui/useTheme';
@@ -26,6 +27,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: c.ground }}>
       <SafeAreaProvider>
         <DataProvider>
+          <BillsSync />
           <RemindersSync />
           <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.ground } }}>
