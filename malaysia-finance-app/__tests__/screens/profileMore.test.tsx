@@ -16,6 +16,7 @@ describe('More tab', () => {
       ['Income profile', '/profile'],
       ['Budget', '/budget'],
       ['Categories', '/categories'],
+      ['Payment methods', '/payment-methods'],
       ['Tax calculator', '/tax-calculator'],
       ['Loan calculator', '/loan-calculator'],
     ] as const) {
