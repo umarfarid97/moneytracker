@@ -19,7 +19,6 @@ export const en = {
   'home.left': '{amount} left',
   'home.over': '{amount} over',
   'home.categories': 'This month by category',
-  'home.noBudgetSet': 'No budget set',
   'home.spent': '{amount} spent',
   'home.empty': 'Nothing spent yet today',
   'home.todayOver': '{amount} over for today',

@@ -28,33 +28,40 @@ export function Tile({ title, leftText, status, detail, tintName, onPress }: Pro
   return (
     <PressableScale
       accessibilityRole="button"
-      accessibilityLabel={[title, leftText, detail, status ? pillText : null].filter(Boolean).join(', ')}
+      accessibilityLabel={[title, leftText, detail, pillText].filter(Boolean).join(', ')}
       onPress={onPress}
       style={[
-        { backgroundColor: c.surface, borderRadius: radius.card, padding: 16, minHeight: 140, justifyContent: 'space-between', gap: 12 },
+        { flex: 1, backgroundColor: c.surface, borderRadius: radius.card, padding: 14, gap: 10, justifyContent: 'space-between' },
         scheme === 'dark' ? { borderWidth: 1, borderColor: c.border } : elevation(scheme),
       ]}
     >
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-        <IconBadge icon={look.icon} color={look.color} size={38} />
-        <View style={{ backgroundColor: pill.bg, borderRadius: radius.pill, paddingHorizontal: 9, paddingVertical: 2, flexShrink: 1 }}>
+      {/* Icon and name share one line at matching sizes; the figure sits under them, then the status. */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <IconBadge icon={look.icon} color={look.color} size={28} />
+        <AppText variant="bodyStrong" numberOfLines={1} style={{ flex: 1, fontSize: 15 }}>
+          {title}
+        </AppText>
+      </View>
+      <View style={{ gap: 8 }}>
+        <AppText
+          variant="section"
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+          style={{ fontSize: 17, lineHeight: 22 }}
+        >
+          {leftText}
+        </AppText>
+        {detail ? (
+          <AppText variant="small" tone="muted" numberOfLines={1}>
+            {detail}
+          </AppText>
+        ) : null}
+        <View style={{ alignSelf: 'flex-start', backgroundColor: pill.bg, borderRadius: radius.pill, paddingHorizontal: 9, paddingVertical: 2 }}>
           <AppText variant="smallStrong" color={pill.ink} style={{ fontSize: 12, lineHeight: 18 }} numberOfLines={1}>
             {pillText}
           </AppText>
         </View>
-      </View>
-      <View style={{ gap: 2 }}>
-        <AppText variant="smallStrong" tone="muted">
-          {title}
-        </AppText>
-        <AppText variant="section" style={{ fontSize: 17, lineHeight: 22 }}>
-          {leftText}
-        </AppText>
-        {detail ? (
-          <AppText variant="small" tone="muted">
-            {detail}
-          </AppText>
-        ) : null}
       </View>
     </PressableScale>
   );

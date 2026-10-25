@@ -62,19 +62,18 @@ export default function Home() {
           <AppText variant="section">{t('home.categories')}</AppText>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.gap }}>
             {home.tiles.map((tile) => (
-              <View key={tile.categoryId} style={{ width: tileWidth }}>
+              <View key={tile.categoryId} style={{ width: tileWidth, flexDirection: 'row' }}>
                 <Tile
                   title={tile.name}
                   tintName={tile.name}
                   status={tile.limit === null ? null : tile.status}
                   leftText={
                     tile.limit === null
-                      ? t('home.noBudgetSet')
+                      ? t('home.spent', { amount: formatRM(tile.spent) })
                       : tile.left >= 0
                         ? t('home.left', { amount: formatRM(tile.left) })
                         : t('home.over', { amount: formatRM(-tile.left) })
                   }
-                  detail={tile.limit === null ? t('home.spent', { amount: formatRM(tile.spent) }) : undefined}
                   onPress={() =>
                     router.push({ pathname: '/spending', params: { categoryId: String(tile.categoryId), at: String(Date.now()) } })
                   }

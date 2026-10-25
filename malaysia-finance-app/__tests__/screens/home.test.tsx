@@ -22,7 +22,7 @@ describe('Home', () => {
     expect(screen.getByText('On track')).toBeTruthy();
     expect(screen.getByText('RM 60.00 over')).toBeTruthy();
     expect(screen.getByText('Over budget')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Transport, No budget set, RM 0.00 spent' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Transport, RM 0.00 spent, No budget' })).toBeTruthy();
   });
 
   test('says how much is left for today', async () => {
@@ -56,7 +56,7 @@ describe('Home', () => {
     const db = await freshDb();
     await addExpenseRow(db, CAT.Makan, 1250, '2026-10-24');
     await renderWithData(db, <Home />);
-    const makan = await screen.findByRole('button', { name: 'Makan, No budget set, RM 12.50 spent' });
+    const makan = await screen.findByRole('button', { name: 'Makan, RM 12.50 spent, No budget' });
     expect(screen.getAllByText('No budget').length).toBeGreaterThan(1);
     await fireEvent.press(makan);
     expect(router.push).toHaveBeenCalledWith({

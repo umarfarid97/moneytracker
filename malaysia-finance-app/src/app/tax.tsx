@@ -8,6 +8,7 @@ import { useAllReliefClaims } from '@/hooks/useAllReliefClaims';
 import { useTaxYear } from '@/hooks/useTaxYear';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
+import { BackButton } from '@/ui/BackButton';
 import { Button } from '@/ui/Button';
 import { HeroCard, onHero } from '@/ui/HeroCard';
 import { IconBadge } from '@/ui/IconBadge';
@@ -27,6 +28,7 @@ export default function Tax() {
 
   return (
     <Screen>
+      <BackButton />
       <View style={{ gap: 4 }}>
         <AppText variant="title">{t('tax.title')}</AppText>
         <AppText variant="bodyStrong" tone="muted">
