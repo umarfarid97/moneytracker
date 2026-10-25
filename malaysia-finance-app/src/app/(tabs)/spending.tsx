@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { memo, useCallback, useMemo, useState } from 'react';
-import { FlatList, Pressable, TextInput, View } from 'react-native';
+import { FlatList, Platform, Pressable, TextInput, View } from 'react-native';
 import { LATEST_TAX_YEAR } from '@/data/tax';
 import { dayLabel, monthKey, monthLabel, shiftMonth } from '@/domain/dates';
 import { formatRM } from '@/domain/money';
@@ -140,6 +140,11 @@ export default function Spending() {
       <FlatList
         data={items}
         keyExtractor={(item) => item.key}
+        // Long months stay smooth: draw a screenful first and drop rows far off screen.
+        initialNumToRender={12}
+        maxToRenderPerBatch={10}
+        windowSize={7}
+        removeClippedSubviews={Platform.OS === 'android'}
         contentContainerStyle={{ gap: 8, paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"

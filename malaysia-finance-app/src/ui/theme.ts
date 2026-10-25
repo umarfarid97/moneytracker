@@ -71,9 +71,13 @@ export const fontFamily = { regular: SYSTEM_FONT, medium: SYSTEM_FONT, semibold:
 
 export const fontSize = { title: 32, section: 20, kpi: 36, body: 16, small: 14 } as const;
 
-/** Soft, slightly indigo elevation for cards; dark mode relies on the lighter surface instead. */
+/**
+ * Soft, slightly indigo elevation for cards; dark mode relies on the lighter surface instead.
+ * Android draws every elevation as a real shadow layer, so it gets a light one to keep scrolling smooth.
+ */
 export function elevation(scheme: Scheme): ViewStyle {
   if (scheme === 'dark') return {};
+  if (Platform.OS === 'android') return { elevation: 2 };
   return {
     shadowColor: '#3b3a8f',
     shadowOpacity: 0.08,
@@ -86,6 +90,7 @@ export function elevation(scheme: Scheme): ViewStyle {
 /** Coloured glow under a gradient surface, e.g. a hero card or the FAB. */
 export function glow(color: string, scheme: Scheme): ViewStyle {
   if (scheme === 'dark') return {};
+  if (Platform.OS === 'android') return { elevation: 3 };
   return { shadowColor: color, shadowOpacity: 0.32, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 6 };
 }
 
