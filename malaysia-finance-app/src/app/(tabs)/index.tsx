@@ -27,6 +27,7 @@ export default function Home() {
     () => buildHome({ categories, expenses, budgets, today }),
     [categories, expenses, budgets, today],
   );
+  const categoryById = useMemo(() => new Map(categories.map((cat) => [cat.id, cat])), [categories]);
   const tileWidth = (width - space.pad * 2 - space.gap) / 2;
 
   return (
@@ -66,6 +67,7 @@ export default function Home() {
                 <Tile
                   title={tile.name}
                   tintName={tile.name}
+                  icon={categoryById.get(tile.categoryId)?.icon}
                   status={tile.limit === null ? null : tile.status}
                   leftText={
                     tile.limit === null

@@ -47,7 +47,7 @@ const Row = memo(function Row({
   const { c, scheme } = useTheme();
   const name = category?.name ?? '';
   const tint = categoryTint(name, scheme);
-  const look = categoryLook(name);
+  const look = categoryLook(name, category?.icon);
   const accent = { bg: c.accentSoft, ink: c.accentInk };
   const warn = statusStyle('tight', scheme);
   const tagged = expense.reliefId !== null;
@@ -282,7 +282,7 @@ export default function Spending() {
                   compact
                   selected
                   icon="close-circle"
-                  color={categoryLook(filterCategory.name).color}
+                  color={categoryLook(filterCategory.name, filterCategory.icon).color}
                   label={filterCategory.name}
                   accessibilityLabel={t('spending.allCategories', { name: filterCategory.name })}
                   onPress={() => set({ categoryId: null })}
@@ -319,8 +319,8 @@ export default function Spending() {
               <Chip
                 key={cat.id}
                 label={cat.name}
-                icon={categoryLook(cat.name).icon}
-                color={categoryLook(cat.name).color}
+                icon={categoryLook(cat.name, cat.icon).icon}
+                color={categoryLook(cat.name, cat.icon).color}
                 accessibilityLabel={`Filter category ${cat.name}`}
                 selected={filters.categoryId === cat.id}
                 onPress={() => set({ categoryId: cat.id })}

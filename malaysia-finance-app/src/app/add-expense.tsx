@@ -195,8 +195,8 @@ export default function AddExpense() {
             compact={!wide}
             key={cat.id}
             label={cat.name}
-            icon={categoryLook(cat.name).icon}
-            color={categoryLook(cat.name).color}
+            icon={categoryLook(cat.name, cat.icon).icon}
+            color={categoryLook(cat.name, cat.icon).color}
             selected={cat.id === categoryId}
             onPress={() => setCategoryId(cat.id)}
           />
@@ -258,7 +258,7 @@ export default function AddExpense() {
             <Chip
               compact
               key={`${sg.kind}-${sg.note}`}
-              icon={sg.kind === 'recent' ? 'time-outline' : categoryLook(sg.category).icon}
+              icon={sg.kind === 'recent' ? 'time-outline' : categoryLook(sg.category, categories.find((cat) => cat.name === sg.category)?.icon).icon}
               color={sg.kind === 'recent' ? undefined : categoryLook(sg.category).color}
               label={sg.note}
               accessibilityLabel={t(sg.kind === 'recent' ? 'recent.chip' : 'note.suggestion', { note: sg.note })}
@@ -342,6 +342,7 @@ export default function AddExpense() {
       <ExpenseDetails
         expense={existing}
         categoryName={categoryName}
+        categoryIcon={categories.find((cat) => cat.id === categoryId)?.icon}
         methodName={methods.find((m) => m.id === existing.paymentMethodId)?.name ?? null}
         reliefName={existing.reliefId ? (reliefs.find((r) => r.id === existing.reliefId)?.name ?? existing.reliefId) : null}
         error={error}

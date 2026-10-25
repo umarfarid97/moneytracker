@@ -120,7 +120,7 @@ export function heroGradient(hero: Hero, scheme: Scheme): readonly [string, stri
   return HEROES[scheme][hero];
 }
 
-type IconName = keyof typeof Ionicons.glyphMap;
+export type IconName = keyof typeof Ionicons.glyphMap;
 
 /** Each built-in category's line icon. Icons are drawn in plain ink (see IconBadge); the colour is the accent. */
 const CATEGORY_ICON: Record<string, IconName> = {
@@ -135,9 +135,34 @@ const CATEGORY_ICON: Record<string, IconName> = {
 };
 const CATEGORY_COLOR = palette.light.accent;
 
-/** Icon and colour for a category; categories the user adds get a tag. */
-export function categoryLook(name: string): { icon: IconName; color: string } {
-  return { icon: CATEGORY_ICON[name] ?? 'pricetag-outline', color: CATEGORY_COLOR };
+/** Line icons a user can pick for a category, grouped loosely by theme (food, travel, home, health, ...). */
+export const CATEGORY_ICONS: readonly IconName[] = [
+  'fast-food-outline', 'restaurant-outline', 'cafe-outline', 'pizza-outline', 'beer-outline', 'wine-outline',
+  'ice-cream-outline', 'nutrition-outline', 'fish-outline', 'cart-outline', 'basket-outline', 'bag-handle-outline',
+  'storefront-outline', 'car-outline', 'car-sport-outline', 'bus-outline', 'train-outline', 'subway-outline',
+  'bicycle-outline', 'airplane-outline', 'boat-outline', 'speedometer-outline', 'navigate-outline', 'home-outline',
+  'bed-outline', 'receipt-outline', 'flash-outline', 'water-outline', 'wifi-outline', 'phone-portrait-outline',
+  'tv-outline', 'construct-outline', 'hammer-outline', 'key-outline', 'bulb-outline', 'flame-outline',
+  'heart-outline', 'medkit-outline', 'fitness-outline', 'barbell-outline', 'bandage-outline', 'pulse-outline',
+  'people-outline', 'person-outline', 'happy-outline', 'paw-outline', 'flower-outline', 'leaf-outline',
+  'rose-outline', 'school-outline', 'book-outline', 'library-outline', 'briefcase-outline', 'business-outline',
+  'laptop-outline', 'desktop-outline', 'calculator-outline', 'pencil-outline', 'film-outline', 'musical-notes-outline',
+  'game-controller-outline', 'headset-outline', 'camera-outline', 'ticket-outline', 'football-outline',
+  'basketball-outline', 'golf-outline', 'tennisball-outline', 'wallet-outline', 'card-outline', 'cash-outline',
+  'pricetag-outline', 'pricetags-outline', 'gift-outline', 'diamond-outline', 'trending-up-outline',
+  'stats-chart-outline', 'pie-chart-outline', 'shield-checkmark-outline', 'umbrella-outline', 'shirt-outline',
+  'cut-outline', 'glasses-outline', 'sparkles-outline', 'globe-outline', 'planet-outline', 'star-outline',
+  'moon-outline', 'sunny-outline', 'apps-outline',
+];
+const PICKABLE = new Set<string>(CATEGORY_ICONS);
+
+/**
+ * Icon and colour for a category. An icon the user picked wins; otherwise built-in categories have their own
+ * and the ones the user adds get a tag. (Older rows store names like "utensils", which aren't pickable icons.)
+ */
+export function categoryLook(name: string, icon?: string): { icon: IconName; color: string } {
+  const picked = icon !== undefined && PICKABLE.has(icon) ? (icon as IconName) : undefined;
+  return { icon: picked ?? CATEGORY_ICON[name] ?? 'pricetag-outline', color: CATEGORY_COLOR };
 }
 
 /** Tint for a category tag. The design keeps tags neutral, so every category shares the same grey. */

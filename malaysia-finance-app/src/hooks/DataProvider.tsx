@@ -4,7 +4,7 @@ import {
 } from 'react';
 import { openDb } from '@/db/client';
 import {
-  addCategory, deleteCategory, listCategories, renameCategory,
+  addCategory, deleteCategory, listCategories, renameCategory, setCategoryIcon,
 } from '@/db/repos/categories';
 import { deleteBudget, listAllBudgets, setBudget } from '@/db/repos/budgets';
 import {
@@ -62,6 +62,7 @@ export type DataContextValue = {
   categoryOps: {
     add: (input: Omit<Category, 'id' | 'sortOrder'>) => Promise<Category>;
     rename: (id: number, name: string) => Promise<void>;
+    setIcon: (id: number, icon: string) => Promise<void>;
     remove: (id: number) => Promise<void>;
   };
   paymentMethods: PaymentMethod[];
@@ -238,6 +239,10 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
         async rename(id, name) {
           await renameCategory(db, id, name);
           setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, name } : c)));
+        },
+        async setIcon(id, icon) {
+          await setCategoryIcon(db, id, icon);
+          setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, icon } : c)));
         },
         async remove(id) {
           await deleteCategory(db, id);

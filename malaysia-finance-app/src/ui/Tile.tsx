@@ -17,12 +17,14 @@ type Props = {
   detail?: string;
   /** Category name used to pick the tile's icon and colour. */
   tintName: string;
+  /** The category's chosen icon, if it has one. */
+  icon?: string;
   onPress?: () => void;
 };
 
-export function Tile({ title, leftText, status, detail, tintName, onPress }: Props) {
+export function Tile({ title, leftText, status, detail, tintName, icon, onPress }: Props) {
   const { c, scheme } = useTheme();
-  const look = categoryLook(tintName);
+  const look = categoryLook(tintName, icon);
   const pill = status ? statusStyle(status, scheme) : { bg: c.ground, ink: c.muted };
   const pillText = status ? t(`status.${status}`) : t('status.none');
   return (

@@ -19,6 +19,8 @@ import { useTheme } from '@/ui/useTheme';
 type Props = {
   expense: Expense;
   categoryName: string;
+  /** The category's chosen icon, if it has one. */
+  categoryIcon?: string;
   methodName: string | null;
   reliefName: string | null;
   error: string | null;
@@ -29,10 +31,10 @@ type Props = {
 };
 
 /** A saved spending, read-only. Nothing changes until Edit is tapped. */
-export function ExpenseDetails({ expense, categoryName, methodName, reliefName, error, busy, onEdit, onDelete, onClose }: Props) {
+export function ExpenseDetails({ expense, categoryName, categoryIcon, methodName, reliefName, error, busy, onEdit, onDelete, onClose }: Props) {
   const { c } = useTheme();
   const [previewing, setPreviewing] = useState(false);
-  const look = categoryLook(categoryName);
+  const look = categoryLook(categoryName, categoryIcon);
   const year = expense.date.slice(0, 4);
 
   const row = (label: string, value: ReactNode, last = false) => (
