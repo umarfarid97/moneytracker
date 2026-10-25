@@ -1,5 +1,5 @@
 import {
-  activeFilterCount, EMPTY_FILTERS, filterExpenses, recentTemplates, totalsByMethod,
+  activeFilterCount, EMPTY_FILTERS, filterExpenses, noteSuggestions, recentTemplates, totalsByMethod,
 } from '@/domain/spendingFilter';
 import { YA2025 } from '@/data/tax/ya2025';
 import type { Category, Expense, PaymentMethod } from '@/domain/types';
@@ -106,3 +106,33 @@ describe('recentTemplates', () => {
     expect(t.map((x) => x.note)).toEqual(['new', 'old']);
   });
 });
+
+describe('noteSuggestions', () => {
+  const list = [
+    exp({ id: 3, note: 'Petronas Kajang', categoryId: 2, date: '2026-10-22' }),
+    exp({ id: 2, note: 'Teh tarik', date: '2026-10-20' }),
+    exp({ id: 1, note: 'Kopi O', date: '2026-10-01' }),
+  ];
+  const notes = (q: string, l = list) => noteSuggestions(q, l, 6).map((s) => `${s.kind}:${s.note}`);
+
+  test('with nothing typed: recent notes first, topped up with defaults', () => {
+    expect(notes('')).toEqual(['recent:Petronas Kajang', 'recent:Teh tarik', 'recent:Kopi O', 'default:Breakfast', 'default:Lunch', 'default:Dinner']);
+  });
+
+  test('recent matches come before defaults, starts-with before contains, no duplicates', () => {
+    expect(notes('pet')).toEqual(['recent:Petronas Kajang', 'default:Petrol']);
+    expect(notes('teh')).toEqual(['recent:Teh tarik']);
+    expect(notes('TARIK')).toEqual(['recent:Teh tarik']);
+    expect(notes('tnb')).toEqual(['default:Electricity (TNB)']);
+  });
+
+  test('a note typed in full is not offered again, and nothing matches gives nothing', () => {
+    expect(notes('Teh tarik')).toEqual([]);
+    expect(notes('zzz')).toEqual([]);
+  });
+
+  test('defaults carry their usual category', () => {
+    expect(noteSuggestions('petr', [], 6)[0]).toEqual({ kind: 'default', note: 'Petrol', category: 'Transport' });
+  });
+});
+

@@ -5,7 +5,7 @@ import { resolveTaxData } from '@/data/tax';
 import { addDays, isValidDate } from '@/domain/dates';
 import { formatRM, parseRM, senToInput } from '@/domain/money';
 import { suggestRelief } from '@/domain/reliefSpending';
-import { recentTemplates } from '@/domain/spendingFilter';
+import { noteSuggestions, type NoteSuggestion } from '@/domain/spendingFilter';
 import { budgetAlert } from '@/domain/summary';
 import type { PaymentKind } from '@/domain/types';
 import { useData } from '@/hooks/DataProvider';
@@ -91,7 +91,28 @@ export default function AddExpense() {
   const categoryName = categories.find((cat) => cat.id === categoryId)?.name ?? '';
   const suggestedId = reliefId === null ? suggestRelief(categoryName) : null;
   const suggested = suggestedId ? reliefs.find((r) => r.id === suggestedId) : undefined;
-  const recent = useMemo(() => (existing || editingId !== null ? [] : recentTemplates(expenses, 6)), [expenses, existing, editingId]);
+  // While editing, suggestions only appear once the note is changed, so an untouched form stays calm.
+  const [noteTouched, setNoteTouched] = useState(false);
+  const suggestions = useMemo(
+    () => (editingId !== null && !noteTouched ? [] : noteSuggestions(note, expenses, 6)),
+    [note, expenses, editingId, noteTouched],
+  );
+
+  function pickSuggestion(s: NoteSuggestion) {
+    setNote(s.note);
+    if (s.kind === 'default') {
+      const cat = categories.find((x) => x.name === s.category);
+      if (cat) setCategoryId(cat.id);
+      return;
+    }
+    const r = s.template;
+    // The amount comes first now: keep one that was already typed.
+    if (amountText.trim() === '') setAmountText(senToInput(r.amount));
+    setCategoryId(r.categoryId);
+    setMethodId(r.paymentMethodId);
+    setReliefId(r.reliefId);
+    setClaimText(r.reliefAmount !== null ? senToInput(r.reliefAmount) : '');
+  }
 
   async function save() {
     if (!valid || amount === null || busy) return;
@@ -151,28 +172,6 @@ export default function AddExpense() {
   const scrollRow = { flexDirection: 'row', gap: 6, paddingRight: 16 } as const;
   const label = (text: string) => <AppText variant="eyebrow" tone="muted">{text}</AppText>;
 
-  const recentChips = recent.length > 0 ? (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={scrollRow} keyboardShouldPersistTaps="handled" accessibilityLabel={t('recent.title')}>
-      {recent.map((r) => (
-        <Chip
-          compact
-          icon="time-outline"
-          key={`${r.note}-${r.categoryId}`}
-          label={r.note}
-          accessibilityLabel={t('recent.chip', { note: r.note })}
-          onPress={() => {
-            setAmountText(senToInput(r.amount));
-            setCategoryId(r.categoryId);
-            setNote(r.note);
-            setMethodId(r.paymentMethodId);
-            setReliefId(r.reliefId);
-            setClaimText(r.reliefAmount !== null ? senToInput(r.reliefAmount) : '');
-          }}
-        />
-      ))}
-    </ScrollView>
-  ) : null;
-
   const amountField = (
     <AmountInput
       compact={!wide}
@@ -200,17 +199,6 @@ export default function AddExpense() {
           />
         ))}
       </View>
-      {suggested ? (
-        <View style={{ flexDirection: 'row' }}>
-          <Chip
-            compact
-            icon="sparkles"
-            label={t('relief.suggest', { name: suggested.name })}
-            accessibilityLabel={t('relief.suggest', { name: suggested.name })}
-            onPress={() => setReliefId(suggested.id)}
-          />
-        </View>
-      ) : null}
     </View>
   );
 
@@ -242,21 +230,57 @@ export default function AddExpense() {
   );
 
   const noteInput = (
-    <View style={{ flex: 1, gap: wide ? 10 : 4 }}>
+    <View style={{ gap: wide ? 10 : 4 }}>
       {label(t('common.note'))}
       <TextInput
         accessibilityLabel={t('common.note')}
         value={note}
-        onChangeText={setNote}
+        onChangeText={(text) => {
+          setNote(text);
+          setNoteTouched(true);
+        }}
+        placeholder={t('expense.notePlaceholder')}
         placeholderTextColor={c.muted}
         style={field}
       />
+      {suggestions.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={scrollRow}
+          keyboardShouldPersistTaps="handled"
+          accessibilityLabel={t('note.suggestions')}
+        >
+          {suggestions.map((sg) => (
+            <Chip
+              compact
+              key={`${sg.kind}-${sg.note}`}
+              icon={sg.kind === 'recent' ? 'time-outline' : categoryLook(sg.category).icon}
+              color={sg.kind === 'recent' ? undefined : categoryLook(sg.category).color}
+              label={sg.note}
+              accessibilityLabel={t(sg.kind === 'recent' ? 'recent.chip' : 'note.suggestion', { note: sg.note })}
+              onPress={() => pickSuggestion(sg)}
+            />
+          ))}
+        </ScrollView>
+      ) : null}
     </View>
   );
   const reliefInput = (
-    <View style={{ flex: 1, gap: wide ? 10 : 4 }}>
+    <View style={{ gap: wide ? 10 : 4 }}>
       {label(t('relief.field'))}
       <ReliefPicker compact reliefs={reliefs} value={reliefId} onChange={setReliefId} />
+      {suggested ? (
+        <View style={{ flexDirection: 'row' }}>
+          <Chip
+            compact
+            icon="sparkles"
+            label={t('relief.suggest', { name: suggested.name })}
+            accessibilityLabel={t('relief.suggest', { name: suggested.name })}
+            onPress={() => setReliefId(suggested.id)}
+          />
+        </View>
+      ) : null}
     </View>
   );
 
@@ -308,50 +332,54 @@ export default function AddExpense() {
     </AppText>
   );
 
+  // Field order: amount, note, category, paid with, date, receipt, tax relief.
   if (wide) {
     // Tablets: the amount leads, then cards, with the receipt growing into the space that is left and
     // the actions pinned at the bottom, so the form uses the whole screen without crowding.
-    // Landscape puts the receipt in its own column; portrait stacks it under the details.
+    // Landscape reads down the left column, then the right one (receipt, then tax relief).
     const landscape = width > height;
-    const details = (
-      <Card style={{ gap: 16 }}>
-        {dateField}
-        <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
-          {noteInput}
-          {reliefInput}
-        </View>
-        {claimField}
-      </Card>
-    );
-    const receipt = (
-      <Card style={{ flexGrow: 1 }}>
-        <ReceiptField fill uri={receiptUri} onChange={setReceiptUri} />
-      </Card>
-    );
+    const noteCard = <Card>{noteInput}</Card>;
     const choices = (
       <View style={{ flexDirection: landscape ? 'column' : 'row', gap: 16 }}>
         <Card style={{ flex: landscape ? undefined : 1 }}>{categoryField}</Card>
         <Card style={{ flex: landscape ? undefined : 1 }}>{methodField}</Card>
       </View>
     );
+    const dateCard = <Card>{dateField}</Card>;
+    const receipt = (
+      <Card style={{ flexGrow: 1 }}>
+        <ReceiptField fill uri={receiptUri} onChange={setReceiptUri} />
+      </Card>
+    );
+    const reliefCard = (
+      <Card style={{ gap: 16 }}>
+        {reliefInput}
+        {claimField}
+      </Card>
+    );
     return (
       <Screen footer={<View style={{ gap: 8 }}>{errorText}{actions}</View>}>
         {title}
-        {recentChips}
         {amountField}
         {landscape ? (
           <View style={{ flexDirection: 'row', gap: 16, flexGrow: 1 }}>
             <View style={{ flex: 1, gap: 16 }}>
+              {noteCard}
               {choices}
-              {details}
+              {dateCard}
             </View>
-            <View style={{ flex: 1 }}>{receipt}</View>
+            <View style={{ flex: 1, gap: 16 }}>
+              {receipt}
+              {reliefCard}
+            </View>
           </View>
         ) : (
           <>
+            {noteCard}
             {choices}
-            {details}
+            {dateCard}
             {receipt}
+            {reliefCard}
           </>
         )}
       </Screen>
@@ -361,17 +389,14 @@ export default function AddExpense() {
   return (
     <Screen compact>
       {title}
-      {recentChips}
       {amountField}
+      {noteInput}
       {categoryField}
       {methodField}
       {dateField}
-      <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}>
-        {noteInput}
-        {reliefInput}
-      </View>
-      {claimField}
       <ReceiptField compact uri={receiptUri} onChange={setReceiptUri} />
+      {reliefInput}
+      {claimField}
       {errorText}
       {actions}
     </Screen>
