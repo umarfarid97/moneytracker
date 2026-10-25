@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { Platform, View } from 'react-native';
+import { View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { t } from '@/i18n/t';
 import type { StringKey } from '@/i18n/en';
 import { fontFamily, radius } from '@/ui/theme';
@@ -18,6 +19,7 @@ const TABS: { name: string; label: StringKey; icon: IconName; active: IconName }
 
 export default function TabsLayout() {
   const { c, scheme } = useTheme();
+  const insets = useSafeAreaInsets();
   return (
     <Tabs
       screenOptions={{
@@ -38,9 +40,11 @@ export default function TabsLayout() {
           shadowRadius: 20,
           shadowOffset: { width: 0, height: -4 },
           elevation: 12,
+          // A fixed height that fits the 30px icon slot and its label, above the system navigation bar.
+          // Left to the default, Android tablets cut the labels off at the bottom.
+          height: 76 + insets.bottom,
           paddingTop: 6,
-          // Browser previews have no safe-area inset, so give the labels room.
-          ...(Platform.OS === 'web' ? { height: 70, paddingBottom: 10 } : null),
+          paddingBottom: 8 + insets.bottom,
         },
         sceneStyle: { backgroundColor: c.ground },
       }}

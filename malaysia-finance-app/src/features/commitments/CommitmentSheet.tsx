@@ -24,7 +24,8 @@ type Props = {
   existing: Commitment | null;
   onClose: () => void;
   onSave: (input: CommitmentInput) => Promise<void>;
-  onDelete?: () => Promise<void>;
+  /** Resolves false when the person backs out of deleting, which keeps the sheet open. */
+  onDelete?: () => Promise<boolean | void>;
 };
 
 const KINDS: CommitmentKind[] = ['bill', 'loan', 'subscription'];
@@ -55,12 +56,11 @@ export function CommitmentSheet({ visible, existing, onClose, onSave, onDelete }
   const day = /^\d{1,2}$/.test(dayText.trim()) ? Number(dayText) : NaN;
   const valid = name.trim() !== '' && amount !== null && amount > 0 && day >= 1 && day <= 31;
 
-  async function run(action: () => Promise<void>) {
+  async function run(action: () => Promise<boolean | void>) {
     setBusy(true);
     setError(null);
     try {
-      await action();
-      onClose();
+      if ((await action()) !== false) onClose();
     } catch {
       setError(t('common.saveFailed'));
     } finally {

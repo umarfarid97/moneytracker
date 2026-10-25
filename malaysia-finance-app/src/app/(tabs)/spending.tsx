@@ -19,6 +19,7 @@ import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Chip } from '@/ui/Chip';
+import { confirmDelete } from '@/ui/confirm';
 import { EmptyState } from '@/ui/EmptyState';
 import { HeroCard, onHero } from '@/ui/HeroCard';
 import { IconBadge } from '@/ui/IconBadge';
@@ -130,9 +131,16 @@ export default function Spending() {
   const open = useCallback((e: Expense) => {
     if (e.id > 0) router.push({ pathname: '/add-expense', params: { id: String(e.id) } });
   }, []);
-  const del = useCallback((e: Expense) => {
-    remove(e.id).catch(() => {});
-  }, [remove]);
+  const del = useCallback(async (e: Expense) => {
+    const name = e.note || categoryById.get(e.categoryId)?.name || '';
+    const ok = await confirmDelete(
+      t('confirm.deleteSpending'),
+      t('confirm.deleteSpendingBody', { name, amount: formatRM(e.amount) }),
+      t('common.delete'),
+      t('common.cancel'),
+    );
+    if (ok) remove(e.id).catch(() => {});
+  }, [remove, categoryById]);
   const set = (patch: Partial<SpendingFilters>) => setFilters((f) => ({ ...f, ...patch }));
 
   return (

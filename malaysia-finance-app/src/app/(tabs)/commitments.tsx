@@ -16,6 +16,7 @@ import { Button } from '@/ui/Button';
 import { EmptyState } from '@/ui/EmptyState';
 import { HeroCard, onHero } from '@/ui/HeroCard';
 import { IconBadge } from '@/ui/IconBadge';
+import { confirmDelete } from '@/ui/confirm';
 import { PressableScale } from '@/ui/PressableScale';
 import { Screen } from '@/ui/Screen';
 import { elevation, radius } from '@/ui/theme';
@@ -159,7 +160,14 @@ export default function Commitments() {
           if (sheet.editing) await update(applyBillChange(sheet.editing, { ...sheet.editing, ...input }, today));
           else await add(input);
         }}
-        onDelete={sheet.editing ? () => remove(sheet.editing!.id) : undefined}
+        onDelete={sheet.editing ? async () => {
+          const bill = sheet.editing!;
+          const ok = await confirmDelete(
+            t('confirm.deleteBill'), t('confirm.deleteBillBody', { name: bill.name }), t('common.delete'), t('common.cancel'),
+          );
+          if (ok) await remove(bill.id);
+          return ok;
+        } : undefined}
       />
       <MarkPaidSheet
         key={`pay-${pay.nonce}`}

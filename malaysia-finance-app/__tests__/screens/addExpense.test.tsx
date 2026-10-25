@@ -6,6 +6,7 @@ jest.mock('@/hooks/useToday', () => ({ useToday: () => '2026-10-24' }));
 jest.mock('@/receipts', () => ({ pickReceipt: jest.fn(), resolveReceiptUri: (u: string) => u }));
 const { pickReceipt } = jest.requireMock('@/receipts');
 const { router, useLocalSearchParams } = jest.requireMock('expo-router');
+const { confirmDelete } = jest.requireMock('@/ui/confirm');
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -107,5 +108,35 @@ describe('AddExpense (edit)', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Delete' }));
     await waitFor(() => expect(router.back).toHaveBeenCalledTimes(2));
     expect(await db.get('SELECT id FROM expenses WHERE id = 1')).toBeNull();
+  });
+});
+
+describe('AddExpense (safety and receipts)', () => {
+  test('deleting asks first, and Cancel keeps the spending', async () => {
+    const db = await freshDb();
+    await addExpenseRow(db, CAT.Makan, 1250, '2026-10-20', 'nasi lemak');
+    useLocalSearchParams.mockReturnValue({ id: '1' });
+    confirmDelete.mockResolvedValueOnce(false);
+    await renderWithData(db, <AddExpense />);
+    await waitFor(() => expect(screen.getByLabelText('Amount').props.value).toBe('12.50'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(confirmDelete).toHaveBeenCalledWith(
+      'Delete this spending?', 'nasi lemak, RM 12.50, will be removed. This cannot be undone.', 'Delete', 'Cancel',
+    ));
+    expect(router.back).not.toHaveBeenCalled();
+    expect(await db.get('SELECT id FROM expenses WHERE id = 1')).not.toBeNull();
+  });
+
+  test('an attached receipt opens full screen and closes again', async () => {
+    pickReceipt.mockResolvedValue('file:///docs/receipts/r1.jpg');
+    const db = await freshDb();
+    await renderWithData(db, <AddExpense />);
+    await waitFor(() => expect(screen.getByLabelText('Amount')).toBeTruthy());
+    await fireEvent.press(screen.getByRole('button', { name: 'Choose photo' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'View receipt' })).toBeTruthy());
+    await fireEvent.press(screen.getByRole('button', { name: 'View receipt' }));
+    expect(screen.getByLabelText('Receipt, full screen')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.queryByLabelText('Receipt, full screen')).toBeNull();
   });
 });

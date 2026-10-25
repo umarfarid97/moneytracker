@@ -49,3 +49,5 @@ jest.mock('@react-native-community/datetimepicker', () => {
     DateTimePickerAndroid: { open: jest.fn() },
   };
 });
+// Delete confirmations answer "Delete" unless a test says otherwise.
+jest.mock('@/ui/confirm', () => ({ confirmDelete: jest.fn(() => Promise.resolve(true)) }));

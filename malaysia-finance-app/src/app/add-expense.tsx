@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, TextInput, View } from 'react-native';
 import { resolveTaxData } from '@/data/tax';
 import { addDays, isValidDate } from '@/domain/dates';
-import { parseRM, senToInput } from '@/domain/money';
+import { formatRM, parseRM, senToInput } from '@/domain/money';
 import { suggestRelief } from '@/domain/reliefSpending';
 import { recentTemplates } from '@/domain/spendingFilter';
 import { budgetAlert } from '@/domain/summary';
@@ -19,6 +19,7 @@ import { AmountInput } from '@/ui/AmountInput';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { Chip } from '@/ui/Chip';
+import { confirmDelete } from '@/ui/confirm';
 import { DateField } from '@/ui/DateField';
 import { ReceiptField } from '@/ui/ReceiptField';
 import { ReliefPicker } from '@/ui/ReliefPicker';
@@ -113,6 +114,13 @@ export default function AddExpense() {
 
   async function del() {
     if (!existing || busy) return;
+    const ok = await confirmDelete(
+      t('confirm.deleteSpending'),
+      t('confirm.deleteSpendingBody', { name: existing.note || categoryName, amount: formatRM(existing.amount) }),
+      t('common.delete'),
+      t('common.cancel'),
+    );
+    if (!ok) return;
     setBusy(true);
     try {
       await remove(existing.id);
