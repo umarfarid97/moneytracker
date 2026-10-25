@@ -8,7 +8,7 @@ const { router } = jest.requireMock('expo-router');
 beforeEach(() => jest.clearAllMocks());
 
 describe('More tab', () => {
-  test('links to the profile, budget and both calculators', async () => {
+  test('links to the profile, budget, both calculators and backup', async () => {
     const db = await freshDb();
     await renderWithData(db, <More />);
     await waitFor(() => expect(screen.getByText('Income profile')).toBeTruthy());
@@ -19,6 +19,7 @@ describe('More tab', () => {
       ['Payment methods', '/payment-methods'],
       ['Tax calculator', '/tax-calculator'],
       ['Loan calculator', '/loan-calculator'],
+      ['Backup & sync', '/backup'],
     ] as const) {
       await fireEvent.press(screen.getByText(label));
       expect(router.push).toHaveBeenLastCalledWith(path);

@@ -10,6 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BillsSync } from '@/features/commitments/BillsSync';
 import { RemindersSync } from '@/features/commitments/RemindersSync';
 import { DataProvider } from '@/hooks/DataProvider';
+import { SyncProvider } from '@/sync/SyncProvider';
 import { useTheme } from '@/ui/useTheme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -30,10 +31,12 @@ export default function RootLayout() {
           <BillsSync />
           <RemindersSync />
           <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.ground } }}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="add-expense" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
-          </Stack>
+          <SyncProvider>
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.ground } }}>
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="add-expense" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+            </Stack>
+          </SyncProvider>
         </DataProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
