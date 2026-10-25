@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Platform, Pressable, TextInput, View } from 'react-native';
+import { FlatList, Pressable, TextInput, View } from 'react-native';
 import { LATEST_TAX_YEAR } from '@/data/tax';
 import { dayLabel, monthKey, monthLabel, shiftMonth } from '@/domain/dates';
 import { formatRM } from '@/domain/money';
@@ -26,7 +26,7 @@ import { IconBadge } from '@/ui/IconBadge';
 import { Screen } from '@/ui/Screen';
 import { Sheet } from '@/ui/Sheet';
 import { SwipeRow } from '@/ui/SwipeRow';
-import { categoryLook, categoryTint, controlHeight, elevation, fontFamily, radius, statusStyle } from '@/ui/theme';
+import { categoryLook, categoryTint, controlHeight, elevation, fontFamily, radius, space, statusStyle } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
 type Item =
@@ -154,17 +154,43 @@ export default function Spending() {
   }, [remove, categoryById]);
   const set = (patch: Partial<SpendingFilters>) => setFilters((f) => ({ ...f, ...patch }));
 
+  // Stable, so scrolling and typing in search don't re-render rows that haven't changed.
+  const renderItem = useCallback(
+    ({ item }: { item: Item }) =>
+      item.type === 'header' ? (
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingHorizontal: 4 }}>
+          <AppText variant="eyebrow" tone="muted">
+            {item.label}
+          </AppText>
+          <AppText variant="smallStrong" tone="muted">
+            {formatRM(item.total)}
+          </AppText>
+        </View>
+      ) : (
+        <Row
+          expense={item.expense}
+          category={categoryById.get(item.expense.categoryId)}
+          methodName={item.expense.paymentMethodId === null ? null : methodById.get(item.expense.paymentMethodId) ?? null}
+          onOpen={open}
+          onDelete={del}
+        />
+      ),
+    [categoryById, methodById, open, del],
+  );
+
   return (
     <Screen scroll={false} fab>
       <FlatList
         data={items}
         keyExtractor={(item) => item.key}
-        // Long months stay smooth: draw a screenful first and drop rows far off screen.
+        // Long months stay smooth: draw a screenful first, then render ahead in small batches so fast
+        // scrolling doesn't outrun the list. Rows aren't detached when off screen: on Android that left
+        // blank, cut-off rows at the bottom while scrolling.
         initialNumToRender={12}
-        maxToRenderPerBatch={10}
-        windowSize={7}
-        removeClippedSubviews={Platform.OS === 'android'}
-        contentContainerStyle={{ gap: 8, paddingBottom: 100 }}
+        maxToRenderPerBatch={8}
+        updateCellsBatchingPeriod={30}
+        windowSize={15}
+        contentContainerStyle={{ gap: 8, paddingHorizontal: space.pad, paddingBottom: 48 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
@@ -276,26 +302,7 @@ export default function Spending() {
             text={narrowed && inMonth.length > 0 ? t('spending.noMatch') : t('expense.none')}
           />
         }
-        renderItem={({ item }) =>
-          item.type === 'header' ? (
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingHorizontal: 4 }}>
-              <AppText variant="eyebrow" tone="muted">
-                {item.label}
-              </AppText>
-              <AppText variant="smallStrong" tone="muted">
-                {formatRM(item.total)}
-              </AppText>
-            </View>
-          ) : (
-            <Row
-              expense={item.expense}
-              category={categoryById.get(item.expense.categoryId)}
-              methodName={item.expense.paymentMethodId === null ? null : methodById.get(item.expense.paymentMethodId) ?? null}
-              onOpen={open}
-              onDelete={del}
-            />
-          )
-        }
+        renderItem={renderItem}
       />
 
       <Sheet visible={filtersOpen} title={t('spending.filters')} onClose={() => setFiltersOpen(false)}>

@@ -7,7 +7,10 @@ import { useTheme } from './useTheme';
 
 type Props = {
   children: ReactNode;
-  /** Scrolls the content. Pass false when the content is its own list. */
+  /**
+   * Scrolls the content. Pass false when the content is its own list: the list then runs to the bottom edge
+   * and supplies its own side and bottom padding, so rows aren't cut off above the tab bar.
+   */
   scroll?: boolean;
   /** Leaves room at the bottom for the tab bar's raised + button. */
   fab?: boolean;
@@ -48,7 +51,7 @@ export function Screen({ children, scroll = true, fab = false, compact = false, 
             {children}
           </ScrollView>
         ) : (
-          <View style={[{ flex: 1 }, content]}>{children}</View>
+          <View style={{ flex: 1, paddingTop: pad }}>{children}</View>
         )}
         {footer ? (
           <SafeAreaView edges={['bottom']} style={{ paddingHorizontal: pad, paddingTop: 12, paddingBottom: pad, borderTopWidth: 1, borderTopColor: c.border, backgroundColor: c.ground }}>
