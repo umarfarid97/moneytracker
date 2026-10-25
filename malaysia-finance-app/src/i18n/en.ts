@@ -36,6 +36,7 @@ export const en = {
   'spending.badge.relief': 'Tax relief',
   'spending.prevMonth': 'Previous month',
   'spending.nextMonth': 'Next month',
+  'spending.allCategories': 'Showing {name} only. Show all categories',
   'expense.today': 'Today',
   'expense.yesterday': 'Yesterday',
   'common.saveFailed': 'Could not save. Please try again.',

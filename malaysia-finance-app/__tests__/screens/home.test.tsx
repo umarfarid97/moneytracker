@@ -52,6 +52,19 @@ describe('Home', () => {
     expect(router.push).toHaveBeenCalledWith('/budget');
   });
 
+  test('tapping a budget tile opens that category\'s spending', async () => {
+    const db = await freshDb();
+    await setBudgetRow(db, CAT.Makan, '2026-10', 60000);
+    await renderWithData(db, <Home />);
+    await waitFor(() => expect(screen.getByText('RM 600.00 left')).toBeTruthy());
+    await fireEvent.press(screen.getByText('RM 600.00 left'));
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/spending',
+      params: expect.objectContaining({ categoryId: String(CAT.Makan) }),
+    });
+    expect(router.push).not.toHaveBeenCalledWith('/budget');
+  });
+
   test('shows RM 0.00 when nothing was spent today', async () => {
     const db = await freshDb();
     await renderWithData(db, <Home />);

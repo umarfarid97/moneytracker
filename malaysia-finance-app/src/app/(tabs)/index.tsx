@@ -72,7 +72,9 @@ export default function Home() {
                       ? t('home.left', { amount: formatRM(tile.left) })
                       : t('home.over', { amount: formatRM(-tile.left) })
                   }
-                  onPress={() => router.push('/budget')}
+                  onPress={() =>
+                    router.push({ pathname: '/spending', params: { categoryId: String(tile.categoryId), at: String(Date.now()) } })
+                  }
                 />
               </View>
             ))}

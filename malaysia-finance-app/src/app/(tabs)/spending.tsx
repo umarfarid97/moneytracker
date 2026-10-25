@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { memo, useCallback, useMemo, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Platform, Pressable, TextInput, View } from 'react-native';
 import { LATEST_TAX_YEAR } from '@/data/tax';
 import { dayLabel, monthKey, monthLabel, shiftMonth } from '@/domain/dates';
@@ -105,6 +105,15 @@ export default function Spending() {
   const [month, setMonth] = useState(thisMonth);
   const [filters, setFilters] = useState<SpendingFilters>(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // A Home tile opens this tab on that category's spending for this month.
+  // `at` changes on every tap, so tapping the same tile again re-applies it.
+  const params = useLocalSearchParams<{ categoryId?: string; at?: string }>();
+  useEffect(() => {
+    const id = Number(params.categoryId);
+    if (!params.categoryId || !Number.isFinite(id)) return;
+    setFilters({ ...EMPTY_FILTERS, categoryId: id });
+    setMonth(thisMonth);
+  }, [params.categoryId, params.at]);
   const { data: expenses, remove } = useExpenses();
   const { data: categories } = useCategories();
   const { data: methods } = usePaymentMethods();
@@ -123,6 +132,7 @@ export default function Spending() {
     [visible, today],
   );
   const categoryById = useMemo(() => new Map(categories.map((cat) => [cat.id, cat])), [categories]);
+  const filterCategory = filters.categoryId !== null ? categoryById.get(filters.categoryId) : undefined;
   const methodById = useMemo(() => new Map(methods.map((m) => [m.id, m.name])), [methods]);
   const methodTotals = useMemo(() => totalsByMethod(inMonth, methods, t('methods.noMethod')), [inMonth, methods]);
   const filterCount = activeFilterCount(filters);
@@ -239,6 +249,19 @@ export default function Spending() {
                 />
               </View>
             </View>
+            {filterCategory ? (
+              <View style={{ flexDirection: 'row' }}>
+                <Chip
+                  compact
+                  selected
+                  icon="close-circle"
+                  color={categoryLook(filterCategory.name).color}
+                  label={filterCategory.name}
+                  accessibilityLabel={t('spending.allCategories', { name: filterCategory.name })}
+                  onPress={() => set({ categoryId: null })}
+                />
+              </View>
+            ) : null}
             {narrowed && inMonth.length > 0 ? (
               <AppText variant="small" tone="muted">
                 {t('spending.showing', { count: visible.length, total: inMonth.length })}

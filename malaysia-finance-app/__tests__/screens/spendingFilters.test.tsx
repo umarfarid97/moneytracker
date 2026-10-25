@@ -95,3 +95,22 @@ describe('Spending: row details', () => {
     expect(screen.getAllByText('Credit card').length).toBeGreaterThan(0);
   });
 });
+
+describe('Spending: opened from a Home tile', () => {
+  const { useLocalSearchParams } = jest.requireMock('expo-router');
+  afterEach(() => useLocalSearchParams.mockImplementation(() => ({})));
+
+  test('shows only that category this month, and the chip clears it', async () => {
+    useLocalSearchParams.mockImplementation(() => ({ categoryId: '6', at: '1' }));
+    const db = await freshDb();
+    await row(db, { amount: 1250, note: 'Nasi lemak' });
+    await row(db, { amount: 8500, cat: 6, note: 'Klinik Dr Ali' });
+    await row(db, { amount: 3000, cat: 6, note: 'Klinik last month', date: '2026-09-20' });
+    await renderWithData(db, <Spending />);
+    await waitFor(() => expect(screen.getByText('Klinik Dr Ali')).toBeTruthy());
+    expect(shown()).toEqual(['Klinik Dr Ali']);
+    expect(screen.getByRole('button', { name: 'Filters (1)' })).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Showing Kesihatan only. Show all categories' }));
+    expect(shown().sort()).toEqual(['Klinik Dr Ali', 'Nasi lemak']);
+  });
+});
