@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
@@ -8,11 +9,12 @@ import { useTaxYear } from '@/hooks/useTaxYear';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
-import { Card } from '@/ui/Card';
+import { HeroCard, onHero } from '@/ui/HeroCard';
+import { IconBadge } from '@/ui/IconBadge';
 import { Chip } from '@/ui/Chip';
 import { ProgressBar } from '@/ui/ProgressBar';
 import { Screen } from '@/ui/Screen';
-import { radius, statusStyle } from '@/ui/theme';
+import { elevation, radius, statusStyle } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
 export default function Tax() {
@@ -41,14 +43,14 @@ export default function Tax() {
           </AppText>
         ) : null}
       </View>
-      <Card style={{ gap: 4 }}>
-        <AppText variant="small" tone="muted">
+      <HeroCard hero="sunset" style={{ gap: 6 }}>
+        <AppText variant="eyebrow" color={onHero.soft}>
           {t('tax.totalRelief')}
         </AppText>
-        <AppText testID="total-relief" variant="kpi">
+        <AppText testID="total-relief" variant="kpi" color={onHero.ink} style={{ fontSize: 40, lineHeight: 48 }}>
           {formatRM(automatic + summary.total)}
         </AppText>
-      </Card>
+      </HeroCard>
       <Button title={t('taxCalc.title')} onPress={() => router.push('/tax-calculator')} />
       <Button title={t('pack.title')} variant="secondary" onPress={() => router.push('/tax-pack')} />
 
@@ -56,14 +58,17 @@ export default function Tax() {
         {data.automaticReliefs.map((r) => (
           <View
             key={r.id}
-            style={{ backgroundColor: c.surface, borderRadius: radius.control, padding: 16, gap: 4 }}
+            style={[{ backgroundColor: c.surface, borderRadius: radius.control + 2, padding: 14, gap: 12, flexDirection: 'row', alignItems: 'center' }, elevation(scheme)]}
           >
-            <AppText variant="bodyStrong">{r.name}</AppText>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <AppText variant="small" tone="muted">
-                {t('tax.automatic')}
-              </AppText>
-              <AppText variant="smallStrong">{formatRM(r.amount)}</AppText>
+            <IconBadge icon="checkmark" color="#16a34a" size={36} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <AppText variant="bodyStrong">{r.name}</AppText>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <AppText variant="small" tone="muted">
+                  {t('tax.automatic')}
+                </AppText>
+                <AppText variant="smallStrong">{formatRM(r.amount)}</AppText>
+              </View>
             </View>
           </View>
         ))}
@@ -76,9 +81,12 @@ export default function Tax() {
               key={def.id}
               accessibilityRole="button"
               onPress={() => router.push({ pathname: '/relief/[id]', params: { id: def.id } })}
-              style={{ backgroundColor: c.surface, borderRadius: radius.control, padding: 16, gap: 8 }}
+              style={[{ backgroundColor: c.surface, borderRadius: radius.control + 2, padding: 16, gap: 8 }, elevation(scheme)]}
             >
-              <AppText variant="bodyStrong">{def.name}</AppText>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <AppText variant="bodyStrong" style={{ flex: 1 }}>{def.name}</AppText>
+                <Ionicons name="chevron-forward" size={18} color={c.muted} />
+              </View>
               <AppText variant="small" tone="muted">
                 {entry
                   ? t('tax.claimedOf', { claimed: formatRM(entry.allowed), limit: formatRM(def.limit) })

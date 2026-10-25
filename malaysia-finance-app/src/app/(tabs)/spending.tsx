@@ -19,10 +19,13 @@ import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Chip } from '@/ui/Chip';
+import { EmptyState } from '@/ui/EmptyState';
+import { HeroCard, onHero } from '@/ui/HeroCard';
+import { IconBadge } from '@/ui/IconBadge';
 import { Screen } from '@/ui/Screen';
 import { Sheet } from '@/ui/Sheet';
 import { SwipeRow } from '@/ui/SwipeRow';
-import { categoryTint, controlHeight, fontFamily, radius, statusStyle } from '@/ui/theme';
+import { categoryLook, categoryTint, controlHeight, elevation, fontFamily, radius, statusStyle } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
 type Item =
@@ -43,6 +46,7 @@ const Row = memo(function Row({
   const { c, scheme } = useTheme();
   const name = category?.name ?? '';
   const tint = categoryTint(name, scheme);
+  const look = categoryLook(name);
   const accent = { bg: c.accentSoft, ink: c.accentInk };
   const warn = statusStyle('tight', scheme);
   const tagged = expense.reliefId !== null;
@@ -62,15 +66,16 @@ const Row = memo(function Row({
         style={{
           // The rounded corners come from SwipeRow, so the hidden Delete action never shows at the edges.
           backgroundColor: c.surface,
-          paddingHorizontal: 16,
+          paddingHorizontal: 14,
           paddingVertical: 12,
-          minHeight: 64,
+          minHeight: 68,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 12,
         }}
       >
+        <IconBadge icon={look.icon} color={look.color} size={42} />
         <View style={{ flex: 1, gap: 6 }}>
           <AppText testID="spending-note" variant="bodyStrong" numberOfLines={1}>
             {expense.note || name}
@@ -93,7 +98,7 @@ const Row = memo(function Row({
 });
 
 export default function Spending() {
-  const { c } = useTheme();
+  const { c, scheme } = useTheme();
   const today = useToday();
   const thisMonth = monthKey(today);
   const [month, setMonth] = useState(thisMonth);
@@ -140,7 +145,7 @@ export default function Spending() {
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <View style={{ gap: 12, marginBottom: 8 }}>
-            <Card style={{ gap: 4 }}>
+            <HeroCard hero="ocean" style={{ gap: 10 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Pressable
                   accessibilityRole="button"
@@ -148,9 +153,9 @@ export default function Spending() {
                   hitSlop={12}
                   onPress={() => setMonth((m) => shiftMonth(m, -1))}
                 >
-                  <Ionicons name="chevron-back" size={24} color={c.text} />
+                  <Ionicons name="chevron-back" size={24} color={onHero.ink} />
                 </Pressable>
-                <AppText variant="section">{monthLabel(month)}</AppText>
+                <AppText variant="section" color={onHero.ink}>{monthLabel(month)}</AppText>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={t('spending.nextMonth')}
@@ -160,17 +165,19 @@ export default function Spending() {
                   onPress={() => setMonth((m) => shiftMonth(m, 1))}
                   style={{ opacity: month >= thisMonth ? 0.3 : 1 }}
                 >
-                  <Ionicons name="chevron-forward" size={24} color={c.text} />
+                  <Ionicons name="chevron-forward" size={24} color={onHero.ink} />
                 </Pressable>
               </View>
-              <AppText variant="bodyStrong" tone="muted" style={{ textAlign: 'center' }}>
-                {t('spending.monthTotal', { amount: formatRM(monthSpent(expenses, month)) })}
-              </AppText>
-            </Card>
+              <View style={{ alignSelf: 'center', backgroundColor: onHero.chip, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 6 }}>
+                <AppText variant="bodyStrong" color={onHero.ink} style={{ textAlign: 'center' }}>
+                  {t('spending.monthTotal', { amount: formatRM(monthSpent(expenses, month)) })}
+                </AppText>
+              </View>
+            </HeroCard>
 
             {methodTotals.length > 0 ? (
               <Card style={{ gap: 8 }}>
-                <AppText variant="smallStrong" tone="muted">
+                <AppText variant="eyebrow" tone="muted">
                   {t('spending.byMethod')}
                 </AppText>
                 {methodTotals.map((m) => (
@@ -185,6 +192,13 @@ export default function Spending() {
             ) : null}
 
             <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+              <View
+                style={[
+                  { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8, height: controlHeight, borderRadius: radius.control, backgroundColor: c.surface, paddingLeft: 14 },
+                  elevation(scheme),
+                ]}
+              >
+              <Ionicons name="search" size={18} color={c.muted} />
               <TextInput
                 accessibilityLabel={t('spending.search')}
                 value={filters.text}
@@ -196,14 +210,14 @@ export default function Spending() {
                   flex: 1,
                   minWidth: 0,
                   height: controlHeight,
-                  borderRadius: radius.control,
-                  backgroundColor: c.track,
-                  paddingHorizontal: 14,
+                  paddingRight: 14,
                   color: c.text,
                   fontFamily: fontFamily.medium,
                   fontSize: 16,
+                  outlineWidth: 0,
                 }}
               />
+              </View>
               <View style={{ flexShrink: 0 }}>
                 <Button
                   title={filterCount > 0 ? t('spending.filtersCount', { count: filterCount }) : t('spending.filters')}
@@ -220,14 +234,15 @@ export default function Spending() {
           </View>
         }
         ListEmptyComponent={
-          <AppText variant="body" tone="muted" style={{ textAlign: 'center', marginTop: 24 }}>
-            {narrowed && inMonth.length > 0 ? t('spending.noMatch') : t('expense.none')}
-          </AppText>
+          <EmptyState
+            icon={narrowed && inMonth.length > 0 ? 'search' : 'receipt-outline'}
+            text={narrowed && inMonth.length > 0 ? t('spending.noMatch') : t('expense.none')}
+          />
         }
         renderItem={({ item }) =>
           item.type === 'header' ? (
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-              <AppText variant="smallStrong" tone="muted">
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingHorizontal: 4 }}>
+              <AppText variant="eyebrow" tone="muted">
                 {item.label}
               </AppText>
               <AppText variant="smallStrong" tone="muted">
@@ -260,6 +275,8 @@ export default function Spending() {
               <Chip
                 key={cat.id}
                 label={cat.name}
+                icon={categoryLook(cat.name).icon}
+                color={categoryLook(cat.name).color}
                 accessibilityLabel={`Filter category ${cat.name}`}
                 selected={filters.categoryId === cat.id}
                 onPress={() => set({ categoryId: cat.id })}

@@ -1,22 +1,25 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { t } from '@/i18n/t';
 import type { StringKey } from '@/i18n/en';
 import { APPEARANCES, setAppearance, useAppearance } from '@/ui/appearance';
 import { AppText } from '@/ui/AppText';
+import { Card } from '@/ui/Card';
 import { Chip } from '@/ui/Chip';
+import { IconBadge } from '@/ui/IconBadge';
 import { Screen } from '@/ui/Screen';
-import { radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
-const ITEMS: { label: StringKey; path: '/profile' | '/budget' | '/categories' | '/payment-methods' | '/tax-calculator' | '/loan-calculator' }[] = [
-  { label: 'more.profile', path: '/profile' },
-  { label: 'more.budget', path: '/budget' },
-  { label: 'more.categories', path: '/categories' },
-  { label: 'more.methods', path: '/payment-methods' },
-  { label: 'more.taxCalc', path: '/tax-calculator' },
-  { label: 'more.loan', path: '/loan-calculator' },
+type Path = '/profile' | '/budget' | '/categories' | '/payment-methods' | '/tax-calculator' | '/loan-calculator';
+
+const ITEMS: { label: StringKey; path: Path; icon: keyof typeof Ionicons.glyphMap; color: string }[] = [
+  { label: 'more.profile', path: '/profile', icon: 'person', color: '#4f46e5' },
+  { label: 'more.budget', path: '/budget', icon: 'pie-chart', color: '#16a34a' },
+  { label: 'more.categories', path: '/categories', icon: 'pricetags', color: '#ea580c' },
+  { label: 'more.methods', path: '/payment-methods', icon: 'card', color: '#0284c7' },
+  { label: 'more.taxCalc', path: '/tax-calculator', icon: 'calculator', color: '#db2777' },
+  { label: 'more.loan', path: '/loan-calculator', icon: 'home', color: '#7c3aed' },
 ];
 
 export default function More() {
@@ -25,27 +28,30 @@ export default function More() {
   return (
     <Screen fab>
       <AppText variant="title">{t('tab.more')}</AppText>
-      <View style={{ gap: 8 }}>
-        {ITEMS.map((item) => (
+      {/* One grouped list, like iOS Settings: coloured icons with hairlines between rows. */}
+      <Card style={{ padding: 0, paddingHorizontal: 14 }}>
+        {ITEMS.map((item, i) => (
           <Pressable
             key={item.path}
             accessibilityRole="button"
             onPress={() => router.push(item.path)}
             style={{
-              backgroundColor: c.surface,
-              borderRadius: radius.control,
-              paddingHorizontal: 16,
               minHeight: 60,
               flexDirection: 'row',
               alignItems: 'center',
-              justifyContent: 'space-between',
+              gap: 14,
+              borderTopWidth: i === 0 ? 0 : StyleSheet.hairlineWidth,
+              borderTopColor: c.border,
             }}
           >
-            <AppText variant="bodyStrong">{t(item.label)}</AppText>
+            <IconBadge icon={item.icon} color={item.color} size={34} />
+            <AppText variant="bodyStrong" style={{ flex: 1 }}>
+              {t(item.label)}
+            </AppText>
             <Ionicons name="chevron-forward" size={20} color={c.muted} />
           </Pressable>
         ))}
-      </View>
+      </Card>
       <View style={{ gap: 8 }}>
         <AppText variant="section">{t('more.appearance')}</AppText>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>

@@ -3,7 +3,7 @@ import { Pressable, View } from 'react-native';
 import { applyBillChange, billStatus, paidDueDatesFor, type BillState, type BillStatus } from '@/domain/bills';
 import { monthlyCommitmentTotal } from '@/domain/commitments';
 import { formatRM } from '@/domain/money';
-import type { Commitment } from '@/domain/types';
+import type { Commitment, CommitmentKind } from '@/domain/types';
 import { CommitmentSheet } from '@/features/commitments/CommitmentSheet';
 import { MarkPaidSheet } from '@/features/commitments/MarkPaidSheet';
 import { useData } from '@/hooks/DataProvider';
@@ -13,11 +13,19 @@ import { useToday } from '@/hooks/useToday';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
-import { Card } from '@/ui/Card';
+import { EmptyState } from '@/ui/EmptyState';
+import { HeroCard, onHero } from '@/ui/HeroCard';
+import { IconBadge } from '@/ui/IconBadge';
 import { PressableScale } from '@/ui/PressableScale';
 import { Screen } from '@/ui/Screen';
-import { radius } from '@/ui/theme';
+import { elevation, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
+
+const KIND_LOOK: Record<CommitmentKind, { icon: 'flash' | 'business' | 'repeat'; color: string }> = {
+  bill: { icon: 'flash', color: '#d97706' },
+  loan: { icon: 'business', color: '#4f46e5' },
+  subscription: { icon: 'repeat', color: '#db2777' },
+};
 
 const RANK: Record<BillState, number> = { overdue: 0, due: 1, upcoming: 2, paid: 3, paused: 4 };
 
@@ -40,7 +48,7 @@ type SheetState = { open: boolean; editing: Commitment | null; nonce: number };
 type PaySheet = { open: boolean; bill: Commitment | null; dueDate: string; nonce: number };
 
 export default function Commitments() {
-  const { c } = useTheme();
+  const { c, scheme } = useTheme();
   const today = useToday();
   const { payBill } = useData();
   const { data, add, update, remove } = useCommitments();
@@ -71,19 +79,17 @@ export default function Commitments() {
   return (
     <Screen fab>
       <AppText variant="title">{t('commitments.title')}</AppText>
-      <Card style={{ gap: 4 }}>
-        <AppText variant="small" tone="muted">
+      <HeroCard hero="mint" style={{ gap: 6 }}>
+        <AppText variant="eyebrow" color={onHero.soft}>
           {t('commitments.total')}
         </AppText>
-        <AppText testID="commitments-total" variant="kpi">
+        <AppText testID="commitments-total" variant="kpi" color={onHero.ink} style={{ fontSize: 40, lineHeight: 48 }}>
           {formatRM(monthlyCommitmentTotal(data))}
         </AppText>
-      </Card>
+      </HeroCard>
       <Button title={t('commitments.add')} onPress={() => openSheet(null)} />
       {rows.length === 0 ? (
-        <AppText variant="body" tone="muted" style={{ textAlign: 'center', marginTop: 16 }}>
-          {t('commitments.none')}
-        </AppText>
+        <EmptyState icon="calendar-outline" text={t('commitments.none')} />
       ) : (
         <View style={{ gap: 8 }}>
           {rows.map(({ item, status }) => {
@@ -92,10 +98,10 @@ export default function Commitments() {
             return (
               <View
                 key={item.id}
-                style={{
+                style={[{
                   backgroundColor: c.surface,
-                  borderRadius: radius.control,
-                  paddingHorizontal: 16,
+                  borderRadius: radius.control + 2,
+                  paddingHorizontal: 14,
                   paddingVertical: 12,
                   minHeight: 68,
                   flexDirection: 'row',
@@ -103,8 +109,9 @@ export default function Commitments() {
                   justifyContent: 'space-between',
                   gap: 12,
                   opacity: item.active ? 1 : 0.6,
-                }}
+                }, elevation(scheme)]}
               >
+                <IconBadge icon={KIND_LOOK[item.kind].icon} color={KIND_LOOK[item.kind].color} size={42} />
                 {/* The row and the Mark paid action are siblings: buttons must not be nested. */}
                 <Pressable
                   accessibilityRole="button"
@@ -126,9 +133,9 @@ export default function Commitments() {
                       accessibilityLabel={`${t('commitments.markPaid')} ${item.name}`}
                       hitSlop={8}
                       onPress={() => openPay(item, status.dueDate)}
-                      style={{ paddingVertical: 4 }}
+                      style={{ backgroundColor: c.accentSoft, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 4, marginTop: 2 }}
                     >
-                      <AppText variant="bodyStrong" color={c.accent}>
+                      <AppText variant="smallStrong" color={c.accentInk}>
                         {t('commitments.markPaid')}
                       </AppText>
                     </PressableScale>
