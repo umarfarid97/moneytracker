@@ -48,7 +48,7 @@ export default function More() {
             <AppText variant="bodyStrong" style={{ flex: 1 }}>
               {t(item.label)}
             </AppText>
-            <Ionicons name="chevron-forward" size={20} color={c.muted} />
+            <Ionicons name="chevron-forward" size={20} color={c.accent} />
           </Pressable>
         ))}
       </Card>

@@ -1,18 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View } from 'react-native';
+import { useTheme } from './useTheme';
 
-type Props = { icon: keyof typeof Ionicons.glyphMap; color: string; size?: number };
+type Props = {
+  icon: keyof typeof Ionicons.glyphMap;
+  /** Kept for callers; icons are drawn in plain ink, like the rest of the line icons. */
+  color?: string;
+  size?: number;
+};
 
-/** iOS Settings-style rounded square: a white icon on a softly graded colour. */
-export function IconBadge({ icon, color, size = 40 }: Props) {
+/** A plain line icon in the text colour, in a square slot of `size`. Filled names are drawn as their outline. */
+export function IconBadge({ icon, size = 40 }: Props) {
+  const { c } = useTheme();
+  const outline = `${String(icon).replace(/-outline$/, '')}-outline`;
+  const glyphs = Ionicons.glyphMap ?? {};
+  const name = (outline in glyphs ? outline : icon) as keyof typeof Ionicons.glyphMap;
   return (
-    <LinearGradient
-      colors={[`${color}cc`, color]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={{ width: size, height: size, borderRadius: size * 0.3, alignItems: 'center', justifyContent: 'center' }}
-    >
-      <Ionicons name={icon} size={Math.round(size * 0.52)} color="#ffffff" />
-    </LinearGradient>
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Ionicons name={name} size={Math.round(size * 0.62)} color={c.text} />
+    </View>
   );
 }

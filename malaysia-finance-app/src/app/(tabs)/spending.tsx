@@ -92,7 +92,8 @@ const Row = memo(function Row({
             {needsReceipt ? pill(warn, t('tax.missingReceipt')) : null}
           </View>
         </View>
-        <AppText variant="bodyStrong">{formatRM(expense.amount)}</AppText>
+        {/* Money out, in red-orange like the reference design. */}
+        <AppText variant="bodyStrong" tone="negative">{formatRM(expense.amount)}</AppText>
       </Pressable>
     </SwipeRow>
   );

@@ -85,7 +85,7 @@ export default function Tax() {
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <AppText variant="bodyStrong" style={{ flex: 1 }}>{def.name}</AppText>
-                <Ionicons name="chevron-forward" size={18} color={c.muted} />
+                <Ionicons name="chevron-forward" size={18} color={c.accent} />
               </View>
               <AppText variant="small" tone="muted">
                 {entry

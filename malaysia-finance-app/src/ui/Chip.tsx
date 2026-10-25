@@ -1,8 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
 import { AppText } from './AppText';
 import { PressableScale } from './PressableScale';
-import { glow, radius } from './theme';
+import { radius } from './theme';
 import { useTheme } from './useTheme';
 
 type Props = {
@@ -18,7 +17,7 @@ type Props = {
 };
 
 export function Chip({ label, selected = false, onPress, accessibilityLabel, compact = false, icon, color }: Props) {
-  const { c, scheme } = useTheme();
+  const { c } = useTheme();
   const tone = color ?? c.accent;
   const ink = selected ? (color ? '#ffffff' : c.onAccent) : c.text;
   return (
@@ -42,11 +41,9 @@ export function Chip({ label, selected = false, onPress, accessibilityLabel, com
           borderWidth: 1,
           borderColor: selected ? tone : c.border,
         },
-        // No shadow on Android: rows of chips each casting one cost more than they add there.
-        selected && Platform.OS !== 'android' ? { ...glow(tone, scheme), shadowOpacity: scheme === 'dark' ? 0 : 0.25, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } } : null,
       ]}
     >
-      {icon ? <Ionicons name={icon} size={compact ? 15 : 16} color={selected ? ink : tone} /> : null}
+      {icon ? <Ionicons name={icon} size={compact ? 15 : 16} color={selected ? ink : c.text} /> : null}
       <AppText variant="smallStrong" color={ink}>
         {label}
       </AppText>
