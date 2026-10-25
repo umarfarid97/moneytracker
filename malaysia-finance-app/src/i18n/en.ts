@@ -213,6 +213,10 @@ export const en = {
   'more.budget': 'Budget',
   'more.taxCalc': 'Tax calculator',
   'more.loan': 'Loan calculator',
+  'more.appearance': 'Appearance',
+  'more.appearance.light': 'Light',
+  'more.appearance.dark': 'Dark',
+  'more.appearance.system': 'Match device',
 } as const;
 
 export type StringKey = keyof typeof en;
