@@ -57,7 +57,7 @@ export default function Home() {
           </View>
         )}
       </HeroCard>
-      {home.hasBudget ? (
+      {home.tiles.length > 0 ? (
         <>
           <AppText variant="section">{t('home.categories')}</AppText>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.gap }}>
@@ -66,12 +66,15 @@ export default function Home() {
                 <Tile
                   title={tile.name}
                   tintName={tile.name}
-                  status={tile.status}
+                  status={tile.limit === null ? null : tile.status}
                   leftText={
-                    tile.left >= 0
-                      ? t('home.left', { amount: formatRM(tile.left) })
-                      : t('home.over', { amount: formatRM(-tile.left) })
+                    tile.limit === null
+                      ? t('home.noBudgetSet')
+                      : tile.left >= 0
+                        ? t('home.left', { amount: formatRM(tile.left) })
+                        : t('home.over', { amount: formatRM(-tile.left) })
                   }
+                  detail={tile.limit === null ? t('home.spent', { amount: formatRM(tile.spent) }) : undefined}
                   onPress={() =>
                     router.push({ pathname: '/spending', params: { categoryId: String(tile.categoryId), at: String(Date.now()) } })
                   }

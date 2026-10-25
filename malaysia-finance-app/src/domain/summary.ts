@@ -3,7 +3,7 @@ import { daysLeftInMonth, monthKey } from './dates';
 import type { Sen } from './money';
 import type { Budget, Category, Expense } from './types';
 
-export type Tile = {
+export type BudgetTile = {
   categoryId: number;
   name: string;
   spent: Sen;
@@ -12,10 +12,15 @@ export type Tile = {
   status: Status;
 };
 
+/** A category with no budget this month: only what was spent. */
+export type UnbudgetedTile = { categoryId: number; name: string; spent: Sen; limit: null };
+
+export type Tile = BudgetTile | UnbudgetedTile;
+
 export type HomeSummary = {
   /** Everything spent today, in every category. */
   todaySpent: Sen;
-  /** One tile per category that has a budget this month, in category order. */
+  /** One tile per category, in category order; categories without a budget this month have `limit: null`. */
   tiles: Tile[];
   hasBudget: boolean;
   /** Daily allowance and what is left of it today; null when no budget is set. */
@@ -38,19 +43,19 @@ export function buildHome(i: {
   const monthExpenses = i.expenses.filter((e) => monthKey(e.date) === month);
   const limits = new Map(i.budgets.filter((b) => b.month === month).map((b) => [b.categoryId, b.limit]));
 
-  const tiles: Tile[] = i.categories
-    .filter((c) => limits.has(c.id))
-    .map((c) => {
-      const limit = limits.get(c.id)!;
-      const spent = sum(monthExpenses.filter((e) => e.categoryId === c.id));
-      return { categoryId: c.id, name: c.name, spent, limit, ...categoryStatus(spent, limit) };
-    });
+  const tiles: Tile[] = i.categories.map((c) => {
+    const spent = sum(monthExpenses.filter((e) => e.categoryId === c.id));
+    const limit = limits.get(c.id);
+    if (limit === undefined) return { categoryId: c.id, name: c.name, spent, limit: null };
+    return { categoryId: c.id, name: c.name, spent, limit, ...categoryStatus(spent, limit) };
+  });
 
-  const budgeted = new Set(tiles.map((t) => t.categoryId));
+  const withBudget = tiles.filter((t): t is BudgetTile => t.limit !== null);
+  const budgeted = new Set(withBudget.map((t) => t.categoryId));
   const budgetedToday = sum(
     monthExpenses.filter((e) => e.date === i.today && budgeted.has(e.categoryId)),
   );
-  const hasBudget = tiles.length > 0;
+  const hasBudget = withBudget.length > 0;
 
   return {
     todaySpent: sum(i.expenses.filter((e) => e.date === i.today)),
@@ -58,8 +63,8 @@ export function buildHome(i: {
     hasBudget,
     today: hasBudget
       ? todayLeft({
-          monthLimit: tiles.reduce((s, t) => s + t.limit, 0),
-          monthSpent: tiles.reduce((s, t) => s + t.spent, 0),
+          monthLimit: withBudget.reduce((s, t) => s + t.limit, 0),
+          monthSpent: withBudget.reduce((s, t) => s + t.spent, 0),
           todaySpent: budgetedToday,
           daysLeft: daysLeftInMonth(i.today),
         })
