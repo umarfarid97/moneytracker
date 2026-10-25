@@ -9,13 +9,18 @@ type Props = Omit<PressableProps, 'style' | 'children'> & {
   pressedScale?: number;
 };
 
+// The style (position, size, flex) goes on the pressable itself: Android only delivers a touch to a view
+// inside its parent's bounds, so a pressable wrapping an absolutely placed child never receives taps.
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 /** A pressable that shrinks slightly under the finger, on the UI thread. */
 export function PressableScale({ style, children, pressedScale = 0.97, onPressIn, onPressOut, ...rest }: Props) {
   const scale = useSharedValue(1);
   const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
-    <Pressable
+    <AnimatedPressable
       {...rest}
+      style={[style, animated]}
       onPressIn={(e) => {
         scale.value = withTiming(pressedScale, { duration: 90 });
         onPressIn?.(e);
@@ -25,7 +30,7 @@ export function PressableScale({ style, children, pressedScale = 0.97, onPressIn
         onPressOut?.(e);
       }}
     >
-      <Animated.View style={[style, animated]}>{children}</Animated.View>
-    </Pressable>
+      {children}
+    </AnimatedPressable>
   );
 }

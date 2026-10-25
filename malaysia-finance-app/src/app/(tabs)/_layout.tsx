@@ -24,6 +24,9 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: c.accent,
         tabBarInactiveTintColor: c.muted,
+        // Tablets would otherwise put the label beside a squeezed icon.
+        tabBarLabelPosition: 'below-icon',
+        tabBarIconStyle: { width: 56, height: 30 },
         tabBarLabelStyle: { fontFamily: fontFamily.medium, fontWeight: '600', fontSize: 11 },
         tabBarStyle: {
           backgroundColor: c.surface,
@@ -52,8 +55,10 @@ export default function TabsLayout() {
             tabBarIcon: ({ color, focused }) => (
               <View
                 style={{
-                  paddingHorizontal: 14,
-                  paddingVertical: 3,
+                  width: 56,
+                  height: 30,
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   borderRadius: radius.pill,
                   backgroundColor: focused ? c.accentSoft : 'transparent',
                 }}
