@@ -16,7 +16,6 @@ const TABS: { name: string; label: StringKey; icon: IconName }[] = [
   { name: 'index', label: 'tab.home', icon: 'home-outline' },
   { name: 'spending', label: 'tab.spending', icon: 'wallet-outline' },
   { name: 'commitments', label: 'tab.commitments', icon: 'calendar-outline' },
-  { name: 'tax', label: 'tab.tax', icon: 'document-text-outline' },
   { name: 'more', label: 'tab.more', icon: 'ellipsis-horizontal-circle-outline' },
 ];
 const ICONS = Object.fromEntries(TABS.map((tab) => [tab.name, tab.icon]));

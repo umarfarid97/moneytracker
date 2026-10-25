@@ -26,7 +26,7 @@ export default function Tax() {
   const warn = statusStyle('tight', scheme);
 
   return (
-    <Screen fab>
+    <Screen>
       <View style={{ gap: 4 }}>
         <AppText variant="title">{t('tax.title')}</AppText>
         <AppText variant="bodyStrong" tone="muted">

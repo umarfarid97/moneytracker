@@ -59,7 +59,7 @@ export function AmountInput({ label, value, onChange, autoFocus, compact = false
           placeholderTextColor={c.control}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          style={[{ flex: 1, minWidth: 0, color: c.text, fontFamily: fontFamily.semibold, fontWeight: '700', fontSize: large ? 40 : compact ? 26 : 28, fontVariant: ['tabular-nums'] }, NO_WEB_OUTLINE]}
+          style={[{ flex: 1, minWidth: 0, color: c.text, fontFamily: fontFamily.bold, fontSize: large ? 40 : compact ? 26 : 28, fontVariant: ['tabular-nums'] }, NO_WEB_OUTLINE]}
         />
       </View>
       {invalid ? (

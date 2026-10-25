@@ -1,6 +1,6 @@
 import {
-  Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, useFonts,
-} from '@expo-google-fonts/manrope';
+  Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold, useFonts,
+} from '@expo-google-fonts/outfit';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -15,7 +15,7 @@ import { useTheme } from '@/ui/useTheme';
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({ Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold });
+  const [fontsLoaded] = useFonts({ Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold });
   const { scheme, c } = useTheme();
 
   useEffect(() => {

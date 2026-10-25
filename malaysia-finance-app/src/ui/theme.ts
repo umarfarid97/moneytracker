@@ -62,13 +62,16 @@ export const radius = { card: 22, control: 14, sm: 10, xs: 6, pill: 999 } as con
 export const space = { xs: 4, s: 8, m: 12, gap: 16, pad: 20, xl: 24, xxl: 32 } as const;
 export const controlHeight = 50;
 
-const SYSTEM_FONT = Platform.select({
-  ios: 'System',
-  android: 'sans-serif',
-  default: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-}) as string;
-/** All weights share the system font; weight comes from fontWeight (see AppText). */
-export const fontFamily = { regular: SYSTEM_FONT, medium: SYSTEM_FONT, semibold: SYSTEM_FONT } as const;
+/**
+ * Outfit, a rounded geometric sans close to the KWSP app's font. Each weight is its own loaded family
+ * (see the root layout), so text sets the family for its weight instead of fontWeight.
+ */
+export const fontFamily = {
+  regular: 'Outfit_400Regular',
+  medium: 'Outfit_500Medium',
+  semibold: 'Outfit_600SemiBold',
+  bold: 'Outfit_700Bold',
+} as const;
 
 export const fontSize = { title: 32, section: 20, kpi: 36, body: 16, small: 14 } as const;
 

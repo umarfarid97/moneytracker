@@ -1,5 +1,5 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
-import Tax from '@/app/(tabs)/tax';
+import Tax from '@/app/tax';
 import type { Db } from '@/db/types';
 import { freshDb, renderWithData } from './helpers';
 
