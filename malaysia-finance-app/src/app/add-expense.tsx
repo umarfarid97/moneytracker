@@ -19,6 +19,7 @@ import { AmountInput } from '@/ui/AmountInput';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { Chip } from '@/ui/Chip';
+import { DateField } from '@/ui/DateField';
 import { ReceiptField } from '@/ui/ReceiptField';
 import { ReliefPicker } from '@/ui/ReliefPicker';
 import { Screen } from '@/ui/Screen';
@@ -213,16 +214,7 @@ export default function AddExpense() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Chip compact label={t('expense.today')} selected={date === today} onPress={() => setDate(today)} />
           <Chip compact label={t('expense.yesterday')} selected={date === addDays(today, -1)} onPress={() => setDate(addDays(today, -1))} />
-          <TextInput
-            accessibilityLabel={t('common.date')}
-            value={date}
-            onChangeText={setDate}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor={c.muted}
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={[field, { flex: 1, minWidth: 0, height: 36, fontSize: 14 }, !dateOk && { borderColor: c.negative }]}
-          />
+          <DateField compact label={t('common.date')} value={date} onChange={setDate} />
         </View>
       </View>
 

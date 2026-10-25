@@ -39,3 +39,13 @@ jest.mock('expo-router', () => ({
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() },
   useLocalSearchParams: jest.fn(() => ({})),
 }));
+// The native date picker renders as a plain View whose onValueChange tests can call.
+jest.mock('@react-native-community/datetimepicker', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: (props) => React.createElement(View, props),
+    DateTimePickerAndroid: { open: jest.fn() },
+  };
+});

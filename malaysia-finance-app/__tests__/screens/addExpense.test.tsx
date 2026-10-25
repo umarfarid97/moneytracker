@@ -38,15 +38,26 @@ describe('AddExpense (new)', () => {
     expect(rows).toEqual([{ amount: 1250, category_id: CAT.Transport, date: '2026-10-24' }]);
   });
 
-  test('yesterday chip sets yesterday and an invalid typed date blocks saving', async () => {
+  test('yesterday chip sets yesterday', async () => {
+    const db = await freshDb();
+    await renderWithData(db, <AddExpense />);
+    await waitFor(() => expect(screen.getByLabelText('Amount')).toBeTruthy());
+    await fireEvent.press(screen.getByRole('button', { name: 'Yesterday' }));
+    expect(screen.getByText('Fri 23 Oct 2026')).toBeTruthy();
+  });
+
+  test('a date picked from the calendar is saved', async () => {
     const db = await freshDb();
     await renderWithData(db, <AddExpense />);
     await waitFor(() => expect(screen.getByLabelText('Amount')).toBeTruthy());
     await fireEvent.changeText(screen.getByLabelText('Amount'), '3');
-    await fireEvent.press(screen.getByRole('button', { name: 'Yesterday' }));
-    expect(screen.getByLabelText('Date').props.value).toBe('2026-10-23');
-    await fireEvent.changeText(screen.getByLabelText('Date'), '2026-02-30');
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    await fireEvent.press(screen.getByRole('button', { name: 'Date' }));
+    await fireEvent(screen.getByTestId('date-picker'), 'valueChange', {}, new Date(2026, 9, 12));
+    expect(screen.getByText('Mon 12 Oct 2026')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(router.back).toHaveBeenCalled());
+    const row = await db.get<{ date: string }>('SELECT date FROM expenses');
+    expect(row!.date).toBe('2026-10-12');
   });
 });
 
