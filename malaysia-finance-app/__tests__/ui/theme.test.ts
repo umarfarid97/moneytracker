@@ -1,4 +1,4 @@
-import { categoryTint, contrast, palette, radius, statusStyle } from '@/ui/theme';
+import { categoryLook, categoryTint, contrast, heroGradient, palette, radius, statusStyle } from '@/ui/theme';
 import { t } from '@/i18n/t';
 
 const schemes = ['light', 'dark'] as const;
@@ -28,6 +28,11 @@ describe.each(schemes)('%s palette', (scheme) => {
       expect(contrast(tint.ink, tint.bg)).toBeGreaterThanOrEqual(4.5);
     }
   });
+  test('white text is readable on every stop of every hero gradient', () => {
+    for (const hero of ['brand', 'ocean', 'mint', 'sunset'] as const) {
+      for (const stop of heroGradient(hero, scheme)) expect(contrast('#ffffff', stop)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
   test('every status pill is readable', () => {
     for (const s of ['on-track', 'tight', 'over'] as const) {
       const st = statusStyle(s, scheme);
@@ -39,6 +44,15 @@ describe.each(schemes)('%s palette', (scheme) => {
 describe('categoryTint', () => {
   test('unknown categories fall back to a neutral tint', () => {
     expect(categoryTint('Kucing', 'light')).toEqual(categoryTint('Lain-lain', 'light'));
+  });
+});
+
+describe('categoryLook', () => {
+  test('white icons stand out (3:1) on every category colour', () => {
+    for (const name of [...CATEGORIES, 'Kucing']) expect(contrast('#ffffff', categoryLook(name).color)).toBeGreaterThanOrEqual(3);
+  });
+  test('categories the user adds share one look', () => {
+    expect(categoryLook('Kucing')).toEqual(categoryLook('Anjing'));
   });
 });
 

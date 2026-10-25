@@ -1,9 +1,13 @@
-import { TextInput, View } from 'react-native';
+import { useState } from 'react';
+import { Platform, TextInput, View, type TextStyle } from 'react-native';
 import { parseRM, type Sen } from '@/domain/money';
 import { t } from '@/i18n/t';
 import { AppText } from './AppText';
-import { controlHeight, fontFamily, radius } from './theme';
+import { elevation, fontFamily, radius } from './theme';
 import { useTheme } from './useTheme';
+
+/** Browsers draw their own focus ring inside the field; the field's border shows focus instead. */
+const NO_WEB_OUTLINE = (Platform.OS === 'web' ? { outlineStyle: 'none' } : {}) as TextStyle;
 
 type Props = {
   label: string;
@@ -15,27 +19,33 @@ type Props = {
 };
 
 export function AmountInput({ label, value, onChange, autoFocus, compact = false }: Props) {
-  const { c } = useTheme();
+  const { c, scheme } = useTheme();
+  const [focused, setFocused] = useState(false);
   const invalid = value.trim() !== '' && parseRM(value) === null;
   return (
     <View style={{ gap: compact ? 4 : 8 }}>
-      <AppText variant="smallStrong">{label}</AppText>
+      <AppText variant="eyebrow" tone="muted">{label}</AppText>
       <View
-        style={{
-          height: compact ? 44 : controlHeight,
-          borderRadius: radius.control,
-          backgroundColor: c.surface,
-          borderWidth: 1,
-          borderColor: invalid ? c.negative : c.control,
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 14,
-          gap: 8,
-        }}
+        style={[
+          {
+            height: compact ? 56 : 64,
+            borderRadius: radius.control + 2,
+            backgroundColor: c.surface,
+            borderWidth: 1.5,
+            borderColor: invalid ? c.negative : focused ? c.accent : c.border,
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 16,
+            gap: 10,
+          },
+          elevation(scheme),
+        ]}
       >
-        <AppText variant="bodyStrong" tone="muted">
-          RM
-        </AppText>
+        <View style={{ backgroundColor: c.accentSoft, borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 3 }}>
+          <AppText variant="smallStrong" color={c.accentInk}>
+            RM
+          </AppText>
+        </View>
         <TextInput
           accessibilityLabel={label}
           autoFocus={autoFocus}
@@ -44,8 +54,10 @@ export function AmountInput({ label, value, onChange, autoFocus, compact = false
           keyboardType="decimal-pad"
           inputMode="decimal"
           placeholder={t('amount.placeholder')}
-          placeholderTextColor={c.muted}
-          style={{ flex: 1, color: c.text, fontFamily: fontFamily.medium, fontSize: 18, fontVariant: ['tabular-nums'] }}
+          placeholderTextColor={c.control}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={[{ flex: 1, minWidth: 0, color: c.text, fontFamily: fontFamily.semibold, fontWeight: '700', fontSize: compact ? 26 : 28, fontVariant: ['tabular-nums'] }, NO_WEB_OUTLINE]}
         />
       </View>
       {invalid ? (

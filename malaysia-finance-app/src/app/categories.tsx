@@ -8,8 +8,9 @@ import { AppText } from '@/ui/AppText';
 import { BackButton } from '@/ui/BackButton';
 import { Button } from '@/ui/Button';
 import { PressableScale } from '@/ui/PressableScale';
+import { IconBadge } from '@/ui/IconBadge';
 import { Screen } from '@/ui/Screen';
-import { categoryTint, controlHeight, fontFamily, radius } from '@/ui/theme';
+import { categoryLook, controlHeight, fontFamily, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
 const MAX_NAME = 24;
@@ -26,7 +27,7 @@ function TextAction({ label, accessibilityLabel, onPress }: { label: string; acc
 }
 
 export default function Categories() {
-  const { c, scheme } = useTheme();
+  const { c } = useTheme();
   const { data: categories, add, rename, remove } = useCategories();
   const [newName, setNewName] = useState('');
   const [editing, setEditing] = useState<{ id: number; text: string } | null>(null);
@@ -66,7 +67,6 @@ export default function Categories() {
   } as const;
 
   const renderRow = (cat: Category) => {
-    const tint = categoryTint(cat.name, scheme);
     const locked = cat.name === FALLBACK_CATEGORY;
     if (editing?.id === cat.id) {
       return (
@@ -122,8 +122,9 @@ export default function Categories() {
         key={cat.id}
         style={{ backgroundColor: c.surface, borderRadius: radius.control, paddingHorizontal: 16, minHeight: 60, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
       >
-        <View style={{ alignSelf: 'center', backgroundColor: tint.bg, borderRadius: radius.xs, paddingHorizontal: 10, paddingVertical: 4 }}>
-          <AppText variant="bodyStrong" color={tint.ink}>
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <IconBadge icon={categoryLook(cat.name).icon} color={categoryLook(cat.name).color} size={34} />
+          <AppText variant="bodyStrong" style={{ flexShrink: 1 }}>
             {cat.name}
           </AppText>
         </View>

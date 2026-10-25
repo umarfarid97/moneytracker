@@ -7,6 +7,7 @@ import { parseRM, senToInput } from '@/domain/money';
 import { suggestRelief } from '@/domain/reliefSpending';
 import { recentTemplates } from '@/domain/spendingFilter';
 import { budgetAlert } from '@/domain/summary';
+import type { PaymentKind } from '@/domain/types';
 import { useData } from '@/hooks/DataProvider';
 import { useCategories } from '@/hooks/useCategories';
 import { useExpenses } from '@/hooks/useExpenses';
@@ -21,8 +22,16 @@ import { Chip } from '@/ui/Chip';
 import { ReceiptField } from '@/ui/ReceiptField';
 import { ReliefPicker } from '@/ui/ReliefPicker';
 import { Screen } from '@/ui/Screen';
-import { fontFamily, radius } from '@/ui/theme';
+import { categoryLook, fontFamily, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
+
+const METHOD_ICON: Record<PaymentKind, 'cash-outline' | 'card-outline' | 'phone-portrait-outline' | 'swap-horizontal'> = {
+  cash: 'cash-outline',
+  debit: 'card-outline',
+  credit: 'card-outline',
+  ewallet: 'phone-portrait-outline',
+  transfer: 'swap-horizontal',
+};
 
 export default function AddExpense() {
   const { c } = useTheme();
@@ -119,7 +128,7 @@ export default function AddExpense() {
     borderRadius: radius.control,
     backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: c.control,
+    borderColor: c.border,
     paddingHorizontal: 12,
     color: c.text,
     fontFamily: fontFamily.medium,
@@ -130,13 +139,16 @@ export default function AddExpense() {
 
   return (
     <Screen compact>
-      <AppText variant="section">{t(existing ? 'expense.edit' : 'expense.add')}</AppText>
+      <AppText variant="title" style={{ fontSize: 28, lineHeight: 34 }}>
+        {t(existing ? 'expense.edit' : 'expense.add')}
+      </AppText>
 
       {recent.length > 0 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={scrollRow} keyboardShouldPersistTaps="handled" accessibilityLabel={t('recent.title')}>
           {recent.map((r) => (
             <Chip
               compact
+              icon="time-outline"
               key={`${r.note}-${r.categoryId}`}
               label={r.note}
               accessibilityLabel={t('recent.chip', { note: r.note })}
@@ -162,15 +174,24 @@ export default function AddExpense() {
       />
 
       <View style={{ gap: 4 }}>
-        <AppText variant="smallStrong">{t('common.category')}</AppText>
+        <AppText variant="eyebrow" tone="muted">{t('common.category')}</AppText>
         <View style={row}>
           {categories.map((cat) => (
-            <Chip compact key={cat.id} label={cat.name} selected={cat.id === categoryId} onPress={() => setCategoryId(cat.id)} />
+            <Chip
+              compact
+              key={cat.id}
+              label={cat.name}
+              icon={categoryLook(cat.name).icon}
+              color={categoryLook(cat.name).color}
+              selected={cat.id === categoryId}
+              onPress={() => setCategoryId(cat.id)}
+            />
           ))}
         </View>
         {suggested ? (
           <Chip
             compact
+            icon="sparkles"
             label={t('relief.suggest', { name: suggested.name })}
             accessibilityLabel={t('relief.suggest', { name: suggested.name })}
             onPress={() => setReliefId(suggested.id)}
@@ -179,16 +200,16 @@ export default function AddExpense() {
       </View>
 
       <View style={{ gap: 4 }}>
-        <AppText variant="smallStrong">{t('method.field')}</AppText>
+        <AppText variant="eyebrow" tone="muted">{t('method.field')}</AppText>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={scrollRow} keyboardShouldPersistTaps="handled">
           {methods.map((m) => (
-            <Chip compact key={m.id} label={m.name} selected={m.id === methodId} onPress={() => setMethodId(m.id)} />
+            <Chip compact key={m.id} label={m.name} icon={METHOD_ICON[m.kind]} selected={m.id === methodId} onPress={() => setMethodId(m.id)} />
           ))}
         </ScrollView>
       </View>
 
       <View style={{ gap: 4 }}>
-        <AppText variant="smallStrong">{t('common.date')}</AppText>
+        <AppText variant="eyebrow" tone="muted">{t('common.date')}</AppText>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Chip compact label={t('expense.today')} selected={date === today} onPress={() => setDate(today)} />
           <Chip compact label={t('expense.yesterday')} selected={date === addDays(today, -1)} onPress={() => setDate(addDays(today, -1))} />
@@ -207,7 +228,7 @@ export default function AddExpense() {
 
       <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}>
         <View style={{ flex: 1, gap: 4 }}>
-          <AppText variant="smallStrong">{t('common.note')}</AppText>
+          <AppText variant="eyebrow" tone="muted">{t('common.note')}</AppText>
           <TextInput
             accessibilityLabel={t('common.note')}
             value={note}
@@ -217,7 +238,7 @@ export default function AddExpense() {
           />
         </View>
         <View style={{ flex: 1, gap: 4 }}>
-          <AppText variant="smallStrong">{t('relief.field')}</AppText>
+          <AppText variant="eyebrow" tone="muted">{t('relief.field')}</AppText>
           <ReliefPicker compact reliefs={reliefs} value={reliefId} onChange={setReliefId} />
         </View>
       </View>

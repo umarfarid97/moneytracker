@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { View, useWindowDimensions } from 'react-native';
@@ -11,9 +12,9 @@ import { useToday } from '@/hooks/useToday';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
-import { Card } from '@/ui/Card';
+import { HeroCard, onHero } from '@/ui/HeroCard';
 import { Screen } from '@/ui/Screen';
-import { space } from '@/ui/theme';
+import { radius, space } from '@/ui/theme';
 import { Tile } from '@/ui/Tile';
 
 export default function Home() {
@@ -31,26 +32,31 @@ export default function Home() {
   return (
     <Screen fab>
       <AppText variant="title">{shortDate(today)}</AppText>
-      <Card style={{ gap: 4 }}>
-        <AppText variant="small" tone="muted">
+      <HeroCard style={{ gap: 6 }}>
+        <AppText variant="eyebrow" color={onHero.soft}>
           {t('home.today')}
         </AppText>
-        <AppText variant="kpi">{formatRM(home.todaySpent)}</AppText>
+        <AppText variant="kpi" color={onHero.ink} style={{ fontSize: 40, lineHeight: 48 }}>
+          {formatRM(home.todaySpent)}
+        </AppText>
         {home.today ? (
-          <AppText variant="bodyStrong" tone={home.today.left >= 0 ? 'positive' : 'negative'}>
-            {home.today.left >= 0
-              ? t('home.todayLeft', { amount: formatRM(home.today.left) })
-              : t('home.todayOver', { amount: formatRM(-home.today.left) })}
-          </AppText>
+          <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: onHero.chip, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 5, marginTop: 4 }}>
+            <Ionicons name={home.today.left >= 0 ? 'checkmark-circle' : 'alert-circle'} size={16} color={onHero.ink} />
+            <AppText variant="smallStrong" color={onHero.ink}>
+              {home.today.left >= 0
+                ? t('home.todayLeft', { amount: formatRM(home.today.left) })
+                : t('home.todayOver', { amount: formatRM(-home.today.left) })}
+            </AppText>
+          </View>
         ) : (
           <View style={{ gap: 12, marginTop: 4 }}>
-            <AppText variant="body" tone="muted">
+            <AppText variant="body" color={onHero.soft}>
               {t('home.noBudget')}
             </AppText>
-            <Button title={t('home.setBudget')} onPress={() => router.push('/budget')} />
+            <Button title={t('home.setBudget')} variant="light" onPress={() => router.push('/budget')} />
           </View>
         )}
-      </Card>
+      </HeroCard>
       {home.hasBudget ? (
         <>
           <AppText variant="section">{t('home.categories')}</AppText>

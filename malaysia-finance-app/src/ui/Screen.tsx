@@ -1,5 +1,7 @@
-import type { ReactNode } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useEffect, type ReactNode } from 'react';
 import { ScrollView, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Fab } from './Fab';
 import { space } from './theme';
@@ -15,24 +17,37 @@ type Props = {
   compact?: boolean;
 };
 
-/** Page frame: ground colour, safe area, 20px padding, 16px between blocks. */
+/** Page frame: ground colour with a soft wash at the top, safe area, 20px padding, 16px between blocks. */
 export function Screen({ children, scroll = true, fab = false, compact = false }: Props) {
   const { c } = useTheme();
   const pad = compact ? space.gap : space.pad;
   const content = { padding: pad, gap: compact ? space.m - 2 : space.gap, paddingBottom: fab ? 100 : pad };
+  // Content rises in gently when a screen opens.
+  const shown = useSharedValue(0);
+  useEffect(() => {
+    shown.value = withTiming(1, { duration: 320 });
+  }, [shown]);
+  const enter = useAnimatedStyle(() => ({ opacity: shown.value, transform: [{ translateY: (1 - shown.value) * 10 }] }));
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.ground }}>
-      {scroll ? (
-        <ScrollView
-          contentContainerStyle={content}
-          keyboardShouldPersistTaps="handled"
-          automaticallyAdjustKeyboardInsets
-        >
-          {children}
-        </ScrollView>
-      ) : (
-        <View style={[{ flex: 1 }, content]}>{children}</View>
-      )}
+      <LinearGradient
+        pointerEvents="none"
+        colors={c.wash}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 320 }}
+      />
+      <Animated.View style={[{ flex: 1 }, enter]}>
+        {scroll ? (
+          <ScrollView
+            contentContainerStyle={content}
+            keyboardShouldPersistTaps="handled"
+            automaticallyAdjustKeyboardInsets
+          >
+            {children}
+          </ScrollView>
+        ) : (
+          <View style={[{ flex: 1 }, content]}>{children}</View>
+        )}
+      </Animated.View>
       {fab ? <Fab /> : null}
     </SafeAreaView>
   );

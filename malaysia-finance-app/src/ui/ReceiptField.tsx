@@ -30,7 +30,7 @@ export function ReceiptField({ uri, onChange, compact = false }: Props) {
 
   return (
     <View style={{ gap: compact ? 4 : 8 }}>
-      <AppText variant="smallStrong">{t('expense.receipt')}</AppText>
+      <AppText variant="eyebrow" tone="muted">{t('expense.receipt')}</AppText>
       {uri ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <Image

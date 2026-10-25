@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, View } from 'react-native';
 import { t } from '@/i18n/t';
 import type { StringKey } from '@/i18n/en';
-import { fontFamily } from '@/ui/theme';
+import { fontFamily, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -17,22 +17,27 @@ const TABS: { name: string; label: StringKey; icon: IconName; active: IconName }
 ];
 
 export default function TabsLayout() {
-  const { c } = useTheme();
+  const { c, scheme } = useTheme();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: c.accent,
         tabBarInactiveTintColor: c.muted,
-        tabBarLabelStyle: { fontFamily: fontFamily.medium, fontWeight: '500', fontSize: 11 },
+        tabBarLabelStyle: { fontFamily: fontFamily.medium, fontWeight: '600', fontSize: 11 },
         tabBarStyle: {
           backgroundColor: c.surface,
-          borderTopWidth: StyleSheet.hairlineWidth,
-          borderTopColor: c.border,
-          elevation: 0,
-          shadowOpacity: 0,
+          borderTopWidth: 0,
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          shadowColor: '#3b3a8f',
+          shadowOpacity: scheme === 'dark' ? 0 : 0.08,
+          shadowRadius: 20,
+          shadowOffset: { width: 0, height: -4 },
+          elevation: 12,
+          paddingTop: 6,
           // Browser previews have no safe-area inset, so give the labels room.
-          ...(Platform.OS === 'web' ? { height: 64, paddingBottom: 8 } : null),
+          ...(Platform.OS === 'web' ? { height: 70, paddingBottom: 10 } : null),
         },
         sceneStyle: { backgroundColor: c.ground },
       }}
@@ -43,8 +48,18 @@ export default function TabsLayout() {
           name={tab.name}
           options={{
             title: t(tab.label),
-            tabBarIcon: ({ color, focused, size }) => (
-              <Ionicons name={focused ? tab.active : tab.icon} size={size} color={String(color)} />
+            // The active tab's icon sits in a tinted capsule, like iOS 18's tab bars.
+            tabBarIcon: ({ color, focused }) => (
+              <View
+                style={{
+                  paddingHorizontal: 14,
+                  paddingVertical: 3,
+                  borderRadius: radius.pill,
+                  backgroundColor: focused ? c.accentSoft : 'transparent',
+                }}
+              >
+                <Ionicons name={focused ? tab.active : tab.icon} size={22} color={String(color)} />
+              </View>
             ),
           }}
         />
