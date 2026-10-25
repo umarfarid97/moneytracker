@@ -117,6 +117,7 @@ describe('AddExpense (tax relief tag)', () => {
     await db.run("INSERT INTO expenses (amount, category_id, date, note, payment_method_id, relief_id, relief_amount) VALUES (20000, 1, '2026-10-20', 'Phone case', 3, 'lifestyle', 4000)");
     useLocalSearchParams.mockReturnValue({ id: '1' });
     await renderWithData(db, <AddExpense />);
+    await fireEvent.press(await screen.findByRole('button', { name: 'Edit' }));
     await waitFor(() => expect(screen.getByLabelText('Amount').props.value).toBe('200.00'));
     expect(screen.getByRole('button', { name: 'Credit card' })).toBeSelected();
     expect(screen.getByLabelText('Claimable amount (optional)').props.value).toBe('40.00');
@@ -142,6 +143,7 @@ describe('AddExpense (recent)', () => {
     await addExpenseRow(db, CAT.Makan, 350, '2026-10-20', 'Teh tarik');
     useLocalSearchParams.mockReturnValue({ id: '1' });
     await renderWithData(db, <AddExpense />);
+    await fireEvent.press(await screen.findByRole('button', { name: 'Edit' }));
     await waitFor(() => expect(screen.getByLabelText('Amount').props.value).toBe('3.50'));
     expect(screen.queryByRole('button', { name: 'Recent: Teh tarik' })).toBeNull();
   });

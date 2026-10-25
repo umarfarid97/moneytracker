@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import {
@@ -13,7 +14,6 @@ import { useExpenses } from '@/hooks/useExpenses';
 import { useToday } from '@/hooks/useToday';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
-import { Button } from '@/ui/Button';
 import { EmptyState } from '@/ui/EmptyState';
 import { HeroCard, onHero } from '@/ui/HeroCard';
 import { IconBadge } from '@/ui/IconBadge';
@@ -86,7 +86,18 @@ export default function Commitments() {
 
   return (
     <Screen fab>
-      <AppText variant="title">{t('commitments.title')}</AppText>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <AppText variant="title" style={{ flexShrink: 1 }}>{t('commitments.title')}</AppText>
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel={t('commitments.add')}
+          hitSlop={8}
+          onPress={() => openSheet(null)}
+          style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Ionicons name="add" size={22} color={c.accentInk} />
+        </PressableScale>
+      </View>
       <HeroCard hero="mint" style={{ gap: 6 }}>
         <AppText variant="eyebrow" color={onHero.soft}>
           {t('commitments.total')}
@@ -100,7 +111,6 @@ export default function Commitments() {
           </AppText>
         ) : null}
       </HeroCard>
-      <Button title={t('commitments.add')} onPress={() => openSheet(null)} />
       {rows.length === 0 ? (
         <EmptyState icon="calendar-outline" text={t('commitments.none')} />
       ) : (

@@ -49,7 +49,7 @@ export function ReceiptField({ uri, onChange, compact = false, fill = false }: P
 
   if (fill) {
     return (
-      <View style={{ flexGrow: 1, gap: 12 }}>
+      <View style={{ flexGrow: 1, gap: compact ? 8 : 12 }}>
         <AppText variant="eyebrow" tone="muted">{t('expense.receipt')}</AppText>
         {uri ? (
           <>
@@ -57,7 +57,7 @@ export function ReceiptField({ uri, onChange, compact = false, fill = false }: P
               accessibilityRole="button"
               accessibilityLabel={t('receipt.view')}
               onPress={() => setPreviewing(true)}
-              style={{ flexGrow: 1, minHeight: 200, borderRadius: radius.control, backgroundColor: c.ground, overflow: 'hidden' }}
+              style={{ flexGrow: 1, minHeight: compact ? 140 : 200, borderRadius: radius.control, backgroundColor: c.ground, overflow: 'hidden' }}
             >
               <Image
                 source={{ uri: resolveReceiptUri(uri) }}
@@ -73,18 +73,18 @@ export function ReceiptField({ uri, onChange, compact = false, fill = false }: P
                   {t('receipt.tapToView')}
                 </AppText>
               </View>
-              <Button title={t('receipt.remove')} variant="secondary" onPress={() => onChange(null)} />
+              <Button title={t('receipt.remove')} variant="secondary" compact={compact} onPress={() => onChange(null)} />
             </View>
           </>
         ) : (
           <>
             <View
               style={{
-                flexGrow: 1, minHeight: 160, borderRadius: radius.control, borderWidth: 1.5, borderStyle: 'dashed',
+                flexGrow: 1, minHeight: compact ? 96 : 160, borderRadius: radius.control, borderWidth: 1.5, borderStyle: 'dashed',
                 borderColor: c.border, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 20,
               }}
             >
-              <Ionicons name="receipt-outline" size={40} color={c.muted} />
+              <Ionicons name="receipt-outline" size={compact ? 28 : 40} color={c.muted} />
               <AppText variant="small" tone="muted" style={{ textAlign: 'center' }}>
                 {t('receipt.empty')}
               </AppText>

@@ -62,6 +62,7 @@ export const en = {
 
   'expense.add': 'Add spending',
   'expense.edit': 'Edit spending',
+  'expense.view': 'Spending details',
   'expense.none': 'No spending recorded',
   'expense.receipt': 'Receipt photo',
 
@@ -161,6 +162,7 @@ export const en = {
   'receipt.choose': 'Choose photo',
   'receipt.remove': 'Remove photo',
   'receipt.attached': 'Receipt attached',
+  'receipt.none': 'No receipt attached',
   'receipt.empty': 'No receipt yet. Snap one so it is ready at tax time.',
   'receipt.preview': 'Receipt, full screen',
   'receipt.view': 'View receipt',

@@ -19,6 +19,7 @@ import { AmountInput } from '@/ui/AmountInput';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { ExpenseDetails } from '@/features/spending/ExpenseDetails';
 import { Chip } from '@/ui/Chip';
 import { confirmDelete } from '@/ui/confirm';
 import { DateField } from '@/ui/DateField';
@@ -60,6 +61,8 @@ export default function AddExpense() {
   const [receiptUri, setReceiptUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Saved spending opens read-only; Edit switches to the form.
+  const [editMode, setEditMode] = useState(editingId === null);
 
   useEffect(() => {
     if (!existing) return;
@@ -332,73 +335,75 @@ export default function AddExpense() {
     </AppText>
   );
 
-  // Field order: amount, note, category, paid with, date, receipt, tax relief.
-  if (wide) {
-    // Tablets: the amount leads, then cards, with the receipt growing into the space that is left and
-    // the actions pinned at the bottom, so the form uses the whole screen without crowding.
-    // Landscape reads down the left column, then the right one (receipt, then tax relief).
-    const landscape = width > height;
-    const noteCard = <Card>{noteInput}</Card>;
-    const choices = (
-      <View style={{ flexDirection: landscape ? 'column' : 'row', gap: 16 }}>
-        <Card style={{ flex: landscape ? undefined : 1 }}>{categoryField}</Card>
-        <Card style={{ flex: landscape ? undefined : 1 }}>{methodField}</Card>
-      </View>
-    );
-    const dateCard = <Card>{dateField}</Card>;
-    const receipt = (
-      <Card style={{ flexGrow: 1 }}>
-        <ReceiptField fill uri={receiptUri} onChange={setReceiptUri} />
-      </Card>
-    );
-    const reliefCard = (
-      <Card style={{ gap: 16 }}>
-        {reliefInput}
-        {claimField}
-      </Card>
-    );
+  // A saved spending opens read-only; the form only appears after tapping Edit.
+  if (editingId !== null && !editMode) {
+    if (!existing) return <Screen>{null}</Screen>;
     return (
-      <Screen footer={<View style={{ gap: 8 }}>{errorText}{actions}</View>}>
-        {title}
-        {amountField}
-        {landscape ? (
-          <View style={{ flexDirection: 'row', gap: 16, flexGrow: 1 }}>
-            <View style={{ flex: 1, gap: 16 }}>
-              {noteCard}
-              {choices}
-              {dateCard}
-            </View>
-            <View style={{ flex: 1, gap: 16 }}>
-              {receipt}
-              {reliefCard}
-            </View>
-          </View>
-        ) : (
-          <>
-            {noteCard}
-            {choices}
-            {dateCard}
-            {receipt}
-            {reliefCard}
-          </>
-        )}
-      </Screen>
+      <ExpenseDetails
+        expense={existing}
+        categoryName={categoryName}
+        methodName={methods.find((m) => m.id === existing.paymentMethodId)?.name ?? null}
+        reliefName={existing.reliefId ? (reliefs.find((r) => r.id === existing.reliefId)?.name ?? existing.reliefId) : null}
+        error={error}
+        busy={busy}
+        onEdit={() => setEditMode(true)}
+        onDelete={del}
+        onClose={() => router.back()}
+      />
     );
   }
 
-  return (
-    <Screen compact>
-      {title}
-      {amountField}
-      {noteInput}
-      {categoryField}
-      {methodField}
-      {dateField}
-      <ReceiptField compact uri={receiptUri} onChange={setReceiptUri} />
+  // Field order: amount, note, category, paid with, date, receipt, tax relief. Every size uses cards,
+  // a receipt area that grows into the space left, and Save/Cancel pinned at the bottom, so the form
+  // fills the screen. Wide screens put category and method side by side; landscape reads down the
+  // left column, then the right one (receipt, then tax relief).
+  const landscape = wide && width > height;
+  const gap = wide ? 16 : 10;
+  const pad = wide ? undefined : { padding: 14 };
+  const noteCard = <Card style={pad}>{noteInput}</Card>;
+  const choices = (
+    <View style={{ flexDirection: wide && !landscape ? 'row' : 'column', gap }}>
+      <Card style={[pad, wide && !landscape ? { flex: 1 } : null]}>{categoryField}</Card>
+      <Card style={[pad, wide && !landscape ? { flex: 1 } : null]}>{methodField}</Card>
+    </View>
+  );
+  const dateCard = <Card style={pad}>{dateField}</Card>;
+  const receipt = (
+    <Card style={[pad, { flexGrow: 1 }]}>
+      <ReceiptField fill compact={!wide} uri={receiptUri} onChange={setReceiptUri} />
+    </Card>
+  );
+  const reliefCard = (
+    <Card style={[pad, { gap: wide ? 16 : 10 }]}>
       {reliefInput}
       {claimField}
-      {errorText}
-      {actions}
+    </Card>
+  );
+  return (
+    <Screen compact={!wide} footer={<View style={{ gap: 8 }}>{errorText}{actions}</View>}>
+      {title}
+      {amountField}
+      {landscape ? (
+        <View style={{ flexDirection: 'row', gap, flexGrow: 1 }}>
+          <View style={{ flex: 1, gap }}>
+            {noteCard}
+            {choices}
+            {dateCard}
+          </View>
+          <View style={{ flex: 1, gap }}>
+            {receipt}
+            {reliefCard}
+          </View>
+        </View>
+      ) : (
+        <>
+          {noteCard}
+          {choices}
+          {dateCard}
+          {receipt}
+          {reliefCard}
+        </>
+      )}
     </Screen>
   );
 }
