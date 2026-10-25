@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { applyBillChange, billStatus, paidDueDatesFor, type BillState, type BillStatus } from '@/domain/bills';
-import { monthlyCommitmentTotal } from '@/domain/commitments';
+import {
+  applyBillChange, billEstimate, billStatus, lastPaidFor, paidDueDatesFor, type BillState, type BillStatus,
+} from '@/domain/bills';
 import { formatRM } from '@/domain/money';
 import type { Commitment, CommitmentKind } from '@/domain/types';
 import { CommitmentSheet } from '@/features/commitments/CommitmentSheet';
@@ -70,6 +71,12 @@ export default function Commitments() {
     });
   }, [data, expenses, today]);
 
+  const total = useMemo(
+    () => data.reduce((sum, item) => (item.active ? sum + billEstimate(item, expenses) : sum), 0),
+    [data, expenses],
+  );
+  const anyVariable = data.some((item) => item.active && item.variable);
+
   const openSheet = (editing: Commitment | null) =>
     setSheet((s) => ({ open: true, editing, nonce: s.nonce + 1 }));
   const closeSheet = () => setSheet((s) => ({ ...s, open: false }));
@@ -85,8 +92,13 @@ export default function Commitments() {
           {t('commitments.total')}
         </AppText>
         <AppText testID="commitments-total" variant="kpi" color={onHero.ink} style={{ fontSize: 40, lineHeight: 48 }}>
-          {formatRM(monthlyCommitmentTotal(data))}
+          {formatRM(total)}
         </AppText>
+        {anyVariable ? (
+          <AppText variant="small" color={onHero.soft}>
+            {t('commitments.totalHint')}
+          </AppText>
+        ) : null}
       </HeroCard>
       <Button title={t('commitments.add')} onPress={() => openSheet(null)} />
       {rows.length === 0 ? (
@@ -123,11 +135,13 @@ export default function Commitments() {
                     {item.name}
                   </AppText>
                   <AppText variant="small" tone={late ? 'negative' : 'muted'}>
-                    {statusLabel(status)}
+                    {item.variable ? `${statusLabel(status)} · ${t('commitments.varies')}` : statusLabel(status)}
                   </AppText>
                 </Pressable>
                 <View style={{ alignItems: 'flex-end', gap: 2 }}>
-                  <AppText variant="bodyStrong">{formatRM(item.amount)}</AppText>
+                  <AppText variant="bodyStrong">
+                    {item.variable ? `~${formatRM(billEstimate(item, expenses))}` : formatRM(item.amount)}
+                  </AppText>
                   {payable && item.id > 0 ? (
                     <PressableScale
                       accessibilityRole="button"
@@ -173,6 +187,7 @@ export default function Commitments() {
         key={`pay-${pay.nonce}`}
         visible={pay.open}
         bill={pay.bill}
+        lastPaid={pay.bill ? lastPaidFor(pay.bill.id, expenses) : null}
         onClose={closePay}
         onConfirm={async (amount) => {
           if (pay.bill) await payBill(pay.bill, pay.dueDate, { amount, date: today });

@@ -42,6 +42,14 @@ describe('migrate', () => {
     expect((await listExpensesByDate(db, '2026-10-24')).length).toBe(1);
   });
 
+  test('bills saved before the variable type existed come back as fixed', async () => {
+    const old = await createTestDb();
+    await migrate(old, MIGRATIONS.slice(0, 2));
+    await old.run("INSERT INTO commitments (name, amount, day_of_month, kind) VALUES ('Astro', 8900, 5, 'subscription')");
+    await migrate(old);
+    expect((await listCommitments(old))[0]).toMatchObject({ name: 'Astro', amount: 8900, variable: false });
+  });
+
   test('a failing migration rolls back and keeps the old version', async () => {
     const bad = [...MIGRATIONS, 'CREATE TABLE ok_table (id INTEGER); THIS IS NOT SQL;'];
     await expect(migrate(db, bad)).rejects.toThrow();
@@ -112,7 +120,9 @@ describe('budgets', () => {
 describe('commitments', () => {
   test('crud with boolean active flag', async () => {
     const c = await addCommitment(db, { name: 'Rumah', amount: 120000, dayOfMonth: 1, kind: 'loan', active: true });
-    expect((await listCommitments(db))[0]).toMatchObject({ name: 'Rumah', active: true });
+    expect((await listCommitments(db))[0]).toMatchObject({ name: 'Rumah', active: true, variable: false });
+    await updateCommitment(db, { ...c, variable: true });
+    expect((await listCommitments(db))[0].variable).toBe(true);
     await updateCommitment(db, { ...c, active: false });
     expect((await listCommitments(db))[0].active).toBe(false);
     await deleteCommitment(db, c.id);

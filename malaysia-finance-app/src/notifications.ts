@@ -53,7 +53,10 @@ async function replaceReminders(commitments: Commitment[], now: Date): Promise<n
       await Notifications.scheduleNotificationAsync({
         content: {
           title: t('commitments.reminder.title', { name: c.name }),
-          body: t('commitments.reminder.body', { amount: formatRM(c.amount), date: shortDate(dueDate) }),
+          body: t(c.variable ? 'commitments.reminder.bodyVariable' : 'commitments.reminder.body', {
+            amount: formatRM(c.amount),
+            date: shortDate(dueDate),
+          }),
         },
         trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: fireAt, channelId: CHANNEL_ID },
       });

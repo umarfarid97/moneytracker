@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, TextInput, View } from 'react-native';
+import { ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
 import { resolveTaxData } from '@/data/tax';
 import { addDays, isValidDate } from '@/domain/dates';
 import { formatRM, parseRM, senToInput } from '@/domain/money';
@@ -18,6 +18,7 @@ import { notifyBudgetAlert } from '@/notifications';
 import { AmountInput } from '@/ui/AmountInput';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
+import { Card } from '@/ui/Card';
 import { Chip } from '@/ui/Chip';
 import { confirmDelete } from '@/ui/confirm';
 import { DateField } from '@/ui/DateField';
@@ -37,6 +38,9 @@ const METHOD_ICON: Record<PaymentKind, 'cash-outline' | 'card-outline' | 'phone-
 
 export default function AddExpense() {
   const { c } = useTheme();
+  const { width, height } = useWindowDimensions();
+  // Tablets and wide windows get a two-column layout that fills the screen.
+  const wide = width >= 700;
   const today = useToday();
   const params = useLocalSearchParams<{ id?: string }>();
   const editingId = params.id ? Number(params.id) : null;
@@ -133,7 +137,7 @@ export default function AddExpense() {
   }
 
   const field = {
-    height: 44,
+    height: wide ? 48 : 44,
     borderRadius: radius.control,
     backgroundColor: c.surface,
     borderWidth: 1,
@@ -143,61 +147,61 @@ export default function AddExpense() {
     fontFamily: fontFamily.medium,
     fontSize: 16,
   } as const;
-  const row = { flexDirection: 'row', flexWrap: 'wrap', gap: 6 } as const;
+  const row = { flexDirection: 'row', flexWrap: 'wrap', gap: wide ? 8 : 6 } as const;
   const scrollRow = { flexDirection: 'row', gap: 6, paddingRight: 16 } as const;
+  const label = (text: string) => <AppText variant="eyebrow" tone="muted">{text}</AppText>;
 
-  return (
-    <Screen compact>
-      <AppText variant="title" style={{ fontSize: 28, lineHeight: 34 }}>
-        {t(existing ? 'expense.edit' : 'expense.add')}
-      </AppText>
+  const recentChips = recent.length > 0 ? (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={scrollRow} keyboardShouldPersistTaps="handled" accessibilityLabel={t('recent.title')}>
+      {recent.map((r) => (
+        <Chip
+          compact
+          icon="time-outline"
+          key={`${r.note}-${r.categoryId}`}
+          label={r.note}
+          accessibilityLabel={t('recent.chip', { note: r.note })}
+          onPress={() => {
+            setAmountText(senToInput(r.amount));
+            setCategoryId(r.categoryId);
+            setNote(r.note);
+            setMethodId(r.paymentMethodId);
+            setReliefId(r.reliefId);
+            setClaimText(r.reliefAmount !== null ? senToInput(r.reliefAmount) : '');
+          }}
+        />
+      ))}
+    </ScrollView>
+  ) : null;
 
-      {recent.length > 0 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={scrollRow} keyboardShouldPersistTaps="handled" accessibilityLabel={t('recent.title')}>
-          {recent.map((r) => (
-            <Chip
-              compact
-              icon="time-outline"
-              key={`${r.note}-${r.categoryId}`}
-              label={r.note}
-              accessibilityLabel={t('recent.chip', { note: r.note })}
-              onPress={() => {
-                setAmountText(senToInput(r.amount));
-                setCategoryId(r.categoryId);
-                setNote(r.note);
-                setMethodId(r.paymentMethodId);
-                setReliefId(r.reliefId);
-                setClaimText(r.reliefAmount !== null ? senToInput(r.reliefAmount) : '');
-              }}
-            />
-          ))}
-        </ScrollView>
-      ) : null}
+  const amountField = (
+    <AmountInput
+      compact={!wide}
+      large={wide}
+      label={t('common.amount')}
+      value={amountText}
+      onChange={(text) => setAmountText(text)}
+      autoFocus={!existing}
+    />
+  );
 
-      <AmountInput
-        compact
-        label={t('common.amount')}
-        value={amountText}
-        onChange={(text) => setAmountText(text)}
-        autoFocus={!existing}
-      />
-
-      <View style={{ gap: 4 }}>
-        <AppText variant="eyebrow" tone="muted">{t('common.category')}</AppText>
-        <View style={row}>
-          {categories.map((cat) => (
-            <Chip
-              compact
-              key={cat.id}
-              label={cat.name}
-              icon={categoryLook(cat.name).icon}
-              color={categoryLook(cat.name).color}
-              selected={cat.id === categoryId}
-              onPress={() => setCategoryId(cat.id)}
-            />
-          ))}
-        </View>
-        {suggested ? (
+  const categoryField = (
+    <View style={{ gap: wide ? 10 : 4 }}>
+      {label(t('common.category'))}
+      <View style={row}>
+        {categories.map((cat) => (
+          <Chip
+            compact={!wide}
+            key={cat.id}
+            label={cat.name}
+            icon={categoryLook(cat.name).icon}
+            color={categoryLook(cat.name).color}
+            selected={cat.id === categoryId}
+            onPress={() => setCategoryId(cat.id)}
+          />
+        ))}
+      </View>
+      {suggested ? (
+        <View style={{ flexDirection: 'row' }}>
           <Chip
             compact
             icon="sparkles"
@@ -205,83 +209,171 @@ export default function AddExpense() {
             accessibilityLabel={t('relief.suggest', { name: suggested.name })}
             onPress={() => setReliefId(suggested.id)}
           />
-        ) : null}
-      </View>
-
-      <View style={{ gap: 4 }}>
-        <AppText variant="eyebrow" tone="muted">{t('method.field')}</AppText>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={scrollRow} keyboardShouldPersistTaps="handled">
-          {methods.map((m) => (
-            <Chip compact key={m.id} label={m.name} icon={METHOD_ICON[m.kind]} selected={m.id === methodId} onPress={() => setMethodId(m.id)} />
-          ))}
-        </ScrollView>
-      </View>
-
-      <View style={{ gap: 4 }}>
-        <AppText variant="eyebrow" tone="muted">{t('common.date')}</AppText>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Chip compact label={t('expense.today')} selected={date === today} onPress={() => setDate(today)} />
-          <Chip compact label={t('expense.yesterday')} selected={date === addDays(today, -1)} onPress={() => setDate(addDays(today, -1))} />
-          <DateField compact label={t('common.date')} value={date} onChange={setDate} />
-        </View>
-      </View>
-
-      <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}>
-        <View style={{ flex: 1, gap: 4 }}>
-          <AppText variant="eyebrow" tone="muted">{t('common.note')}</AppText>
-          <TextInput
-            accessibilityLabel={t('common.note')}
-            value={note}
-            onChangeText={setNote}
-            placeholderTextColor={c.muted}
-            style={field}
-          />
-        </View>
-        <View style={{ flex: 1, gap: 4 }}>
-          <AppText variant="eyebrow" tone="muted">{t('relief.field')}</AppText>
-          <ReliefPicker compact reliefs={reliefs} value={reliefId} onChange={setReliefId} />
-        </View>
-      </View>
-
-      {reliefId ? (
-        <View style={{ gap: 4 }}>
-          <AmountInput compact label={t('relief.claimable')} value={claimText} onChange={(text) => setClaimText(text)} />
-          {claimTooBig ? (
-            <AppText variant="small" tone="negative">
-              {t('relief.claimableTooBig')}
-            </AppText>
-          ) : (
-            <AppText variant="small" tone="muted">
-              {t('relief.claimableHint')}
-            </AppText>
-          )}
-          {relief?.requiresReceipt && !receiptUri ? (
-            <AppText variant="small" tone="warning">
-              {t('relief.needsReceipt')}
-            </AppText>
-          ) : null}
         </View>
       ) : null}
+    </View>
+  );
 
-      <ReceiptField compact uri={receiptUri} onChange={setReceiptUri} />
-      {error ? (
+  const methodChips = methods.map((m) => (
+    <Chip compact={!wide} key={m.id} label={m.name} icon={METHOD_ICON[m.kind]} selected={m.id === methodId} onPress={() => setMethodId(m.id)} />
+  ));
+  const methodField = (
+    <View style={{ gap: wide ? 10 : 4 }}>
+      {label(t('method.field'))}
+      {wide ? (
+        <View style={row}>{methodChips}</View>
+      ) : (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={scrollRow} keyboardShouldPersistTaps="handled">
+          {methodChips}
+        </ScrollView>
+      )}
+    </View>
+  );
+
+  const dateField = (
+    <View style={{ gap: wide ? 10 : 4 }}>
+      {label(t('common.date'))}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Chip compact label={t('expense.today')} selected={date === today} onPress={() => setDate(today)} />
+        <Chip compact label={t('expense.yesterday')} selected={date === addDays(today, -1)} onPress={() => setDate(addDays(today, -1))} />
+        <DateField compact label={t('common.date')} value={date} onChange={setDate} />
+      </View>
+    </View>
+  );
+
+  const noteInput = (
+    <View style={{ flex: 1, gap: wide ? 10 : 4 }}>
+      {label(t('common.note'))}
+      <TextInput
+        accessibilityLabel={t('common.note')}
+        value={note}
+        onChangeText={setNote}
+        placeholderTextColor={c.muted}
+        style={field}
+      />
+    </View>
+  );
+  const reliefInput = (
+    <View style={{ flex: 1, gap: wide ? 10 : 4 }}>
+      {label(t('relief.field'))}
+      <ReliefPicker compact reliefs={reliefs} value={reliefId} onChange={setReliefId} />
+    </View>
+  );
+
+  const claimField = reliefId ? (
+    <View style={{ gap: 4 }}>
+      <AmountInput compact label={t('relief.claimable')} value={claimText} onChange={(text) => setClaimText(text)} />
+      {claimTooBig ? (
         <AppText variant="small" tone="negative">
-          {error}
+          {t('relief.claimableTooBig')}
+        </AppText>
+      ) : (
+        <AppText variant="small" tone="muted">
+          {t('relief.claimableHint')}
+        </AppText>
+      )}
+      {relief?.requiresReceipt && !receiptUri ? (
+        <AppText variant="small" tone="warning">
+          {t('relief.needsReceipt')}
         </AppText>
       ) : null}
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        <View style={{ flex: 2 }}>
-          <Button compact title={t('common.save')} onPress={save} disabled={!valid || busy} />
-        </View>
-        {existing ? (
-          <View style={{ flex: 1 }}>
-            <Button compact title={t('common.delete')} variant="secondary" onPress={del} disabled={busy} />
-          </View>
-        ) : null}
-        <View style={{ flex: 1 }}>
-          <Button compact title={t('common.cancel')} variant="secondary" onPress={() => router.back()} />
-        </View>
+    </View>
+  ) : null;
+
+  const errorText = error ? (
+    <AppText variant="small" tone="negative">
+      {error}
+    </AppText>
+  ) : null;
+
+  const actions = (
+    <View style={{ flexDirection: 'row', gap: 8 }}>
+      <View style={{ flex: 2 }}>
+        <Button compact={!wide} title={t('common.save')} onPress={save} disabled={!valid || busy} />
       </View>
+      {existing ? (
+        <View style={{ flex: 1 }}>
+          <Button compact={!wide} title={t('common.delete')} variant="secondary" onPress={del} disabled={busy} />
+        </View>
+      ) : null}
+      <View style={{ flex: 1 }}>
+        <Button compact={!wide} title={t('common.cancel')} variant="secondary" onPress={() => router.back()} />
+      </View>
+    </View>
+  );
+
+  const title = (
+    <AppText variant="title" style={wide ? undefined : { fontSize: 28, lineHeight: 34 }}>
+      {t(existing ? 'expense.edit' : 'expense.add')}
+    </AppText>
+  );
+
+  if (wide) {
+    // Tablets: the amount leads, then cards, with the receipt growing into the space that is left and
+    // the actions pinned at the bottom, so the form uses the whole screen without crowding.
+    // Landscape puts the receipt in its own column; portrait stacks it under the details.
+    const landscape = width > height;
+    const details = (
+      <Card style={{ gap: 16 }}>
+        {dateField}
+        <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
+          {noteInput}
+          {reliefInput}
+        </View>
+        {claimField}
+      </Card>
+    );
+    const receipt = (
+      <Card style={{ flexGrow: 1 }}>
+        <ReceiptField fill uri={receiptUri} onChange={setReceiptUri} />
+      </Card>
+    );
+    const choices = (
+      <View style={{ flexDirection: landscape ? 'column' : 'row', gap: 16 }}>
+        <Card style={{ flex: landscape ? undefined : 1 }}>{categoryField}</Card>
+        <Card style={{ flex: landscape ? undefined : 1 }}>{methodField}</Card>
+      </View>
+    );
+    return (
+      <Screen footer={<View style={{ gap: 8 }}>{errorText}{actions}</View>}>
+        {title}
+        {recentChips}
+        {amountField}
+        {landscape ? (
+          <View style={{ flexDirection: 'row', gap: 16, flexGrow: 1 }}>
+            <View style={{ flex: 1, gap: 16 }}>
+              {choices}
+              {details}
+            </View>
+            <View style={{ flex: 1 }}>{receipt}</View>
+          </View>
+        ) : (
+          <>
+            {choices}
+            {details}
+            {receipt}
+          </>
+        )}
+      </Screen>
+    );
+  }
+
+  return (
+    <Screen compact>
+      {title}
+      {recentChips}
+      {amountField}
+      {categoryField}
+      {methodField}
+      {dateField}
+      <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}>
+        {noteInput}
+        {reliefInput}
+      </View>
+      {claimField}
+      <ReceiptField compact uri={receiptUri} onChange={setReceiptUri} />
+      {errorText}
+      {actions}
     </Screen>
   );
 }

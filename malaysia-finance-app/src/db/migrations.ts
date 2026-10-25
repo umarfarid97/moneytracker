@@ -93,6 +93,10 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE commitments ADD COLUMN last_auto_due TEXT;
   UPDATE commitments SET start_date = date('now', '+8 hours');
   `,
+  // 3: bills whose amount changes every month (existing bills stay fixed)
+  `
+  ALTER TABLE commitments ADD COLUMN variable INTEGER NOT NULL DEFAULT 0;
+  `,
 ];
 
 /** Brings the database up to date. Each step runs in its own transaction. */

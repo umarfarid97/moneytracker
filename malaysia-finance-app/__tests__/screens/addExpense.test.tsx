@@ -140,3 +140,28 @@ describe('AddExpense (safety and receipts)', () => {
     expect(screen.queryByLabelText('Receipt, full screen')).toBeNull();
   });
 });
+
+describe('AddExpense layout', () => {
+  const RN = jest.requireActual('react-native');
+  const size = (width: number, height: number) =>
+    jest.spyOn(RN, 'useWindowDimensions').mockReturnValue({ width, height, scale: 2, fontScale: 1 });
+  afterEach(() => jest.restoreAllMocks());
+
+  test.each([
+    ['phone', 390, 844],
+    ['tablet portrait', 920, 1400],
+    ['tablet landscape', 1400, 920],
+  ])('saves on a %s', async (_name, width, height) => {
+    size(width, height);
+    const db = await freshDb();
+    await renderWithData(db, <AddExpense />);
+    await waitFor(() => expect(screen.getByLabelText('Amount')).toBeTruthy());
+    await fireEvent.changeText(screen.getByLabelText('Amount'), '8.20');
+    await fireEvent.press(screen.getByRole('button', { name: 'Hiburan' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(router.back).toHaveBeenCalled());
+    expect(await db.all('SELECT amount, category_id FROM expenses')).toEqual([{ amount: 820, category_id: CAT.Hiburan }]);
+    // Wide screens show an empty receipt area; phones keep just the two buttons.
+    expect(screen.queryByText('No receipt yet. Snap one so it is ready at tax time.') !== null).toBe(width >= 700);
+  });
+});

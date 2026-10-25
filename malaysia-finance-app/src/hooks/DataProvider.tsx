@@ -195,7 +195,8 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
     const runAutoRecord: DataContextValue['runAutoRecord'] = async (today) => {
       let count = 0;
       for (const c of commitmentsRef.current) {
-        if (!c.active || !c.autoRecord) continue;
+        // A variable bill's amount is only known when it is paid, so it is never recorded automatically.
+        if (!c.active || !c.autoRecord || c.variable) continue;
         const dates = missedDueDates(c, today);
         if (dates.length === 0) continue;
         for (const due of dates) {

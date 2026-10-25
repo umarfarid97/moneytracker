@@ -15,15 +15,22 @@ type Props = {
   fab?: boolean;
   /** Tighter padding and spacing, for forms that should fit one phone screen. */
   compact?: boolean;
+  /** Pinned under the content, e.g. a form's Save button. The content then stretches to fill the height. */
+  footer?: ReactNode;
 };
 
 const ANIMATE_IN = Platform.OS !== 'android';
 
 /** Page frame: ground colour with a soft wash at the top, safe area, 20px padding, 16px between blocks. */
-export function Screen({ children, scroll = true, fab = false, compact = false }: Props) {
+export function Screen({ children, scroll = true, fab = false, compact = false, footer }: Props) {
   const { c } = useTheme();
   const pad = compact ? space.gap : space.pad;
-  const content = { padding: pad, gap: compact ? space.m - 2 : space.gap, paddingBottom: fab ? 100 : pad };
+  const content = {
+    padding: pad,
+    gap: compact ? space.m - 2 : space.gap,
+    paddingBottom: fab ? 100 : pad,
+    ...(footer ? { flexGrow: 1 } : null),
+  };
   // Content rises in gently when a screen opens. Not on Android: fading a whole screen there
   // redraws it offscreen every frame, which stutters on tablets.
   const shown = useSharedValue(ANIMATE_IN ? 0 : 1);
@@ -50,6 +57,11 @@ export function Screen({ children, scroll = true, fab = false, compact = false }
         ) : (
           <View style={[{ flex: 1 }, content]}>{children}</View>
         )}
+        {footer ? (
+          <SafeAreaView edges={['bottom']} style={{ paddingHorizontal: pad, paddingTop: 12, paddingBottom: pad, borderTopWidth: 1, borderTopColor: c.border, backgroundColor: c.ground }}>
+            {footer}
+          </SafeAreaView>
+        ) : null}
       </Animated.View>
       {fab ? <Fab /> : null}
     </SafeAreaView>

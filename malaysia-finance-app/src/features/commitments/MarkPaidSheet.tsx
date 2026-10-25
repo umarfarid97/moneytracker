@@ -11,14 +11,17 @@ import { Sheet } from '@/ui/Sheet';
 type Props = {
   visible: boolean;
   bill: Commitment | null;
+  /** What was paid for this bill last time, if ever. */
+  lastPaid?: number | null;
   onClose: () => void;
   /** Called with the amount actually paid. */
   onConfirm: (amount: number) => Promise<void>;
 };
 
 /** Confirms a payment; the amount starts as the bill's usual amount and can be changed. Mount with a fresh `key` per bill. */
-export function MarkPaidSheet({ visible, bill, onClose, onConfirm }: Props) {
-  const [amountText, setAmountText] = useState(bill ? senToInput(bill.amount) : '');
+export function MarkPaidSheet({ visible, bill, lastPaid = null, onClose, onConfirm }: Props) {
+  // A bill that changes monthly starts empty: the amount has to come from this month's bill.
+  const [amountText, setAmountText] = useState(bill && !bill.variable ? senToInput(bill.amount) : '');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const amount = parseRM(amountText);
@@ -43,7 +46,12 @@ export function MarkPaidSheet({ visible, bill, onClose, onConfirm }: Props) {
       <View style={{ gap: 16 }}>
         {bill ? (
           <AppText variant="body" tone="muted">
-            {t('commitments.markPaidFor', { name: bill.name, amount: formatRM(bill.amount) })}
+            {bill.variable
+              ? [
+                  t('commitments.markPaidVariable', { name: bill.name }),
+                  lastPaid !== null ? t('commitments.lastPaid', { amount: formatRM(lastPaid) }) : null,
+                ].filter(Boolean).join(' ')
+              : t('commitments.markPaidFor', { name: bill.name, amount: formatRM(bill.amount) })}
           </AppText>
         ) : null}
         <AmountInput label={t('common.amount')} value={amountText} onChange={(text) => setAmountText(text)} autoFocus />

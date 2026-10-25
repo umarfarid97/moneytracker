@@ -57,9 +57,11 @@ export type Commitment = {
   startDate: string | null;
   /** Latest due date auto-record has handled, so a deleted spending is not recreated. */
   lastAutoDue: string | null;
+  /** The amount changes every month (e.g. electricity): `amount` is only an estimate. */
+  variable: boolean;
 };
 
-type CommitmentExtras = 'categoryId' | 'paymentMethodId' | 'reliefId' | 'autoRecord' | 'startDate' | 'lastAutoDue';
+type CommitmentExtras = 'categoryId' | 'paymentMethodId' | 'reliefId' | 'autoRecord' | 'startDate' | 'lastAutoDue' | 'variable';
 export type NewCommitment = Omit<Commitment, 'id' | CommitmentExtras> & Partial<Pick<Commitment, CommitmentExtras>>;
 
 export function withCommitmentDefaults(input: NewCommitment): Omit<Commitment, 'id'> {
@@ -70,6 +72,7 @@ export function withCommitmentDefaults(input: NewCommitment): Omit<Commitment, '
     autoRecord: false,
     startDate: null,
     lastAutoDue: null,
+    variable: false,
     ...input,
   };
 }
