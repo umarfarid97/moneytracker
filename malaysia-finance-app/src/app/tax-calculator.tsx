@@ -3,6 +3,7 @@ import { Switch, View } from 'react-native';
 import { formatRM, parseRM, senToInput } from '@/domain/money';
 import { capReliefClaims } from '@/domain/reliefs';
 import { calculateTaxBill } from '@/domain/taxBill';
+import { useGiving } from '@/hooks/useGiving';
 import { useProfile } from '@/hooks/useProfile';
 import { useAllReliefClaims } from '@/hooks/useAllReliefClaims';
 import { useTaxYear } from '@/hooks/useTaxYear';
@@ -14,7 +15,7 @@ import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { useTheme } from '@/ui/useTheme';
 
-type Field = 'salary' | 'freelance' | 'business' | 'expenses' | 'pcb' | 'zakat';
+type Field = 'salary' | 'freelance' | 'business' | 'expenses' | 'pcb' | 'zakat' | 'donations';
 
 function Row({ label, value, testID, strong }: { label: string; value: string; testID?: string; strong?: boolean }) {
   return (
@@ -34,6 +35,8 @@ export default function TaxCalculator() {
   const { year, data, notice } = useTaxYear();
   const { data: profile } = useProfile();
   const { data: claims } = useAllReliefClaims(year);
+  // Zakat and approved donations recorded under Savings & giving start the matching fields.
+  const { summary: giving } = useGiving(year);
 
   const [text, setText] = useState<Record<Field, string>>(() => ({
     salary: profile.grossMonthly > 0 ? senToInput(profile.grossMonthly * 12) : '',
@@ -41,7 +44,8 @@ export default function TaxCalculator() {
     business: '',
     expenses: '',
     pcb: '',
-    zakat: '',
+    zakat: giving.zakatForTax > 0 ? senToInput(giving.zakatForTax) : '',
+    donations: giving.donationsForTax > 0 ? senToInput(giving.donationsForTax) : '',
   }));
   const [spouse, setSpouse] = useState(false);
   const set = (field: Field) => (next: string) => setText((prev) => ({ ...prev, [field]: next }));
@@ -61,6 +65,7 @@ export default function TaxCalculator() {
       reliefsTotal,
       pcb: amount('pcb'),
       zakat: amount('zakat'),
+      donations: amount('donations'),
       spouseRebate: spouse,
     },
     data,
@@ -100,6 +105,7 @@ export default function TaxCalculator() {
       <AmountInput label={t('taxCalc.expenses')} value={text.expenses} onChange={set('expenses')} />
       <AmountInput label={t('taxCalc.pcb')} value={text.pcb} onChange={set('pcb')} />
       <AmountInput label={t('taxCalc.zakat')} value={text.zakat} onChange={set('zakat')} />
+      <AmountInput label={t('taxCalc.donations')} value={text.donations} onChange={set('donations')} />
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <AppText variant="bodyStrong" style={{ flex: 1 }}>
           {t('taxCalc.spouse')}
@@ -120,6 +126,9 @@ export default function TaxCalculator() {
               value={formatRM(b.tax)}
             />
           ))}
+        {bill.donationDeduction > 0 ? (
+          <Row label={t('taxCalc.donationDeduction')} value={formatRM(bill.donationDeduction)} testID="donation-deduction" />
+        ) : null}
         {bill.rebate > 0 ? <Row label={t('taxCalc.rebate')} value={formatRM(bill.rebate)} testID="rebate" /> : null}
       </Card>
 
