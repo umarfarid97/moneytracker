@@ -14,3 +14,19 @@ export function saveAppearance(value: string): void {
     // Ignore: storage blocked, the choice lasts for this visit only.
   }
 }
+
+export function loadLanguage(): string | null {
+  try {
+    return localStorage.getItem('duit.language');
+  } catch {
+    return null;
+  }
+}
+
+export function saveLanguage(value: string): void {
+  try {
+    localStorage.setItem('duit.language', value);
+  } catch {
+    // Ignore: storage blocked, the choice lasts for this visit only.
+  }
+}
