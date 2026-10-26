@@ -299,3 +299,21 @@ describe('savings, EPF and giving records', () => {
     expect(await db.all('SELECT * FROM giving_records')).toEqual([]);
   });
 });
+
+describe('foreign currency, owed money and extra income', () => {
+  it('are exported and merged between phones', async () => {
+    const a = await freshDb();
+    const b = await freshDb();
+    await a.run(`INSERT INTO expenses (amount, category_id, date, currency, foreign_amount, fx_rate) VALUES (6600, 1, '2026-10-20', 'SGD', 2000, 3.3)`);
+    await a.run(`INSERT INTO owed_entries (person, kind, amount, date) VALUES ('Aina', 'lent', 5000, '2026-10-20')`);
+    await a.run(`INSERT INTO income_rules (name, amount, day_of_month, active, start_date) VALUES ('Rent', 100, 5, 1, '2026-10-01')`);
+    await a.run(`INSERT INTO income_entries (name, amount, date) VALUES ('Rent', 100, '2026-10-05')`);
+    const snap = await exportSnapshot(a);
+    expect(snap.tables.expenses[0]).toMatchObject({ currency: 'SGD', foreign_amount: 2000, fx_rate: 3.3 });
+    await sync(b, snap);
+    expect(await b.get('SELECT person, amount FROM owed_entries')).toEqual({ person: 'Aina', amount: 5000 });
+    expect(await b.get('SELECT currency, foreign_amount AS f FROM expenses')).toEqual({ currency: 'SGD', f: 2000 });
+    expect(await b.all('SELECT name FROM income_rules')).toEqual([{ name: 'Rent' }]);
+    expect(await b.all('SELECT name FROM income_entries')).toEqual([{ name: 'Rent' }]);
+  });
+});

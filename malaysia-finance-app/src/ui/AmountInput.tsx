@@ -19,9 +19,11 @@ type Props = {
   compact?: boolean;
   /** A bigger field for wide screens, where the amount leads the form. */
   large?: boolean;
+  /** Shown in the badge instead of RM, for spending in another currency. */
+  currency?: string;
 };
 
-export function AmountInput({ label, value, onChange, autoFocus, compact = false, large = false }: Props) {
+export function AmountInput({ label, value, onChange, autoFocus, compact = false, large = false, currency = 'RM' }: Props) {
   const { c, scheme } = useTheme();
   const [focused, setFocused] = useState(false);
   const invalid = value.trim() !== '' && parseRM(value) === null;
@@ -46,7 +48,7 @@ export function AmountInput({ label, value, onChange, autoFocus, compact = false
       >
         <View style={{ backgroundColor: c.accentSoft, borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 3 }}>
           <AppText variant="smallStrong" color={c.accentInk}>
-            RM
+            {currency}
           </AppText>
         </View>
         <TextInput
