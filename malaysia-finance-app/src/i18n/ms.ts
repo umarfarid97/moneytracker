@@ -1,5 +1,6 @@
 import type { StringKey } from './en';
 import { statementImportMs } from './statementImport';
+import { reportsMs } from './reports';
 
 /** Bahasa Malaysia. Every key in en.ts needs a line here, so the compiler flags anything missed. */
 export const ms: Record<StringKey, string> = {
@@ -26,6 +27,11 @@ export const ms: Record<StringKey, string> = {
   'home.empty': 'Belum ada perbelanjaan hari ini',
   'home.todayOver': '{amount} lebih untuk hari ini',
   'home.setBudget': 'Tetapkan bajet',
+  'home.balanceTitle': 'Baki bulan ini',
+  'home.balanceDetail': 'Gaji bersih {income} - belanja {spent}',
+  'home.balanceUpcoming': '{upcoming} bil belum dibayar, jadi {free} boleh digunakan',
+  'home.balanceSetup': 'Masukkan gaji dalam profil untuk lihat baki setiap bulan',
+  'home.balanceSetupButton': 'Tambah gaji',
 
   'spending.monthTotal': '{amount} dibelanjakan bulan ini',
   'spending.search': 'Cari perbelanjaan',
@@ -494,4 +500,6 @@ export const ms: Record<StringKey, string> = {
   'budget.daysLeft': '{count} hari lagi',
   'budget.daysLeft1': '1 hari lagi',
   ...statementImportMs,
+
+  ...reportsMs,
 };

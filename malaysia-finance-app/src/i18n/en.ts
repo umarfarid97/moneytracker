@@ -1,5 +1,6 @@
 import { loansBillers } from './loansBillers';
 import { statementImport } from './statementImport';
+import { reportsEn } from './reports';
 
 /** All user-facing strings live here and ms.ts holds the Bahasa Malaysia version of every key. */
 export const en = {
@@ -26,6 +27,11 @@ export const en = {
   'home.empty': 'Nothing spent yet today',
   'home.todayOver': '{amount} over for today',
   'home.setBudget': 'Set a budget',
+  'home.balanceTitle': 'Balance left this month',
+  'home.balanceDetail': 'Take-home {income} - spent {spent}',
+  'home.balanceUpcoming': '{upcoming} in bills still to pay, so {free} is free',
+  'home.balanceSetup': 'Add your salary in your profile to see what is left each month',
+  'home.balanceSetupButton': 'Add salary',
 
   'spending.monthTotal': '{amount} spent this month',
   'spending.search': 'Search spending',
@@ -454,6 +460,7 @@ export const en = {
 
   ...loansBillers,
   ...statementImport,
+  ...reportsEn,
 } as const;
 
 export type StringKey = keyof typeof en;
