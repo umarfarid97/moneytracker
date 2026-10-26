@@ -3,17 +3,20 @@ import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { View, useWindowDimensions } from 'react-native';
 import { periodKey } from '@/domain/budgetPeriod';
+import { balanceLeft } from '@/domain/balance';
 import { buildHome } from '@/domain/summary';
 import { shortDate } from '@/domain/dates';
 import { formatRM } from '@/domain/money';
 import { useBudgets } from '@/hooks/useBudgets';
 import { useCategories } from '@/hooks/useCategories';
+import { useCommitments } from '@/hooks/useCommitments';
 import { useExpenses } from '@/hooks/useExpenses';
 import { useProfile } from '@/hooks/useProfile';
 import { useToday } from '@/hooks/useToday';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
+import { Card } from '@/ui/Card';
 import { HeroCard, onHero } from '@/ui/HeroCard';
 import { Screen } from '@/ui/Screen';
 import { radius, space } from '@/ui/theme';
@@ -25,11 +28,16 @@ export default function Home() {
   const { data: expenses } = useExpenses();
   const { data: categories } = useCategories();
   const { data: profile } = useProfile();
+  const { data: commitments } = useCommitments();
   const startDay = profile.budgetStartDay;
   const { data: budgets } = useBudgets(periodKey(today, startDay));
   const home = useMemo(
     () => buildHome({ categories, expenses, budgets, today, startDay }),
     [categories, expenses, budgets, today, startDay],
+  );
+  const balance = useMemo(
+    () => balanceLeft({ profile, expenses, commitments, today }),
+    [profile, expenses, commitments, today],
   );
   const categoryById = useMemo(() => new Map(categories.map((cat) => [cat.id, cat])), [categories]);
   const tileWidth = (width - space.pad * 2 - space.gap) / 2;
@@ -62,6 +70,29 @@ export default function Home() {
           </View>
         )}
       </HeroCard>
+      {balance ? (
+        <Card style={{ gap: 4 }}>
+          <AppText variant="eyebrow" tone="muted">
+            {t('home.balanceTitle')}
+          </AppText>
+          <AppText variant="kpi" tone={balance.left < 0 ? 'negative' : 'text'}>
+            {balance.left >= 0 ? formatRM(balance.left) : `-${formatRM(-balance.left)}`}
+          </AppText>
+          <AppText variant="small" tone="muted">
+            {t('home.balanceDetail', { income: formatRM(balance.income), spent: formatRM(balance.spent) })}
+          </AppText>
+          {balance.upcoming > 0 ? (
+            <AppText variant="small" tone="muted">
+              {t('home.balanceUpcoming', { upcoming: formatRM(balance.upcoming), free: formatRM(Math.max(0, balance.afterBills)) })}
+            </AppText>
+          ) : null}
+        </Card>
+      ) : (
+        <Card>
+          <AppText variant="small" tone="muted">{t('home.balanceSetup')}</AppText>
+          <Button title={t('home.balanceSetupButton')} variant="light" onPress={() => router.push('/profile')} />
+        </Card>
+      )}
       {home.tiles.length > 0 ? (
         <>
           <AppText variant="section">{t('home.categories')}</AppText>
