@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import type { ReactNode } from 'react';
 import { AppText } from './AppText';
 import { PressableScale } from './PressableScale';
 import { radius } from './theme';
@@ -14,9 +15,11 @@ type Props = {
   icon?: keyof typeof Ionicons.glyphMap;
   /** Colour of the icon, and of the chip when selected; defaults to the accent. */
   color?: string;
+  /** Drawn before the label instead of `icon`, e.g. a bank's badge. */
+  leading?: ReactNode;
 };
 
-export function Chip({ label, selected = false, onPress, accessibilityLabel, compact = false, icon, color }: Props) {
+export function Chip({ label, selected = false, onPress, accessibilityLabel, compact = false, icon, color, leading }: Props) {
   const { c } = useTheme();
   const tone = color ?? c.accent;
   const ink = selected ? (color ? '#ffffff' : c.onAccent) : c.text;
@@ -24,7 +27,7 @@ export function Chip({ label, selected = false, onPress, accessibilityLabel, com
     <PressableScale
       accessibilityRole="button"
       // The icon is a glyph in a Text, so name the chip by its label alone.
-      accessibilityLabel={accessibilityLabel ?? (icon ? label : undefined)}
+      accessibilityLabel={accessibilityLabel ?? (icon || leading ? label : undefined)}
       accessibilityState={{ selected }}
       onPress={onPress}
       pressedScale={0.95}
@@ -43,7 +46,8 @@ export function Chip({ label, selected = false, onPress, accessibilityLabel, com
         },
       ]}
     >
-      {icon ? <Ionicons name={icon} size={compact ? 15 : 16} color={selected ? ink : c.text} /> : null}
+      {leading ?? null}
+      {!leading && icon ? <Ionicons name={icon} size={compact ? 15 : 16} color={selected ? ink : c.text} /> : null}
       <AppText variant="smallStrong" color={ink}>
         {label}
       </AppText>

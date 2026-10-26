@@ -7,7 +7,6 @@ import { formatRM, parseRM, senToInput } from '@/domain/money';
 import { suggestRelief } from '@/domain/reliefSpending';
 import { noteSuggestions, type NoteSuggestion } from '@/domain/spendingFilter';
 import { budgetAlert } from '@/domain/summary';
-import type { PaymentKind } from '@/domain/types';
 import { useData } from '@/hooks/DataProvider';
 import { useCategories } from '@/hooks/useCategories';
 import { useExpenses } from '@/hooks/useExpenses';
@@ -23,19 +22,12 @@ import { ExpenseDetails } from '@/features/spending/ExpenseDetails';
 import { Chip } from '@/ui/Chip';
 import { confirmDelete } from '@/ui/confirm';
 import { DateField } from '@/ui/DateField';
+import { MethodBadge } from '@/ui/MethodBadge';
 import { ReceiptField } from '@/ui/ReceiptField';
 import { ReliefPicker } from '@/ui/ReliefPicker';
 import { Screen } from '@/ui/Screen';
 import { categoryLook, fontFamily, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
-
-const METHOD_ICON: Record<PaymentKind, 'cash-outline' | 'card-outline' | 'phone-portrait-outline' | 'swap-horizontal'> = {
-  cash: 'cash-outline',
-  debit: 'card-outline',
-  credit: 'card-outline',
-  ewallet: 'phone-portrait-outline',
-  transfer: 'swap-horizontal',
-};
 
 export default function AddExpense() {
   const { c } = useTheme();
@@ -206,7 +198,7 @@ export default function AddExpense() {
   );
 
   const methodChips = methods.map((m) => (
-    <Chip compact={!wide} key={m.id} label={m.name} icon={METHOD_ICON[m.kind]} selected={m.id === methodId} onPress={() => setMethodId(m.id)} />
+    <Chip compact={!wide} key={m.id} label={m.name} leading={<MethodBadge name={m.name} kind={m.kind} size={wide ? 22 : 20} color={m.id === methodId ? c.onAccent : c.text} />} selected={m.id === methodId} onPress={() => setMethodId(m.id)} />
   ));
   const methodField = (
     <View style={{ gap: wide ? 10 : 4 }}>

@@ -11,6 +11,7 @@ import { AmountInput } from '@/ui/AmountInput';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { Chip } from '@/ui/Chip';
+import { MethodBadge } from '@/ui/MethodBadge';
 import { ReliefPicker } from '@/ui/ReliefPicker';
 import { Sheet } from '@/ui/Sheet';
 import { controlHeight, fontFamily, radius } from '@/ui/theme';
@@ -160,6 +161,7 @@ export function CommitmentSheet({ visible, existing, onClose, onSave, onDelete }
                 key={m.id}
                 label={m.name}
                 accessibilityLabel={`Bill method ${m.name}`}
+                leading={<MethodBadge name={m.name} kind={m.kind} size={20} color={m.id === methodId ? c.onAccent : c.text} />}
                 selected={m.id === methodId}
                 onPress={() => setMethodId(m.id)}
               />

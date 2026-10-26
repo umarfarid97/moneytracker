@@ -9,7 +9,7 @@ import {
   activeFilterCount, EMPTY_FILTERS, filterExpenses, totalsByMethod, type SpendingFilters,
 } from '@/domain/spendingFilter';
 import { groupByDay, monthSpent } from '@/domain/summary';
-import type { Category, Expense } from '@/domain/types';
+import type { Category, Expense, PaymentMethod } from '@/domain/types';
 import { useCategories } from '@/hooks/useCategories';
 import { useExpenses } from '@/hooks/useExpenses';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
@@ -19,6 +19,7 @@ import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Chip } from '@/ui/Chip';
+import { MethodBadge } from '@/ui/MethodBadge';
 import { confirmDelete } from '@/ui/confirm';
 import { EmptyState } from '@/ui/EmptyState';
 import { HeroCard, onHero } from '@/ui/HeroCard';
@@ -36,11 +37,11 @@ type Item =
 const RELIEFS = LATEST_TAX_YEAR.reliefs;
 
 const Row = memo(function Row({
-  expense, category, methodName, onOpen, onDelete,
+  expense, category, method, onOpen, onDelete,
 }: {
   expense: Expense;
   category: Category | undefined;
-  methodName: string | null;
+  method: PaymentMethod | null;
   onOpen: (e: Expense) => void;
   onDelete: (e: Expense) => void;
 }) {
@@ -83,10 +84,13 @@ const Row = memo(function Row({
           </AppText>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
             {expense.note ? pill(tint, name) : null}
-            {methodName ? (
-              <AppText variant="small" tone="muted">
-                {methodName}
-              </AppText>
+            {method ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <MethodBadge name={method.name} kind={method.kind} size={16} color={c.muted} />
+                <AppText variant="small" tone="muted">
+                  {method.name}
+                </AppText>
+              </View>
             ) : null}
             {tagged ? pill(accent, t('spending.badge.relief')) : null}
             {needsReceipt ? pill(warn, t('tax.missingReceipt')) : null}
@@ -134,7 +138,7 @@ export default function Spending() {
   );
   const categoryById = useMemo(() => new Map(categories.map((cat) => [cat.id, cat])), [categories]);
   const filterCategory = filters.categoryId !== null ? categoryById.get(filters.categoryId) : undefined;
-  const methodById = useMemo(() => new Map(methods.map((m) => [m.id, m.name])), [methods]);
+  const methodById = useMemo(() => new Map(methods.map((m) => [m.id, m])), [methods]);
   const methodTotals = useMemo(() => totalsByMethod(inMonth, methods, t('methods.noMethod')), [inMonth, methods]);
   const filterCount = activeFilterCount(filters);
   const narrowed = filterCount > 0 || filters.text.trim() !== '';
@@ -170,7 +174,7 @@ export default function Spending() {
         <Row
           expense={item.expense}
           category={categoryById.get(item.expense.categoryId)}
-          methodName={item.expense.paymentMethodId === null ? null : methodById.get(item.expense.paymentMethodId) ?? null}
+          method={item.expense.paymentMethodId === null ? null : methodById.get(item.expense.paymentMethodId) ?? null}
           onOpen={open}
           onDelete={del}
         />
@@ -231,8 +235,11 @@ export default function Spending() {
                   {t('spending.byMethod')}
                 </AppText>
                 {methodTotals.map((m) => (
-                  <View key={m.methodId ?? 'none'} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <AppText variant="body">{m.name}</AppText>
+                  <View key={m.methodId ?? 'none'} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                      {m.kind ? <MethodBadge name={m.name} kind={m.kind} size={24} /> : null}
+                      <AppText variant="body">{m.name}</AppText>
+                    </View>
                     <AppText testID={`method-total-${m.methodId ?? 'none'}`} variant="bodyStrong">
                       {formatRM(m.total)}
                     </AppText>
@@ -340,6 +347,7 @@ export default function Spending() {
                 key={m.id}
                 label={m.name}
                 accessibilityLabel={`Filter method ${m.name}`}
+                leading={<MethodBadge name={m.name} kind={m.kind} size={20} color={filters.paymentMethodId === m.id ? c.onAccent : c.text} />}
                 selected={filters.paymentMethodId === m.id}
                 onPress={() => set({ paymentMethodId: m.id })}
               />
