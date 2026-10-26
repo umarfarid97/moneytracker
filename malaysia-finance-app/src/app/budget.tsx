@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { daysLeftInPeriod, parseStartDay, periodKey, periodLabel } from '@/domain/budgetPeriod';
 import { formatRM, parseRM, senToInput } from '@/domain/money';
+import { buildHome, type BudgetTile } from '@/domain/summary';
+import { useExpenses } from '@/hooks/useExpenses';
 import { useBudgets } from '@/hooks/useBudgets';
 import { useCategories } from '@/hooks/useCategories';
 import { useProfile } from '@/hooks/useProfile';
@@ -14,6 +16,7 @@ import { BackButton } from '@/ui/BackButton';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Chip } from '@/ui/Chip';
+import { ProgressBar } from '@/ui/ProgressBar';
 import { Screen } from '@/ui/Screen';
 import { controlHeight, fontFamily, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
@@ -30,6 +33,13 @@ export default function Budget() {
   const month = periodKey(today, startDay);
   const { data: categories } = useCategories();
   const { data: budgets, set, remove, copyFromLast } = useBudgets(month);
+  const { data: expenses } = useExpenses();
+  const { tiles } = useMemo(
+    () => buildHome({ categories, expenses, budgets, today, startDay }),
+    [categories, expenses, budgets, today, startDay],
+  );
+  const budgeted = tiles.filter((x): x is BudgetTile => x.limit !== null);
+  const warnings = budgeted.filter((x) => x.status !== 'on-track');
 
   const saved = useMemo(
     () => Object.fromEntries(budgets.map((b) => [b.categoryId, senToInput(b.limit)])) as Record<number, string>,
@@ -100,6 +110,31 @@ export default function Budget() {
           </AppText>
         ) : null}
       </View>
+      {warnings.length > 0 ? (
+        <Card style={{ gap: 6, borderLeftWidth: 4, borderLeftColor: c.negative }}>
+          <AppText variant="bodyStrong">{t('budget.warning')}</AppText>
+          {warnings.map((w) => (
+            <AppText key={w.categoryId} variant="small">
+              {w.status === 'over'
+                ? t('budget.warning.over', { category: w.name })
+                : t('budget.warning.near', { category: w.name, percent: Math.round((w.spent * 100) / w.limit) })}
+            </AppText>
+          ))}
+        </Card>
+      ) : null}
+      <Card style={{ gap: 12 }}>
+        <AppText variant="bodyStrong">{t('budget.progress')}</AppText>
+        {budgeted.length === 0 ? <AppText variant="small" tone="muted">{t('budget.progress.empty')}</AppText> : null}
+        {budgeted.map((x) => (
+          <View key={x.categoryId} style={{ gap: 6 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
+              <AppText variant="bodyStrong" style={{ flex: 1 }}>{x.name}</AppText>
+              <AppText variant="small" tone="muted">{formatRM(x.spent)} / {formatRM(x.limit)}</AppText>
+            </View>
+            <ProgressBar fraction={x.limit > 0 ? x.spent / x.limit : 1} color={x.status === 'over' ? c.negative : undefined} />
+          </View>
+        ))}
+      </Card>
       <Card style={{ gap: 12 }}>
         <View style={{ gap: 4 }}>
           <AppText variant="bodyStrong">{t('budget.startDay')}</AppText>
