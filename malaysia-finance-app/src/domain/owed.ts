@@ -14,6 +14,8 @@ export type OwedEntry = {
   amount: Sen;
   date: string;
   note: string;
+  /** The event this belongs to (a trip, a dinner); '' for none. */
+  event: string;
 };
 export type NewOwedEntry = Omit<OwedEntry, 'id'>;
 
@@ -22,7 +24,8 @@ export const OWED_KINDS: OwedKind[] = ['lent', 'repaid', 'borrowed', 'paidBack']
 export const signOf = (kind: OwedKind): 1 | -1 => (kind === 'lent' || kind === 'paidBack' ? 1 : -1);
 
 export const normalizeName = (name: string): string => name.trim().replace(/\s+/g, ' ');
-const sameName = (a: string, b: string) => normalizeName(a).toLowerCase() === normalizeName(b).toLowerCase();
+export const sameName = (a: string, b: string) => normalizeName(a).toLowerCase() === normalizeName(b).toLowerCase();
+export const NO_EVENT = '';
 
 export type PersonBalance = {
   person: string;
@@ -57,7 +60,7 @@ export function totals(list: PersonBalance[]): { owedToMe: Sen; iOwe: Sen } {
 }
 
 /** The entry that brings a person's balance back to zero, or null if it already is. */
-export function settleUp(p: PersonBalance, date: string): NewOwedEntry | null {
+export function settleUp(p: PersonBalance, date: string, event = NO_EVENT): NewOwedEntry | null {
   if (p.balance === 0) return null;
   return {
     person: p.person,
@@ -65,26 +68,100 @@ export function settleUp(p: PersonBalance, date: string): NewOwedEntry | null {
     amount: Math.abs(p.balance),
     date,
     note: '',
+    event,
   };
 }
+
+export type SplitMode = 'equal' | 'amount' | 'percent' | 'shares';
+
+export type SplitPart = { name: string; amount: Sen };
+export type SplitResult = {
+  parts: SplitPart[];
+  /** What is left for you: the total minus what the others owe. */
+  mine: Sen;
+  /** Every person owes something and you are not left with a negative share. */
+  ok: boolean;
+};
 
 /**
- * Splits a bill you paid equally between you and `others`. Everyone else gets the same whole-sen share and the
- * leftover sen stay with you, so the shares always add up to the total.
+ * Splits a bill you paid between you and `others`. `value` is what was typed for each person: sen for
+ * `amount`, a percentage for `percent`, a number of shares for `shares` (you hold `myShares`), and ignored for
+ * `equal`. Your own share is always what is left, so the shares add up to the total to the sen.
  */
-export function splitEqually(total: Sen, others: string[]): { mine: Sen; share: Sen } {
-  const share = Math.floor(total / (others.length + 1));
-  return { share, mine: total - share * others.length };
+export function splitBill(i: {
+  total: Sen; mode: SplitMode; others: { name: string; value: number }[]; myShares?: number;
+}): SplitResult {
+  const seen: { name: string; value: number }[] = [];
+  for (const o of i.others) {
+    const name = normalizeName(o.name);
+    if (name !== '' && !seen.some((x) => sameName(x.name, name))) seen.push({ name, value: o.value });
+  }
+  const shareSum = seen.reduce((s, o) => s + o.value, 0) + (i.myShares ?? 1);
+  const amountOf = (value: number): Sen =>
+    i.mode === 'equal' ? Math.floor(i.total / (seen.length + 1))
+    : i.mode === 'amount' ? Math.round(value)
+    : i.mode === 'percent' ? Math.round((i.total * value) / 100)
+    : shareSum > 0 ? Math.floor((i.total * value) / shareSum) : 0;
+  const parts = seen.map((o) => ({ name: o.name, amount: amountOf(o.value) }));
+  const mine = i.total - parts.reduce((s, p) => s + p.amount, 0);
+  return { parts, mine, ok: i.total > 0 && parts.length > 0 && parts.every((p) => p.amount > 0) && mine >= 0 };
 }
 
-/** Entries for a bill you paid: each other person owes their share. */
+/** Entries for a bill you paid: each other person owes their part. */
 export function splitEntries(i: {
-  total: Sen; others: string[]; date: string; note: string;
+  total: Sen; others: string[]; date: string; note: string; event?: string;
+  mode?: SplitMode; values?: number[]; myShares?: number;
 }): { mine: Sen; entries: NewOwedEntry[] } {
-  const names = i.others.map(normalizeName).filter((n, idx, all) => n !== '' && all.findIndex((x) => sameName(x, n)) === idx);
-  const { share, mine } = splitEqually(i.total, names);
+  const { parts, mine } = splitBill({
+    total: i.total, mode: i.mode ?? 'equal', myShares: i.myShares,
+    others: i.others.map((name, idx) => ({ name, value: i.values?.[idx] ?? 1 })),
+  });
   return {
     mine,
-    entries: share > 0 ? names.map((person) => ({ person, kind: 'lent' as const, amount: share, date: i.date, note: i.note })) : [],
+    entries: parts.filter((p) => p.amount > 0).map((p) => ({
+      person: p.name, kind: 'lent' as const, amount: p.amount, date: i.date, note: i.note, event: i.event ?? NO_EVENT,
+    })),
   };
+}
+
+/** The bill split equally: the same share for everyone else, and the leftover sen stay with you. */
+export function splitEqually(total: Sen, others: string[]): { mine: Sen; share: Sen } {
+  const { parts, mine } = splitBill({ total, mode: 'equal', others: others.map((name) => ({ name, value: 1 })) });
+  return { mine, share: parts[0]?.amount ?? Math.floor(total / (others.length + 1)) };
+}
+
+export type EventSummary = {
+  /** '' for entries that belong to no event. */
+  event: string;
+  people: PersonBalance[];
+  owedToMe: Sen;
+  iOwe: Sen;
+  entries: OwedEntry[];
+  lastDate: string;
+};
+
+/** One summary per event, newest first, with the entries that have no event last. Names match ignoring case. */
+export function eventSummaries(entries: OwedEntry[]): EventSummary[] {
+  const groups: { event: string; entries: OwedEntry[] }[] = [];
+  for (const e of entries) {
+    const name = normalizeName(e.event ?? '');
+    let g = groups.find((x) => sameName(x.event, name));
+    if (!g) {
+      g = { event: name, entries: [] };
+      groups.push(g);
+    }
+    g.entries.push(e);
+  }
+  return groups
+    .map((g) => {
+      const people = balances(g.entries);
+      return {
+        event: g.event, people, ...totals(people), entries: g.entries,
+        lastDate: g.entries.reduce((d, e) => (e.date > d ? e.date : d), ''),
+      };
+    })
+    .sort((a, b) =>
+      (a.event === NO_EVENT) !== (b.event === NO_EVENT)
+        ? (a.event === NO_EVENT ? 1 : -1)
+        : a.lastDate < b.lastDate ? 1 : a.lastDate > b.lastDate ? -1 : a.event.localeCompare(b.event));
 }
