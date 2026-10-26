@@ -17,6 +17,8 @@ export type Expense = {
   reliefId: string | null;
   /** Part of `amount` that qualifies for the relief; null means all of it. */
   reliefAmount: Sen | null;
+  /** SST (service tax) included in `amount`, as read from the receipt; null when unknown. */
+  sst?: Sen | null;
   /** The bill this spending paid, with the due date it paid (both null for ordinary spending). */
   commitmentId: number | null;
   dueDate: string | null;
@@ -31,6 +33,7 @@ export function withExpenseDefaults(input: NewExpense): Omit<Expense, 'id'> {
     paymentMethodId: null,
     reliefId: null,
     reliefAmount: null,
+    sst: null,
     commitmentId: null,
     dueDate: null,
     ...input,

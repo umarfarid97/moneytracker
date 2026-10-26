@@ -86,6 +86,7 @@ export function ExpenseDetails({ expense, categoryName, categoryIcon, methodName
 
       <Card style={{ paddingVertical: 4 }}>
         {row(t('common.date'), `${shortDate(expense.date)} ${year}`)}
+        {expense.sst != null ? row(t('scan.sstLabel'), formatRM(expense.sst)) : null}
         {row(t('method.field'), methodName ?? t('methods.noMethod'))}
         {row(t('relief.field'), reliefName ?? t('relief.none'), expense.reliefAmount === null)}
         {expense.reliefAmount !== null ? row(t('relief.claimable'), formatRM(expense.reliefAmount), true) : null}

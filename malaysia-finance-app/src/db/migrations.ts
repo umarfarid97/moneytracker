@@ -104,6 +104,10 @@ export const MIGRATIONS: string[] = [
   `,
   // 4: sync and backup (see src/sync): stable ids, edit times and deletions, kept up to date by triggers
   syncMigration(),
+  // 5: SST (service tax) read from a scanned receipt, in sen; null when not known
+  `
+  ALTER TABLE expenses ADD COLUMN sst INTEGER;
+  `,
 ];
 
 function syncMigration(): string {
