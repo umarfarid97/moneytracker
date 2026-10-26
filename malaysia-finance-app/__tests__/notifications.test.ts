@@ -132,3 +132,20 @@ describe('notifyBudgetAlert', () => {
     await expect(notifyBudgetAlert('Makan', { status: 'over', spent: 2, limit: 1 })).resolves.toBeUndefined();
   });
 });
+
+describe('scheduleReminders lead time', () => {
+  const sent = () =>
+    n.scheduleNotificationAsync.mock.calls[0][0] as { content: { title: string }; trigger: { date: Date } };
+
+  test('on the due date', async () => {
+    await scheduleReminders([c(1, 'Astro', 8900, 24)], now, 0);
+    expect(sent().content.title).toBe('Astro is due today');
+    expect(sent().trigger.date.toISOString()).toBe('2026-10-24T01:00:00.000Z');
+  });
+
+  test('several days before', async () => {
+    await scheduleReminders([c(1, 'Astro', 8900, 24)], now, 3);
+    expect(sent().content.title).toBe('Astro is due in 3 days');
+    expect(sent().trigger.date.toISOString()).toBe('2026-10-21T01:00:00.000Z');
+  });
+});

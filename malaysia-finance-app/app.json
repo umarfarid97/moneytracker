@@ -48,7 +48,15 @@
           "cameraPermission": "Duit uses the camera so you can photograph receipts.",
           "microphonePermission": false
         }
-      ]
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Duit uses Face ID to unlock the app and protect your money data."
+        }
+      ],
+      "expo-secure-store",
+      "expo-quick-actions"
     ],
     "experiments": {
       "typedRoutes": false,

@@ -113,4 +113,6 @@ export type Profile = {
   eisMonthly: Sen;
   /** Day of the month the budget period starts (1-31; a short month uses its last day). 1 is the calendar month. */
   budgetStartDay: number;
+  /** Days before a bill or loan is due that its reminder fires (0-7); 0 is the morning of the due date. */
+  reminderDays: number;
 };

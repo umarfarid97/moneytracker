@@ -74,3 +74,23 @@ describe('nextReminder', () => {
     expect(r.dueDate).toBe('2026-11-24');
   });
 });
+
+describe('nextReminder lead time', () => {
+  test('0 days fires on the morning of the due date', () => {
+    const r = nextReminder(24, new Date('2026-10-20T04:00:00Z'), 0);
+    expect(r.dueDate).toBe('2026-10-24');
+    expect(r.fireAt.toISOString()).toBe('2026-10-24T01:00:00.000Z');
+  });
+
+  test('a week ahead fires seven days before the due date', () => {
+    const r = nextReminder(24, new Date('2026-10-10T04:00:00Z'), 7);
+    expect(r.fireAt.toISOString()).toBe('2026-10-17T01:00:00.000Z');
+  });
+
+  test('moves to next month when this month\'s reminder time has passed', () => {
+    // 2026-10-20 12:00 KL is after the 09:00 KL reminder 7 days before the 24th (17 Oct), so use November's.
+    const r = nextReminder(24, new Date('2026-10-20T04:00:00Z'), 7);
+    expect(r.dueDate).toBe('2026-11-24');
+    expect(r.fireAt.toISOString()).toBe('2026-11-17T01:00:00.000Z');
+  });
+});

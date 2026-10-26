@@ -75,3 +75,36 @@ describe('loans and the budget start day in backup and sync', () => {
     expect((await getProfile(a)).budgetStartDay).toBe(25);
   });
 });
+
+describe('reminder lead time in backup and sync', () => {
+  it('starts at one day and only accepts 0 to 7', async () => {
+    const db = await freshDb();
+    expect((await getProfile(db)).reminderDays).toBe(1);
+    await expect(db.run('UPDATE profile SET reminder_days = 8')).rejects.toBeTruthy();
+    await expect(db.run('UPDATE profile SET reminder_days = -1')).rejects.toBeTruthy();
+  });
+
+  it('a backup file round trips it, and an older backup leaves it alone', async () => {
+    const a = await freshDb();
+    await saveProfile(a, { ...(await getProfile(a)), reminderDays: 3 });
+    const text = await createBackup(a);
+    const b = await freshDb();
+    await restoreBackup(b, await parseBackup(b, text));
+    expect((await getProfile(b)).reminderDays).toBe(3);
+
+    const snap = await exportSnapshot(a);
+    delete snap.profile!.reminder_days;
+    const c = await freshDb();
+    await restoreBackup(c, await parseBackup(c, JSON.stringify(snap)));
+    expect((await getProfile(c)).reminderDays).toBe(1);
+  });
+
+  it('syncs to another phone with the profile', async () => {
+    const a = await freshDb();
+    const b = await freshDb();
+    await saveProfile(a, { ...(await getProfile(a)), reminderDays: 7 });
+    const merged = mergeSnapshots(await exportSnapshot(b), await exportSnapshot(a));
+    await applySnapshot(b, merged);
+    expect((await getProfile(b)).reminderDays).toBe(7);
+  });
+});

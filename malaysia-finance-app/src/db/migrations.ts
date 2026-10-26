@@ -119,6 +119,10 @@ export const MIGRATIONS: string[] = [
   `,
   // 7: EPF / SOCSO / EIS records, zakat and giving, savings and investments (all synced like other entities)
   wealthMigration(),
+  // 8: how many days before a bill or loan is due its reminder fires (0 = on the day), synced with the profile
+  `
+  ALTER TABLE profile ADD COLUMN reminder_days INTEGER NOT NULL DEFAULT 1 CHECK (reminder_days BETWEEN 0 AND 7);
+  `,
 ];
 
 /** New tables that sync: each gets a uid and edit time from the start, and the same triggers as the older ones. */
