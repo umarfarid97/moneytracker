@@ -354,6 +354,20 @@ describe('Others: projects', () => {
     expect((await b.all(`SELECT 1 FROM owed_projects WHERE uid = 'proj-general'`)).length).toBe(1);
   });
 
+  it('who paid (counter) travels between phones, and rows from before it get an empty one', async () => {
+    const a = await freshDb();
+    const b = await freshDb();
+    await a.run(`INSERT INTO owed_entries (person, kind, amount, date, counter, project_id) VALUES ('Ben', 'lent', 900, '2026-10-20', 'Aina', (SELECT id FROM owed_projects WHERE uid = 'proj-general'))`);
+    await sync(b, await exportSnapshot(a));
+    expect(await b.get('SELECT person, counter FROM owed_entries')).toEqual({ person: 'Ben', counter: 'Aina' });
+
+    const old = JSON.parse(JSON.stringify(await exportSnapshot(a))) as Record<string, any>;
+    for (const row of old.tables.owed_entries) delete row.counter;
+    const c = await freshDb();
+    await sync(c, old as Awaited<ReturnType<typeof exportSnapshot>>);
+    expect(await c.get('SELECT person, counter FROM owed_entries')).toEqual({ person: 'Ben', counter: '' });
+  });
+
   it('deleting a project deletes its entries, and that reaches the other phone', async () => {
     const a = await freshDb();
     const b = await freshDb();

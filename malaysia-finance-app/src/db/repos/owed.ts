@@ -2,7 +2,7 @@ import { DEFAULT_PROJECT_UID } from '@/db/migrations';
 import type { NewOwedEntry, NewOwedProject, OwedEntry, OwedProject } from '@/domain/owed';
 import type { Db } from '../types';
 
-const ENTRIES = `SELECT id, person, kind, amount, date, note,
+const ENTRIES = `SELECT id, person, kind, amount, date, note, counter,
   COALESCE(project_id, (SELECT id FROM owed_projects WHERE uid = '${DEFAULT_PROJECT_UID}')) AS projectId FROM owed_entries`;
 
 export function listOwedEntries(db: Db): Promise<OwedEntry[]> {
@@ -10,15 +10,15 @@ export function listOwedEntries(db: Db): Promise<OwedEntry[]> {
 }
 
 export async function addOwedEntry(db: Db, input: NewOwedEntry): Promise<OwedEntry> {
-  const r = await db.run('INSERT INTO owed_entries (person, kind, amount, date, note, project_id) VALUES (?, ?, ?, ?, ?, ?)', [
-    input.person, input.kind, input.amount, input.date, input.note, input.projectId,
+  const r = await db.run('INSERT INTO owed_entries (person, kind, amount, date, note, project_id, counter) VALUES (?, ?, ?, ?, ?, ?, ?)', [
+    input.person, input.kind, input.amount, input.date, input.note, input.projectId, input.counter,
   ]);
   return { id: r.lastInsertRowId, ...input };
 }
 
 export async function updateOwedEntry(db: Db, e: OwedEntry): Promise<void> {
-  await db.run('UPDATE owed_entries SET person = ?, kind = ?, amount = ?, date = ?, note = ?, project_id = ? WHERE id = ?', [
-    e.person, e.kind, e.amount, e.date, e.note, e.projectId, e.id,
+  await db.run('UPDATE owed_entries SET person = ?, kind = ?, amount = ?, date = ?, note = ?, project_id = ?, counter = ? WHERE id = ?', [
+    e.person, e.kind, e.amount, e.date, e.note, e.projectId, e.counter, e.id,
   ]);
 }
 

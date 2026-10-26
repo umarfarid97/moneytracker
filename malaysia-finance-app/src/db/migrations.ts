@@ -134,6 +134,10 @@ export const MIGRATIONS: string[] = [
   `,
   // 11: Others: every lent, borrowed or split entry belongs to a project (a trip, a dinner) with its own people
   projectsMigration(),
+  // 12: an entry can be between two other people in the book (counter = who paid; '' means you)
+  `
+  ALTER TABLE owed_entries ADD COLUMN counter TEXT NOT NULL DEFAULT '';
+  `,
 ];
 
 function projectsMigration(): string {

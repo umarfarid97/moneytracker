@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { formatRM, parseRM } from '@/domain/money';
-import { normalizeName, sameName, splitBill, type SplitMode } from '@/domain/owed';
+import { normalizeName, sameName, splitBill, splitTransfers, type SplitMode } from '@/domain/owed';
 import type { Category } from '@/domain/types';
 import { TextField } from '@/features/wealth/TextField';
 import { t } from '@/i18n/t';
@@ -10,6 +10,7 @@ import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { Chip } from '@/ui/Chip';
 import { Sheet } from '@/ui/Sheet';
+import { transferText } from './sentences';
 
 export type SplitInput = {
   total: number;
@@ -18,8 +19,8 @@ export type SplitInput = {
   /** Your own part: the total minus what the others owe. */
   mine: number;
   note: string;
-  /** Who paid the bill: null when you did, otherwise one of the people (you then owe them your part). */
-  payer: string | null;
+  /** Who paid the bill and how much each put in ('' is you). The amounts add up to the total. */
+  paid: { name: string; amount: number }[];
   /** Category to record my share as spending under, or null to record nothing. */
   categoryId: number | null;
 };
@@ -42,7 +43,7 @@ function valueOf(mode: SplitMode, text: string): number | null {
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
-/** Split a bill you paid between you and friends: equally, or with a different amount, percent or share for each. */
+/** Split a bill between you and friends, paid by you, one of them or several: equally, or with a different amount, percent or share for each. */
 export function SplitSheet({ people, categories, onClose, onSave }: Props) {
   const [total, setTotal] = useState('');
   const [mode, setMode] = useState<SplitMode>('equal');
@@ -52,7 +53,10 @@ export function SplitSheet({ people, categories, onClose, onSave }: Props) {
   const [myShares, setMyShares] = useState('1');
   const [extra, setExtra] = useState('');
   const [note, setNote] = useState('');
-  const [payer, setPayer] = useState<string | null>(null);
+  // Who paid ('' is you). With more than one payer, each types what they put in.
+  const [payers, setPayers] = useState<string[]>(['']);
+  const [several, setSeveral] = useState(false);
+  const [paidTyped, setPaidTyped] = useState<Record<string, string>>({});
   const [record, setRecord] = useState(false);
   const [categoryId, setCategoryId] = useState<number | null>(categories[0]?.id ?? null);
   const [error, setError] = useState<string | null>(null);
@@ -60,8 +64,9 @@ export function SplitSheet({ people, categories, onClose, onSave }: Props) {
 
   const known = [...people, ...chosen.filter((c) => !people.some((p) => sameName(p, c)))];
   const isChosen = (name: string) => chosen.some((c) => sameName(c, name));
+  const isPayer = (name: string) => payers.some((p) => sameName(p, name));
   const toggle = (name: string) =>
-    payer !== null && sameName(payer, name) ? undefined : setChosen((prev) => (isChosen(name) ? prev.filter((c) => !sameName(c, name)) : [...prev, name]));
+    isPayer(name) ? undefined : setChosen((prev) => (isChosen(name) ? prev.filter((c) => !sameName(c, name)) : [...prev, name]));
   const key = (name: string) => `${mode}|${name.toLowerCase()}`;
 
   function addExtra() {
@@ -80,7 +85,16 @@ export function SplitSheet({ people, categories, onClose, onSave }: Props) {
           others: chosen.map((name, i) => ({ name, value: values[i] ?? 0 })),
         })
       : null;
-  const valid = result !== null && result.ok;
+  const splitOk = result !== null && result.ok;
+  const paid = payers.length === 1
+    ? (sen !== null ? [{ name: payers[0], amount: sen }] : null)
+    : payers.map((name) => ({ name, amount: parseRM(paidTyped[name.toLowerCase()] ?? '') }));
+  const paidOk = paid !== null && paid.every((p) => p.amount !== null && p.amount > 0) && sen !== null
+    && paid.reduce((s, p) => s + (p.amount ?? 0), 0) === sen;
+  const transfers = result && splitOk && paidOk && paid
+    ? splitTransfers({ paid: paid.map((p) => ({ name: p.name, amount: p.amount ?? 0 })), parts: result.parts, mine: result.mine })
+    : [];
+  const valid = splitOk && paidOk;
   const percentLeft = mode === 'percent' ? 100 - values.reduce<number>((s, v) => s + (v ?? 0), 0) : null;
 
   async function save() {
@@ -89,7 +103,8 @@ export function SplitSheet({ people, categories, onClose, onSave }: Props) {
     setError(null);
     try {
       await onSave({
-        total: sen, parts: result.parts, mine: result.mine, note: note.trim(), payer,
+        total: sen, parts: result.parts, mine: result.mine, note: note.trim(),
+        paid: (paid ?? []).map((p) => ({ name: p.name, amount: p.amount ?? 0 })),
         categoryId: record ? categoryId : null,
       });
       onClose();
@@ -105,29 +120,53 @@ export function SplitSheet({ people, categories, onClose, onSave }: Props) {
       <View style={{ gap: 16 }}>
         <AmountInput label={t('split.total')} value={total} onChange={setTotal} compact autoFocus />
         <TextField label={t('split.note')} value={note} onChange={setNote} maxLength={80} />
-        {people.length > 0 ? (
-          <View style={{ gap: 8 }}>
-            <AppText variant="eyebrow" tone="muted">{t('project.paidBy')}</AppText>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              <Chip compact label={t('project.me')} selected={payer === null} onPress={() => setPayer(null)} />
-              {people.map((name) => (
-                <Chip
-                  key={name}
-                  compact
-                  label={name}
-                  accessibilityLabel={`${t('project.paidBy')} ${name}`}
-                  selected={payer !== null && sameName(payer, name)}
-                  onPress={() => {
-                    setPayer(name);
-                    // Whoever paid shares the bill too.
-                    setChosen((prev) => (prev.some((c) => sameName(c, name)) ? prev : [...prev, name]));
-                  }}
+        <View style={{ gap: 8 }}>
+          <AppText variant="eyebrow" tone="muted">{t('project.paidBy')}</AppText>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {['', ...known].map((name) => (
+              <Chip
+                key={name || 'me'}
+                compact
+                label={name === '' ? t('project.me') : name}
+                accessibilityLabel={`${t('project.paidBy')} ${name === '' ? t('project.me') : name}`}
+                selected={isPayer(name)}
+                onPress={() => {
+                  if (several && isPayer(name)) {
+                    if (payers.length > 1) setPayers((prev) => prev.filter((p) => !sameName(p, name)));
+                    return;
+                  }
+                  setPayers((prev) => (several ? [...prev, name] : [name]));
+                  // Whoever paid shares the bill too.
+                  if (name !== '') setChosen((prev) => (prev.some((c) => sameName(c, name)) ? prev : [...prev, name]));
+                }}
+              />
+            ))}
+          </View>
+          <Chip
+            compact
+            label={t('split.severalPaid')}
+            selected={several}
+            onPress={() => {
+              if (several) setPayers((prev) => [prev[0] ?? '']);
+              setSeveral((v) => !v);
+            }}
+          />
+          <AppText variant="small" tone="muted">{t(payers.length > 1 ? 'split.paidByMany' : several ? 'split.paidByHint' : 'split.paidByOne')}</AppText>
+          {payers.length > 1 ? (
+            <View style={{ gap: 10 }}>
+              {payers.map((name) => (
+                <TextField
+                  key={name || 'me'}
+                  label={t('split.paidAmount', { name: name === '' ? t('project.me') : name })}
+                  value={paidTyped[name.toLowerCase()] ?? ''}
+                  numeric
+                  decimals={2}
+                  onChange={(text) => setPaidTyped((prev) => ({ ...prev, [name.toLowerCase()]: text }))}
                 />
               ))}
             </View>
-            {payer !== null ? <AppText variant="small" tone="muted">{t('project.paidByOther', { name: payer })}</AppText> : null}
-          </View>
-        ) : null}
+          ) : null}
+        </View>
         <View style={{ gap: 8 }}>
           <AppText variant="eyebrow" tone="muted">{t('split.with')}</AppText>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -171,13 +210,12 @@ export function SplitSheet({ people, categories, onClose, onSave }: Props) {
 
         {result ? (
           <View style={{ gap: 2 }}>
-            {payer !== null ? null : mode === 'equal' ? (
+            {payers.length === 1 && payers[0] === '' && mode === 'equal' ? (
               <AppText testID="split-each" variant="bodyStrong">{t('split.each', { amount: formatRM(result.parts[0]?.amount ?? 0) })}</AppText>
-            ) : (
-              result.parts.map((p) => (
-                <AppText key={p.name} variant="bodyStrong">{t('split.owes', { name: p.name, amount: formatRM(p.amount) })}</AppText>
-              ))
-            )}
+            ) : null}
+            {transfers.map((tr, i) => (
+              <AppText key={i} variant="bodyStrong">{transferText(tr)}</AppText>
+            ))}
             {result.mine >= 0 ? (
               <AppText testID="split-mine" variant="small" tone="muted">
                 {mode === 'equal' || mode === 'shares' ? t('split.mine', { amount: formatRM(result.mine) }) : t('split.left', { amount: formatRM(result.mine) })}
@@ -185,6 +223,7 @@ export function SplitSheet({ people, categories, onClose, onSave }: Props) {
             ) : (
               <AppText testID="split-mine" variant="small" tone="negative">{t('split.over', { amount: formatRM(-result.mine) })}</AppText>
             )}
+            {payers.length > 1 && !paidOk ? <AppText variant="small" tone="negative">{t('split.paidMismatch')}</AppText> : null}
             {percentLeft !== null && percentLeft >= 0 ? (
               <AppText variant="small" tone="muted">{t('split.percentLeft', { percent: Number(percentLeft.toFixed(2)) })}</AppText>
             ) : null}

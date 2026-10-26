@@ -16,6 +16,8 @@ export type OwedEntry = {
   note: string;
   /** The project this belongs to (a trip, a dinner). */
   projectId: number;
+  /** The other side of the entry: '' when it is between you and `person`, otherwise someone else in the book. */
+  counter: string;
 };
 export type NewOwedEntry = Omit<OwedEntry, 'id'>;
 
@@ -69,6 +71,7 @@ export function settleUp(p: PersonBalance, date: string, projectId: number): New
     date,
     note: '',
     projectId,
+    counter: '',
   };
 }
 
@@ -119,7 +122,7 @@ export function splitEntries(i: {
   return {
     mine,
     entries: parts.filter((p) => p.amount > 0).map((p) => ({
-      person: p.name, kind: 'lent' as const, amount: p.amount, date: i.date, note: i.note, projectId: i.projectId,
+      person: p.name, kind: 'lent' as const, amount: p.amount, date: i.date, note: i.note, projectId: i.projectId, counter: '',
     })),
   };
 }
@@ -151,7 +154,8 @@ export const isDefaultProject = (p: Pick<OwedProject, 'uid'>) => p.uid === DEFAU
 /** The people in a project: those listed on it plus anyone with an entry in it, by name without repeats. */
 export function participants(project: OwedProject, entries: OwedEntry[]): string[] {
   const out: string[] = [];
-  for (const raw of [...project.members, ...entries.filter((e) => e.projectId === project.id).map((e) => e.person)]) {
+  const inBook = entries.filter((e) => e.projectId === project.id);
+  for (const raw of [...project.members, ...inBook.flatMap((e) => [e.person, e.counter])]) {
     const name = normalizeName(raw);
     if (name !== '' && !out.some((x) => sameName(x, name))) out.push(name);
   }
@@ -160,7 +164,12 @@ export function participants(project: OwedProject, entries: OwedEntry[]): string
 
 export type ProjectSummary = {
   project: OwedProject;
+  /** Each person's balance with you only. */
   people: PersonBalance[];
+  /** Everyone's net position in the book ('' is you): positive is owed money, negative owes. */
+  net: NetPosition[];
+  /** The fewest payments that settle the whole book. */
+  settlements: Transfer[];
   /** Everyone in the project, including people with no entries yet. */
   everyone: string[];
   owedToMe: Sen;
@@ -173,15 +182,94 @@ export type ProjectSummary = {
 export function projectSummaries(projects: OwedProject[], entries: OwedEntry[]): ProjectSummary[] {
   return projects
     .map((project) => {
-      const mine = entries.filter((e) => e.projectId === project.id);
-      const people = balances(mine);
+      const all = entries.filter((e) => e.projectId === project.id);
+      const people = balances(all.filter((e) => e.counter === ''));
+      const net = netPositions(all);
       return {
-        project, people, ...totals(people), entries: mine, everyone: participants(project, entries),
-        lastDate: mine.reduce((d, e) => (e.date > d ? e.date : d), project.startDate ?? ''),
+        project, people, net, settlements: settleTransfers(net), ...totals(people), entries: all, everyone: participants(project, entries),
+        lastDate: all.reduce((d, e) => (e.date > d ? e.date : d), project.startDate ?? ''),
       };
     })
     .sort((a, b) =>
       isDefaultProject(a.project) !== isDefaultProject(b.project)
         ? (isDefaultProject(a.project) ? 1 : -1)
         : a.lastDate < b.lastDate ? 1 : a.lastDate > b.lastDate ? -1 : b.project.id - a.project.id);
+}
+
+/** Money moving from one person to another; '' is you. `lend` is paying for or lending to someone, `payback` is paying a debt. */
+export type Transfer = { from: string; to: string; type: 'lend' | 'payback'; amount: Sen };
+
+/** Who an entry is from and to. */
+export function transferOf(e: Pick<OwedEntry, 'person' | 'kind' | 'counter' | 'amount'>): Transfer {
+  const { person, counter, amount } = e;
+  switch (e.kind) {
+    case 'lent': return { from: counter, to: person, type: 'lend', amount };
+    case 'borrowed': return { from: person, to: counter, type: 'lend', amount };
+    case 'repaid': return { from: person, to: counter, type: 'payback', amount };
+    case 'paidBack': return { from: counter, to: person, type: 'payback', amount };
+  }
+}
+
+/** The entry fields that record a transfer; entries with you in them keep `counter` empty. */
+export function entryOf(t: Transfer): Pick<OwedEntry, 'person' | 'kind' | 'counter' | 'amount'> {
+  const lend = t.type === 'lend';
+  if (t.from === '') return { person: t.to, kind: lend ? 'lent' : 'paidBack', counter: '', amount: t.amount };
+  if (t.to === '') return { person: t.from, kind: lend ? 'borrowed' : 'repaid', counter: '', amount: t.amount };
+  return lend
+    ? { person: t.to, kind: 'lent', counter: t.from, amount: t.amount }
+    : { person: t.from, kind: 'repaid', counter: t.to, amount: t.amount };
+}
+
+export type NetPosition = { name: string; net: Sen };
+
+/** Everyone's net in a set of entries: whoever paid gains the amount, whoever received it loses it. Settled people are left out. */
+export function netPositions(entries: OwedEntry[]): NetPosition[] {
+  const out: NetPosition[] = [];
+  const at = (name: string) => {
+    let p = out.find((x) => sameName(x.name, name));
+    if (!p) out.push((p = { name: normalizeName(name), net: 0 }));
+    return p;
+  };
+  for (const e of entries) {
+    const t = transferOf(e);
+    at(t.from).net += t.amount;
+    at(t.to).net -= t.amount;
+  }
+  return out.filter((p) => p.net !== 0).sort((a, b) => b.net - a.net || a.name.localeCompare(b.name));
+}
+
+/** The fewest payments that bring everyone to zero: the biggest debtor pays the biggest creditor, and so on. */
+export function settleTransfers(net: NetPosition[]): Transfer[] {
+  const owed = net.filter((p) => p.net > 0).map((p) => ({ ...p }));
+  const owing = net.filter((p) => p.net < 0).map((p) => ({ name: p.name, net: -p.net }));
+  const out: Transfer[] = [];
+  const biggest = (l: NetPosition[]) => l.reduce((a, b) => (b.net > a.net || (b.net === a.net && b.name < a.name) ? b : a));
+  while (owed.length > 0 && owing.length > 0) {
+    const c = biggest(owed);
+    const d = biggest(owing);
+    const amount = Math.min(c.net, d.net);
+    out.push({ from: d.name, to: c.name, type: 'payback', amount });
+    c.net -= amount;
+    d.net -= amount;
+    if (c.net === 0) owed.splice(owed.indexOf(c), 1);
+    if (d.net === 0) owing.splice(owing.indexOf(d), 1);
+  }
+  return out;
+}
+
+/** Who paid how much towards a bill, and what each person's part came to: the transfers that put it right. '' is you. */
+export function splitTransfers(i: {
+  paid: { name: string; amount: Sen }[]; parts: SplitPart[]; mine: Sen;
+}): Transfer[] {
+  const net: NetPosition[] = [];
+  const add = (name: string, n: Sen) => {
+    const p = net.find((x) => sameName(x.name, name));
+    if (p) p.net += n;
+    else net.push({ name: normalizeName(name), net: n });
+  };
+  for (const p of i.paid) add(p.name, p.amount);
+  add('', -i.mine);
+  for (const p of i.parts) add(p.name, -p.amount);
+  // Whoever put in more than their part lent the difference to whoever put in less.
+  return settleTransfers(net.filter((p) => p.net !== 0)).map((t) => ({ from: t.to, to: t.from, type: 'lend' as const, amount: t.amount }));
 }
