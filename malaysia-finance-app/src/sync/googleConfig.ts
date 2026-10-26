@@ -36,5 +36,7 @@ export type GoogleAuth = {
   getToken(interactive: boolean): Promise<string | null>;
   /** Drops a token Google rejected and gets a fresh one. */
   refreshToken(rejected: string): Promise<string | null>;
+  /** Signs in through the phone's browser instead (phones with a missing or fake Google Play services). Not on the web. */
+  signInWithBrowser?(): Promise<{ email: string } | null>;
   signOut(): Promise<void>;
 };

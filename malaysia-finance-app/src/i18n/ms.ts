@@ -295,6 +295,7 @@ export const ms: Record<StringKey, string> = {
   'backup.drive.fail.network': "Tidak dapat menghubungi Google. Semak internet anda dan cuba lagi.",
   'backup.drive.fail.blocked': "Google tidak menyiapkan log masuk. Tutup halaman pelayar dan cuba lagi.",
   'backup.drive.fail.unknown': "Tidak dapat menyambung ke Google. Cuba lagi, atau gunakan fail sandaran buat masa ini.",
+  'backup.drive.connectBrowser': 'Log masuk melalui pelayar',
   'backup.drive.connectFailed': 'Tidak dapat menyambung ke Google. Semak internet anda dan cuba lagi.',
   'backup.problem.signIn': 'Log masuk Google telah tamat tempoh. Ketik Segerak sekarang untuk log masuk semula.',
   'backup.problem.tooNew': 'Data Drive anda disimpan oleh versi Duit yang lebih baharu. Kemas kini aplikasi pada peranti ini untuk terus menyegerak.',

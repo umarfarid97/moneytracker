@@ -1,3 +1,4 @@
+import * as Device from 'expo-device';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { DRIVE_SCOPE, GOOGLE_WEB_CLIENT_ID, GoogleAuthError, type GoogleAuth } from './googleConfig';
 import { browserAuthReady, browserSignedIn, browserSignIn, browserSignOut, browserToken } from './googleBrowserAuth';
@@ -8,6 +9,9 @@ function setup() {
   GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID, scopes: [DRIVE_SCOPE] });
   configured = true;
 }
+
+/** Huawei and Honor phones have no Google Play services (or a stand-in such as microG), so skip the native sheet. */
+const noGoogleBrand = () => /huawei|honor/i.test(Device.manufacturer ?? '');
 
 async function hasPlayServices() {
   try {
@@ -39,6 +43,7 @@ export const googleAuth: GoogleAuth = {
 
   async signIn() {
     setup();
+    if (browserAuthReady() && (noGoogleBrand() || !(await hasPlayServices()))) return browserSignIn().catch(explain);
     if (!(await hasPlayServices())) return browserSignIn().catch(explain);
     try {
       const result = await GoogleSignin.signIn();
@@ -47,22 +52,38 @@ export const googleAuth: GoogleAuth = {
         const added = await GoogleSignin.addScopes({ scopes: [DRIVE_SCOPE] });
         if (added?.type !== 'success') return null;
       }
+      // microG lets the account picker finish but cannot hand out a Drive token: check before saying connected.
+      if (!(await GoogleSignin.getTokens()).accessToken) throw new GoogleAuthError('noPlayServices');
       return { email: result.data.user.email };
     } catch (e) {
-      // microG and similar stand-ins pass the Play services check but cannot finish the sign-in.
       if (browserAuthReady()) return browserSignIn().catch(explain);
       return explain(e);
     }
   },
 
-  async getToken() {
+  signInWithBrowser() {
+    return browserSignIn().catch(explain);
+  },
+
+  async getToken(interactive) {
     setup();
     if (await browserSignedIn()) return browserToken();
-    if (!GoogleSignin.getCurrentUser()) {
-      const silent = await GoogleSignin.signInSilently();
-      if (silent.type !== 'success') return null;
+    try {
+      if (!GoogleSignin.getCurrentUser()) {
+        const silent = await GoogleSignin.signInSilently();
+        if (silent.type !== 'success') throw new Error('no silent sign-in');
+      }
+      const token = (await GoogleSignin.getTokens()).accessToken;
+      if (token) return token;
+    } catch {
+      // Falls through to the browser below.
     }
-    return (await GoogleSignin.getTokens()).accessToken;
+    // The native sign-in cannot give a Drive token here (microG, Huawei): after a tap, use the browser.
+    if (interactive && browserAuthReady()) {
+      const account = await browserSignIn().catch(() => null);
+      if (account) return browserToken();
+    }
+    return null;
   },
 
   async refreshToken(rejected) {
@@ -80,6 +101,10 @@ export const googleAuth: GoogleAuth = {
     } catch {
       // Already revoked or offline: signing out locally is enough.
     }
-    await GoogleSignin.signOut();
+    try {
+      await GoogleSignin.signOut();
+    } catch {
+      // Nothing was signed in natively (microG, Huawei).
+    }
   },
 };
