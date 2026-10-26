@@ -1,5 +1,10 @@
 import type { Db } from './types';
 
+/** Milliseconds since 1970 in SQL, the same clock as Date.now(). */
+const NOW_MS = `CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)`;
+/** Triggers stay quiet while a sync writes merged data (it sets its own times and deletions). */
+const NOT_APPLYING = `NOT EXISTS (SELECT 1 FROM sync_state WHERE key = 'applying')`;
+
 /**
  * Append-only list. Index i upgrades the database from user_version i to i + 1.
  * Never edit an entry that has shipped; add a new one.
@@ -97,7 +102,61 @@ export const MIGRATIONS: string[] = [
   `
   ALTER TABLE commitments ADD COLUMN variable INTEGER NOT NULL DEFAULT 0;
   `,
+  // 4: sync and backup (see src/sync): stable ids, edit times and deletions, kept up to date by triggers
+  syncMigration(),
 ];
+
+function syncMigration(): string {
+  const entities = ['categories', 'payment_methods', 'commitments', 'expenses', 'relief_claims'];
+  const columns = entities.map((t) => `
+  ALTER TABLE ${t} ADD COLUMN uid TEXT;
+  ALTER TABLE ${t} ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0;`).join('');
+  // Created after the backfill below, so filling in the new columns does not count as an edit.
+  const triggers = entities.map((t) => `
+  CREATE UNIQUE INDEX idx_${t}_uid ON ${t}(uid);
+  CREATE TRIGGER ${t}_sync_insert AFTER INSERT ON ${t} WHEN NEW.uid IS NULL
+  BEGIN UPDATE ${t} SET uid = lower(hex(randomblob(16))), updated_at = ${NOW_MS} WHERE id = NEW.id; END;
+  CREATE TRIGGER ${t}_sync_update AFTER UPDATE ON ${t} WHEN NEW.updated_at = OLD.updated_at AND ${NOT_APPLYING}
+  BEGIN UPDATE ${t} SET updated_at = ${NOW_MS} WHERE id = NEW.id; END;
+  CREATE TRIGGER ${t}_sync_delete AFTER DELETE ON ${t} WHEN OLD.uid IS NOT NULL AND ${NOT_APPLYING}
+  BEGIN INSERT OR REPLACE INTO sync_deleted (tbl, uid, deleted_at) VALUES ('${t}', OLD.uid, ${NOW_MS}); END;`).join('');
+  return `
+  CREATE TABLE sync_state (key TEXT PRIMARY KEY, value TEXT);
+  CREATE TABLE sync_deleted (
+    tbl TEXT NOT NULL,
+    uid TEXT NOT NULL,
+    deleted_at INTEGER NOT NULL,
+    merged_into TEXT,
+    PRIMARY KEY (tbl, uid)
+  );
+  ${columns}
+  ALTER TABLE budgets ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE profile ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0;
+
+  -- Categories and payment methods get ids from their names and edit time 0, so the same defaults on
+  -- two phones match up and any real edit wins.
+  UPDATE categories SET uid = 'cat-' || name;
+  UPDATE payment_methods SET uid = 'pm-' || name;
+  UPDATE commitments SET uid = lower(hex(randomblob(16))), updated_at = ${NOW_MS};
+  UPDATE expenses SET uid = lower(hex(randomblob(16))), updated_at = ${NOW_MS};
+  UPDATE relief_claims SET uid = lower(hex(randomblob(16))), updated_at = ${NOW_MS};
+  UPDATE budgets SET updated_at = ${NOW_MS};
+  -- A profile still at its defaults stays at 0, so it never wins over a filled-in one.
+  UPDATE profile SET updated_at = ${NOW_MS} WHERE gross_monthly <> 0 OR net_monthly_override IS NOT NULL;
+  ${triggers}
+  CREATE TRIGGER budgets_sync_insert AFTER INSERT ON budgets WHEN NEW.updated_at = 0 AND ${NOT_APPLYING}
+  BEGIN UPDATE budgets SET updated_at = ${NOW_MS} WHERE category_id = NEW.category_id AND month = NEW.month; END;
+  CREATE TRIGGER budgets_sync_update AFTER UPDATE ON budgets WHEN NEW.updated_at = OLD.updated_at AND ${NOT_APPLYING}
+  BEGIN UPDATE budgets SET updated_at = ${NOW_MS} WHERE category_id = NEW.category_id AND month = NEW.month; END;
+  CREATE TRIGGER budgets_sync_delete AFTER DELETE ON budgets WHEN ${NOT_APPLYING}
+  BEGIN
+    INSERT OR REPLACE INTO sync_deleted (tbl, uid, deleted_at)
+      SELECT 'budgets', uid || '|' || OLD.month, ${NOW_MS} FROM categories WHERE id = OLD.category_id;
+  END;
+  CREATE TRIGGER profile_sync_update AFTER UPDATE ON profile WHEN NEW.updated_at = OLD.updated_at AND ${NOT_APPLYING}
+  BEGIN UPDATE profile SET updated_at = ${NOW_MS} WHERE id = NEW.id; END;
+  `;
+}
 
 /** Brings the database up to date. Each step runs in its own transaction. */
 export async function migrate(db: Db, migrations: string[] = MIGRATIONS): Promise<void> {

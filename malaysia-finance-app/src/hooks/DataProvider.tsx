@@ -94,6 +94,8 @@ export type DataContextValue = {
   /** Year of assessment picked on the tax screens (null = the current year). */
   taxYearChoice: number | null;
   setTaxYearChoice: (year: number | null) => void;
+  /** Reads everything from the database again, after a sync or a restore changed it underneath. */
+  reload: () => Promise<void>;
 };
 
 const DataContext = createContext<DataContextValue | null>(null);
@@ -213,6 +215,9 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
     return {
       db, categories, expenses, budgets, commitments, reliefClaims, profile, taxYearChoice, setTaxYearChoice,
       paymentMethods, payBill, runAutoRecord,
+      async reload() {
+        apply(await loadAll(db));
+      },
       expenseOps, commitmentOps, reliefClaimOps,
       paymentMethodOps: {
         async add(input) {
