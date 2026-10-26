@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { View, useWindowDimensions } from 'react-native';
+import { View } from 'react-native';
 import { periodKey } from '@/domain/budgetPeriod';
 import { balanceLeft } from '@/domain/balance';
 import { buildHome } from '@/domain/summary';
@@ -18,12 +18,12 @@ import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { HeroCard, onHero } from '@/ui/HeroCard';
 import { Screen } from '@/ui/Screen';
-import { radius, space } from '@/ui/theme';
+import { radius } from '@/ui/theme';
 import { Tile } from '@/ui/Tile';
+import { TileGrid } from '@/ui/TileGrid';
 
 export default function Home() {
   const today = useToday();
-  const { width } = useWindowDimensions();
   const { data: expenses } = useExpenses();
   const { data: categories } = useCategories();
   const { data: profile } = useProfile();
@@ -39,7 +39,6 @@ export default function Home() {
     [profile, expenses, commitments, today],
   );
   const categoryById = useMemo(() => new Map(categories.map((cat) => [cat.id, cat])), [categories]);
-  const tileWidth = (width - space.pad * 2 - space.gap) / 2;
 
   return (
     <Screen fab>
@@ -96,10 +95,9 @@ export default function Home() {
       {home.tiles.length > 0 ? (
         <>
           <AppText variant="section">{t('home.categories')}</AppText>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.gap }}>
+          <TileGrid>
             {home.tiles.map((tile) => (
-              <View key={tile.categoryId} style={{ width: tileWidth, flexDirection: 'row' }}>
-                <Tile
+                <Tile key={tile.categoryId}
                   title={tile.name}
                   tintName={tile.name}
                   icon={categoryById.get(tile.categoryId)?.icon}
@@ -115,9 +113,8 @@ export default function Home() {
                     router.push({ pathname: '/spending', params: { categoryId: String(tile.categoryId), at: String(Date.now()) } })
                   }
                 />
-              </View>
             ))}
-          </View>
+          </TileGrid>
         </>
       ) : null}
     </Screen>
