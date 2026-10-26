@@ -95,12 +95,11 @@ describe('Tax calculator', () => {
     expect(screen.getByText('LHDN has not published YA 2026 figures yet, so YA 2025 rates and limits are used.')).toBeTruthy();
   });
 
-  test('an invalid amount shows a message and is treated as zero', async () => {
+  test('typing keeps only digits and two decimals', async () => {
     const db = await freshDb();
     await renderWithData(db, <TaxCalculator />);
     await ready();
     await type('Salary for the year', '60,000.999');
-    expect(screen.getByText('Enter an amount like 12.50')).toBeTruthy();
-    expect(screen.getByTestId('tax-payable').props.children).toBe('RM 0.00');
+    expect(screen.getByLabelText('Salary for the year').props.value).toBe('60000.99');
   });
 });

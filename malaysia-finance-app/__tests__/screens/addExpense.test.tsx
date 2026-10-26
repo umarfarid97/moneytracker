@@ -21,7 +21,8 @@ describe('AddExpense (new)', () => {
     await renderWithData(db, <AddExpense />);
     await waitFor(() => expect(screen.getByLabelText('Amount')).toBeTruthy());
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
-    await fireEvent.changeText(screen.getByLabelText('Amount'), '12.999');
+    await fireEvent.changeText(screen.getByLabelText('Amount'), 'abc');
+    expect(screen.getByLabelText('Amount').props.value).toBe('');
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
     await fireEvent.changeText(screen.getByLabelText('Amount'), '12.50');
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();

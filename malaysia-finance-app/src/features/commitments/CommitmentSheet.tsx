@@ -19,6 +19,7 @@ import { ReliefPicker } from '@/ui/ReliefPicker';
 import { Sheet } from '@/ui/Sheet';
 import { controlHeight, fontFamily, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
+import { sanitizeNumber } from '@/ui/numeric';
 
 export type CommitmentInput = NewCommitment;
 
@@ -229,7 +230,7 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
           <TextInput
             accessibilityLabel={t('commitments.day')}
             value={dayText}
-            onChangeText={setDayText}
+            onChangeText={(text) => setDayText(sanitizeNumber(text, 0))}
             keyboardType="number-pad"
             maxLength={2}
             placeholder="1 - 31"
@@ -250,7 +251,7 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
               <TextInput
                 accessibilityLabel={t('loans.rate')}
                 value={rateText}
-                onChangeText={setRateText}
+                onChangeText={(text) => setRateText(sanitizeNumber(text, 2))}
                 keyboardType="decimal-pad"
                 placeholder="0"
                 placeholderTextColor={c.muted}

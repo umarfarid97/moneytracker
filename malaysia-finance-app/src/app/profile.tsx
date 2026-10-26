@@ -13,6 +13,7 @@ import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { controlHeight, fontFamily, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
+import { sanitizeNumber } from '@/ui/numeric';
 
 /** 0.11 -> "11", 0.0925 -> "9.25" (avoids floating point noise like 11.000000000000002). */
 const rateToText = (rate: number) => String(Math.round(rate * 10000) / 100);
@@ -96,7 +97,7 @@ export default function Profile() {
         <TextInput
           accessibilityLabel={t('profile.epf')}
           value={epf}
-          onChangeText={setEpf}
+          onChangeText={(text) => setEpf(sanitizeNumber(text, 2))}
           keyboardType="decimal-pad"
           inputMode="decimal"
           style={field}

@@ -31,7 +31,7 @@ describe('AmountInput', () => {
     const onChange = jest.fn();
     await render(<AmountInput label="Amount" value="" onChange={onChange} />);
     await fireEvent.changeText(screen.getByLabelText('Amount'), '1,234.5');
-    expect(onChange).toHaveBeenCalledWith('1,234.5', 123450);
+    expect(onChange).toHaveBeenCalledWith('1234.5', 123450);
   });
 
   test('shows a message and reports null for invalid text', async () => {
@@ -39,7 +39,7 @@ describe('AmountInput', () => {
     await render(<AmountInput label="Amount" value="12.999" onChange={onChange} />);
     expect(screen.getByText('Enter an amount like 12.50')).toBeTruthy();
     await fireEvent.changeText(screen.getByLabelText('Amount'), 'abc');
-    expect(onChange).toHaveBeenCalledWith('abc', null);
+    expect(onChange).toHaveBeenCalledWith('', null);
   });
 
   test('empty input shows no error', async () => {

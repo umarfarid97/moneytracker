@@ -17,6 +17,7 @@ import { Chip } from '@/ui/Chip';
 import { Screen } from '@/ui/Screen';
 import { controlHeight, fontFamily, radius, statusStyle } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
+import { sanitizeNumber } from '@/ui/numeric';
 
 const KINDS: LoanKind[] = ['home', 'car', 'personal'];
 const VERDICT_STATUS = { comfortable: 'on-track', tight: 'tight', 'not-suitable': 'over' } as const;
@@ -141,7 +142,7 @@ export default function LoanCalculator() {
           <TextInput
             accessibilityLabel={t('loan.rate')}
             value={rateText}
-            onChangeText={setRateText}
+            onChangeText={(text) => setRateText(sanitizeNumber(text, 2))}
             keyboardType="decimal-pad"
             inputMode="decimal"
             style={[field, rate === null && { borderColor: c.negative }]}
@@ -152,7 +153,7 @@ export default function LoanCalculator() {
           <TextInput
             accessibilityLabel={t('loan.years')}
             value={yearsText}
-            onChangeText={setYearsText}
+            onChangeText={(text) => setYearsText(sanitizeNumber(text, 0))}
             keyboardType="number-pad"
             maxLength={3}
             style={[field, years === null && { borderColor: c.negative }]}

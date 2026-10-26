@@ -50,13 +50,12 @@ describe('Budget', () => {
     expect(await budgetsIn(db)).toEqual([{ category_id: CAT.Bil, limit_sen: 25000 }]);
   });
 
-  test('an invalid amount blocks saving', async () => {
+  test('letters and extra decimals are dropped as you type', async () => {
     const db = await freshDb();
     await renderWithData(db, <Budget />);
     await waitFor(() => expect(screen.getByLabelText('Makan')).toBeTruthy());
-    await fireEvent.changeText(screen.getByLabelText('Makan'), '12.999');
-    expect(screen.getByText('Enter an amount like 12.50')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    await fireEvent.changeText(screen.getByLabelText('Makan'), '12a.999');
+    expect(screen.getByLabelText('Makan').props.value).toBe('12.99');
   });
 
   test('zero is a valid budget and means any spending is over', async () => {
