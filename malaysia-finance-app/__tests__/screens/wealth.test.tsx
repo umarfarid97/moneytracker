@@ -94,9 +94,23 @@ describe('Zakat and sedekah', () => {
     expect(screen.getByTestId('giving-sedekah').props.children).toBe('RM 40.00');
   });
 
+  test('the calculator defaults to zakat pendapatan and needs no gold price', async () => {
+    const db = await freshDb();
+    await renderWithData(db, <ZakatCalculator />);
+    await waitFor(() => expect(screen.getByLabelText('Income for the year')).toBeTruthy());
+    expect(screen.queryByLabelText('Gold price per gram')).toBeNull();
+    await type('Income for the year', '60000');
+    await type('EPF contributions for the year (deducted)', '6600');
+    await type('Basic needs for the year', '0');
+    expect(screen.getByTestId('zakat-base').props.children).toBe('RM 53,400.00');
+    expect(screen.getByTestId('zakat-total').props.children).toBe('RM 1,335.00');
+  });
+
   test('the calculator works out zakat from the gold price and savings', async () => {
     const db = await freshDb();
     await renderWithData(db, <ZakatCalculator />);
+    await waitFor(() => expect(screen.getByLabelText('Income for the year')).toBeTruthy());
+    await fireEvent.press(screen.getByRole('button', { name: 'Savings & gold' }));
     await waitFor(() => expect(screen.getByLabelText('Gold price per gram')).toBeTruthy());
     await type('Gold price per gram', '400');
     await type('Savings held for a year', '40000');

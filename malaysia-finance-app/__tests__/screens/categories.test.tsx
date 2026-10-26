@@ -30,6 +30,15 @@ describe('Categories screen', () => {
     expect(screen.getByLabelText('New category name').props.value).toBe('');
   });
 
+  test('adds a suggested Malaysian category with one tap and stops suggesting it', async () => {
+    const db = await freshDb();
+    await renderWithData(db, <Categories />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add Petrol' })).toBeTruthy());
+    await fireEvent.press(screen.getByRole('button', { name: 'Add Petrol' }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Add Petrol' })).toBeNull());
+    expect((await names(db)).includes('Petrol')).toBe(true);
+  });
+
   test('adds a category with a chosen icon', async () => {
     const db = await freshDb();
     await renderWithData(db, <Categories />);
