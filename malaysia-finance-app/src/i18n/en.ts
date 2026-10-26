@@ -1,3 +1,4 @@
+import { cleanupEn } from './cleanup';
 import { loansBillers } from './loansBillers';
 import { lockRemindersEn } from './lockReminders';
 import { statementImport } from './statementImport';
@@ -83,7 +84,7 @@ export const en = {
   'budget.alert.over': '{category} is over budget',
   'budget.alert.overBody': '{over} over {limit}.',
 
-  'commitments.title': 'Monthly commitments',
+  'commitments.title': 'Bills & loans',
   'commitments.total': 'Total every month',
   'commitments.dueToday': 'Due today',
   'commitments.dueIn': 'Due in {days} days',
@@ -273,7 +274,7 @@ export const en = {
   'methods.kind.transfer': 'Online transfer',
   'more.categories': 'Categories',
   'more.methods': 'Payment methods',
-  'more.profile': 'Income profile',
+  'more.profile': 'Income & profile',
   'more.budget': 'Budget',
   'more.taxCalc': 'Tax calculator',
   'more.loan': 'Loan calculator',
@@ -316,7 +317,7 @@ export const en = {
   'backup.file.invalid': 'That file is not a Duit backup.',
   'backup.file.tooNew': 'This backup is from a newer version of Duit. Update the app first.',
   'backup.file.restoreFailed': 'Could not restore the backup. Your data was not changed.',
-  'wealth.title': 'Savings & giving',
+  'wealth.title': 'Savings, EPF & giving',
   'wealth.total': 'Saved so far',
   'wealth.totalHint': 'EPF balance plus your savings and investments',
   'wealth.epf.hint': 'Balance and retirement view',
@@ -632,6 +633,7 @@ export const en = {
   ...lockRemindersEn,
   ...statementImport,
   ...reportsEn,
+  ...cleanupEn,
 } as const;
 
 export type StringKey = keyof typeof en;

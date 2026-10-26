@@ -9,14 +9,24 @@ const { router } = jest.requireMock('expo-router');
 beforeEach(() => jest.clearAllMocks());
 
 describe('More tab', () => {
-  test('links to the profile, budget, both calculators and backup', async () => {
+  test('keeps screens that are reached from elsewhere out of the list', async () => {
     const db = await freshDb();
     await renderWithData(db, <More />);
-    await waitFor(() => expect(screen.getByText('Income profile')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Settings')).toBeTruthy());
+    for (const gone of ['Tax calculator', 'Net worth', 'Extra income']) expect(screen.queryByText(gone)).toBeNull();
+  });
+
+  test('is grouped and links to income, budget, reports, wealth, tax, loans and settings', async () => {
+    const db = await freshDb();
+    await renderWithData(db, <More />);
+    await waitFor(() => expect(screen.getByText('Income & profile')).toBeTruthy());
+    for (const title of ['Money', 'Wealth', 'Tax & loans', 'Tools']) expect(screen.getByText(title)).toBeTruthy();
     for (const [label, path] of [
-      ['Income profile', '/profile'],
+      ['Income & profile', '/profile'],
       ['Budget', '/budget'],
-      ['Tax calculator', '/tax-calculator'],
+      ['Reports', '/reports'],
+      ['Savings, EPF & giving', '/wealth'],
+      ['Tax reliefs', '/tax'],
       ['Loan calculator', '/loan-calculator'],
       ['Settings', '/settings'],
     ] as const) {

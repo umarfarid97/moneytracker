@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 import type { ReliefDef } from '@/data/tax/types';
+import { reliefLabel } from '@/i18n/content';
 import { t } from '@/i18n/t';
 import { AppText } from './AppText';
 import { PressableScale } from './PressableScale';
@@ -22,7 +23,7 @@ export function ReliefPicker({ reliefs, value, onChange, compact = false }: Prop
   const [search, setSearch] = useState('');
   const selected = reliefs.find((r) => r.id === value);
   const text = search.trim().toLowerCase();
-  const shown = text === '' ? reliefs : reliefs.filter((r) => r.name.toLowerCase().includes(text) || r.id.includes(text));
+  const shown = text === '' ? reliefs : reliefs.filter((r) => reliefLabel(r).toLowerCase().includes(text) || r.id.includes(text));
 
   const close = () => {
     setOpen(false);
@@ -52,7 +53,7 @@ export function ReliefPicker({ reliefs, value, onChange, compact = false }: Prop
         }}
       >
         <AppText variant="bodyStrong" tone={selected ? 'text' : 'muted'} numberOfLines={compact ? 2 : undefined}>
-          {selected ? selected.name : t('relief.valueNone')}
+          {selected ? reliefLabel(selected) : t('relief.valueNone')}
         </AppText>
       </PressableScale>
       <Sheet visible={open} title={t('relief.pick')} onClose={close}>
@@ -82,7 +83,7 @@ export function ReliefPicker({ reliefs, value, onChange, compact = false }: Prop
             {shown.map((r) => (
               <Pressable key={r.id} accessibilityRole="button" onPress={() => choose(r.id)} style={row}>
                 <AppText variant="body" tone={r.id === value ? 'accent' : 'text'}>
-                  {r.name}
+                  {reliefLabel(r)}
                 </AppText>
               </Pressable>
             ))}

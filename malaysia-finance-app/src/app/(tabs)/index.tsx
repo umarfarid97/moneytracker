@@ -11,6 +11,7 @@ import { useBudgets } from '@/hooks/useBudgets';
 import { useCategories } from '@/hooks/useCategories';
 import { useCommitments } from '@/hooks/useCommitments';
 import { useExpenses } from '@/hooks/useExpenses';
+import { useData } from '@/hooks/DataProvider';
 import { useProfile } from '@/hooks/useProfile';
 import { useToday } from '@/hooks/useToday';
 import { t } from '@/i18n/t';
@@ -28,6 +29,7 @@ export default function Home() {
   const { data: categories } = useCategories();
   const { data: profile } = useProfile();
   const { data: commitments } = useCommitments();
+  const { incomeEntries } = useData();
   const startDay = profile.budgetStartDay;
   const { data: budgets } = useBudgets(periodKey(today, startDay));
   const home = useMemo(
@@ -35,8 +37,8 @@ export default function Home() {
     [categories, expenses, budgets, today, startDay],
   );
   const balance = useMemo(
-    () => balanceLeft({ profile, expenses, commitments, today }),
-    [profile, expenses, commitments, today],
+    () => balanceLeft({ profile, expenses, commitments, today, extraIncome: incomeEntries }),
+    [profile, expenses, commitments, today, incomeEntries],
   );
   const categoryById = useMemo(() => new Map(categories.map((cat) => [cat.id, cat])), [categories]);
 
@@ -77,7 +79,9 @@ export default function Home() {
             {balance.left >= 0 ? formatRM(balance.left) : `-${formatRM(-balance.left)}`}
           </AppText>
           <AppText variant="small" color={onHero.soft}>
-            {t('home.balanceDetail', { income: formatRM(balance.income), spent: formatRM(balance.spent) })}
+            {balance.extra > 0
+              ? t('home.balanceDetailExtra', { income: formatRM(balance.income), extra: formatRM(balance.extra), spent: formatRM(balance.spent) })
+              : t('home.balanceDetail', { income: formatRM(balance.income), spent: formatRM(balance.spent) })}
           </AppText>
           {balance.upcoming > 0 ? (
             <AppText variant="small" color={onHero.soft}>

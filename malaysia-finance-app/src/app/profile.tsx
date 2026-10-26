@@ -3,13 +3,16 @@ import { useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { formatRM, parsePercent, parseRM, senToInput } from '@/domain/money';
 import { estimateNetMonthly } from '@/domain/netpay';
+import { useIncome } from '@/hooks/useIncome';
 import { useProfile } from '@/hooks/useProfile';
+import { useToday } from '@/hooks/useToday';
 import { t } from '@/i18n/t';
 import { AmountInput } from '@/ui/AmountInput';
 import { AppText } from '@/ui/AppText';
 import { BackButton } from '@/ui/BackButton';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { PressableScale } from '@/ui/PressableScale';
 import { Screen } from '@/ui/Screen';
 import { controlHeight, fontFamily, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
@@ -21,6 +24,7 @@ const rateToText = (rate: number) => String(Math.round(rate * 10000) / 100);
 export default function Profile() {
   const { c } = useTheme();
   const { data: profile, save } = useProfile();
+  const { received } = useIncome(useToday().slice(0, 7));
 
   const [gross, setGross] = useState(profile.grossMonthly > 0 ? senToInput(profile.grossMonthly) : '');
   const [net, setNet] = useState(profile.netMonthlyOverride !== null ? senToInput(profile.netMonthlyOverride) : '');
@@ -85,6 +89,12 @@ export default function Profile() {
           <AppText variant="bodyStrong">{t('profile.estimate', { amount: formatRM(estimateNetMonthly({ ...profile, ...draft })) })}</AppText>
         </Card>
       ) : null}
+      <PressableScale accessibilityRole="button" accessibilityLabel={t('profile.extra')} onPress={() => router.push('/income')}>
+        <Card style={{ gap: 4 }}>
+          <AppText variant="bodyStrong">{t('profile.extra')}</AppText>
+          <AppText variant="small" tone="muted">{t('profile.extraHint', { amount: formatRM(received) })}</AppText>
+        </Card>
+      </PressableScale>
       <AmountInput label={t('profile.gross')} value={gross} onChange={(text) => setGross(text)} />
       <View style={{ gap: 4 }}>
         <AmountInput label={t('profile.net')} value={net} onChange={(text) => setNet(text)} />

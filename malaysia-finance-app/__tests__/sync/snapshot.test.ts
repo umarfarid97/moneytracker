@@ -9,7 +9,7 @@ import { setBudget, listAllBudgets, deleteBudget } from '@/db/repos/budgets';
 import { getProfile, saveProfile } from '@/db/repos/profile';
 import type { Db } from '@/db/types';
 import { mergeSnapshots } from '@/sync/merge';
-import { applySnapshot, canonical, exportSnapshot, isSnapshot, restoreSnapshot, withAllTables } from '@/sync/snapshot';
+import { ENTITY_TABLES, applySnapshot, canonical, exportSnapshot, isSnapshot, restoreSnapshot, withAllTables } from '@/sync/snapshot';
 
 const spend = (db: Db, amount: number, note: string, categoryId: number = CAT.Makan, date = '2026-10-01') =>
   addExpense(db, { amount, categoryId, date, note, receiptUri: null });
@@ -418,5 +418,18 @@ describe('Others: projects', () => {
     const merged = await sync(b, await exportSnapshot(a));
     expect(merged.tables.owed_entries).toHaveLength(1);
     expect(await b.get(`SELECT p.uid AS project FROM owed_entries e JOIN owed_projects p ON p.id = e.project_id`)).toEqual({ project: 'proj-general' });
+  });
+});
+
+describe('backup coverage', () => {
+  test('every table that tracks changes (has a uid) is part of the snapshot', async () => {
+    const db = await freshDb();
+    const tables = await db.all<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'");
+    const tracked: string[] = [];
+    for (const { name } of tables) {
+      const cols = await db.all<{ name: string }>(`PRAGMA table_info(${name})`);
+      if (cols.some((c) => c.name === 'uid')) tracked.push(name);
+    }
+    expect(tracked.filter((n) => n !== 'sync_deleted').sort()).toEqual([...ENTITY_TABLES].sort());
   });
 });

@@ -2,6 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { formatRM } from '@/domain/money';
+import { buildNetWorth } from '@/domain/netWorth';
+import { useCommitments } from '@/hooks/useCommitments';
+import { useExpenses } from '@/hooks/useExpenses';
 import { useGiving } from '@/hooks/useGiving';
 import { useRetirement } from '@/hooks/useRetirement';
 import { useSavings } from '@/hooks/useSavings';
@@ -24,7 +27,10 @@ export default function Wealth() {
   const year = Number(useToday().slice(0, 4));
   const { epf, socso } = useRetirement(year);
   const { summary } = useGiving(year);
-  const { totals } = useSavings();
+  const { totals, data: savings } = useSavings();
+  const { data: commitments } = useCommitments();
+  const { data: expenses } = useExpenses();
+  const nw = buildNetWorth({ epfBalance: epf.balance, savings, commitments, expenses });
 
   const rows: { path: Path; label: StringKey; hint: StringKey; icon: keyof typeof Ionicons.glyphMap; value: string }[] = [
     { path: '/epf', hint: 'wealth.epf.hint', label: 'epf.title', icon: 'shield-checkmark', value: formatRM(epf.balance) },
@@ -37,11 +43,13 @@ export default function Wealth() {
     <Screen>
       <BackButton />
       <AppText variant="title">{t('wealth.title')}</AppText>
-      <HeroCard style={{ gap: 4 }}>
-        <AppText variant="eyebrow" color={onHero.soft}>{t('wealth.total')}</AppText>
-        <AppText testID="wealth-total" variant="kpi" color={onHero.ink}>{formatRM(epf.balance + totals.balance)}</AppText>
-        <AppText variant="small" tone="muted">{t('wealth.totalHint')}</AppText>
-      </HeroCard>
+      <PressableScale accessibilityRole="button" accessibilityLabel={t('netWorth.title')} onPress={() => router.push('/net-worth')} pressedScale={0.99}>
+        <HeroCard style={{ gap: 4 }}>
+          <AppText variant="eyebrow" color={onHero.soft}>{t('netWorth.title')}</AppText>
+          <AppText testID="wealth-total" variant="kpi" color={onHero.ink}>{formatRM(nw.net)}</AppText>
+          <AppText variant="small" tone="muted">{t('netWorth.hint')}</AppText>
+        </HeroCard>
+      </PressableScale>
       <Card style={{ padding: 0, paddingHorizontal: 14 }}>
         {rows.map((row, i) => (
           <PressableScale

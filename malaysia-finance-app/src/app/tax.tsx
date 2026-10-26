@@ -6,6 +6,7 @@ import { formatRM } from '@/domain/money';
 import { capReliefClaims } from '@/domain/reliefs';
 import { useAllReliefClaims } from '@/hooks/useAllReliefClaims';
 import { useTaxYear } from '@/hooks/useTaxYear';
+import { reliefLabel } from '@/i18n/content';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
 import { BackButton } from '@/ui/BackButton';
@@ -64,7 +65,7 @@ export default function Tax() {
           >
             <IconBadge icon="checkmark" color="#16a34a" size={36} />
             <View style={{ flex: 1, gap: 2 }}>
-              <AppText variant="bodyStrong">{r.name}</AppText>
+              <AppText variant="bodyStrong">{reliefLabel(r)}</AppText>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <AppText variant="small" tone="muted">
                   {t('tax.automatic')}
@@ -86,7 +87,7 @@ export default function Tax() {
               style={[{ backgroundColor: c.surface, borderRadius: radius.control + 2, padding: 16, gap: 8 }, elevation(scheme)]}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <AppText variant="bodyStrong" style={{ flex: 1 }}>{def.name}</AppText>
+                <AppText variant="bodyStrong" style={{ flex: 1 }}>{reliefLabel(def)}</AppText>
                 <Ionicons name="chevron-forward" size={18} color={c.accent} />
               </View>
               <AppText variant="small" tone="muted">

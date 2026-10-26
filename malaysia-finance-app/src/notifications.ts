@@ -1,13 +1,17 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { paidDueDatesFor } from '@/domain/bills';
 import { nextReminder } from '@/domain/commitments';
 import { shortDate } from '@/domain/dates';
 import { formatRM } from '@/domain/money';
 import type { BudgetAlert } from '@/domain/summary';
-import type { Commitment } from '@/domain/types';
+import type { Commitment, Expense } from '@/domain/types';
+import { getLockState } from '@/security/appLock';
 import { t } from '@/i18n/t';
 
 const CHANNEL_ID = 'reminders';
+/** How many upcoming due dates of each bill get a reminder. */
+const REMINDERS_AHEAD = 3;
 
 /** Shows reminders as banners while the app is open. Call once at start-up. */
 export function configureNotifications(): void {
@@ -37,11 +41,11 @@ function reminderTitle(name: string, leadDays: number): string {
 }
 
 /**
- * Replaces every scheduled reminder with one per active commitment (09:00 KL, `leadDays` before it is due).
- * Only the next occurrence is scheduled, so call this at launch and whenever commitments change.
+ * Replaces every scheduled reminder with the next few per active commitment (09:00 KL, `leadDays` before each is due).
+ * Due dates that already have a payment are skipped, so call this at launch and whenever commitments change.
  * Returns how many reminders were scheduled; never throws, because reminders are a convenience.
  */
-async function replaceReminders(commitments: Commitment[], now: Date, leadDays: number): Promise<number> {
+async function replaceReminders(commitments: Commitment[], now: Date, leadDays: number, expenses: Expense[]): Promise<number> {
   try {
     const active = commitments.filter((c) => c.active);
     if (active.length === 0) {
@@ -51,25 +55,39 @@ async function replaceReminders(commitments: Commitment[], now: Date, leadDays: 
     if (!(await ensurePermission())) return 0;
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-        name: 'Bill reminders',
+        name: t('commitments.reminder.channel'),
         importance: Notifications.AndroidImportance.HIGH,
       });
     }
     await Notifications.cancelAllScheduledNotificationsAsync();
+    // With the app lock on, amounts stay out of the notification shade.
+    const hideAmounts = getLockState().enabled;
+    let scheduled = 0;
     for (const c of active) {
-      const { dueDate, fireAt } = nextReminder(c.dayOfMonth, now, leadDays);
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: reminderTitle(c.name, leadDays),
-          body: t(c.variable ? 'commitments.reminder.bodyVariable' : 'commitments.reminder.body', {
-            amount: formatRM(c.amount),
-            date: shortDate(dueDate),
-          }),
-        },
-        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: fireAt, channelId: CHANNEL_ID },
-      });
+      const paid = new Set(paidDueDatesFor(c.id, expenses));
+      let from = now;
+      // The next few due dates, so reminders keep coming if the app is not opened for a while. A due date that
+      // is already paid gets no reminder.
+      for (let n = 0; n < REMINDERS_AHEAD; n++) {
+        const { dueDate, fireAt } = nextReminder(c.dayOfMonth, from, leadDays);
+        from = fireAt;
+        if (paid.has(dueDate)) continue;
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: reminderTitle(c.name, leadDays),
+            body: hideAmounts
+              ? t('commitments.reminder.bodyHidden', { date: shortDate(dueDate) })
+              : t(c.variable ? 'commitments.reminder.bodyVariable' : 'commitments.reminder.body', {
+                  amount: formatRM(c.amount),
+                  date: shortDate(dueDate),
+                }),
+          },
+          trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: fireAt, channelId: CHANNEL_ID },
+        });
+        scheduled++;
+      }
     }
-    return active.length;
+    return scheduled;
   } catch {
     return 0;
   }
@@ -83,9 +101,9 @@ let latestRequest = 0;
  * Runs one at a time, and a run that is still waiting when a newer request arrives is skipped, so
  * overlapping calls (an optimistic add changes the list twice) can never leave duplicate reminders.
  */
-export function scheduleReminders(commitments: Commitment[], now: Date = new Date(), leadDays = 1): Promise<number> {
+export function scheduleReminders(commitments: Commitment[], now: Date = new Date(), leadDays = 1, expenses: Expense[] = []): Promise<number> {
   const ticket = ++latestRequest;
-  const run = queue.then(() => (ticket === latestRequest ? replaceReminders(commitments, now, leadDays) : 0));
+  const run = queue.then(() => (ticket === latestRequest ? replaceReminders(commitments, now, leadDays, expenses) : 0));
   queue = run.catch(() => undefined);
   return run;
 }
@@ -101,11 +119,11 @@ export async function notifyBudgetAlert(categoryName: string, alert: BudgetAlert
         alert.status === 'tight'
           ? {
               title: t('budget.alert.tight', { category: categoryName, percent }),
-              body: t('budget.alert.tightBody', { left: formatRM(left), limit: formatRM(alert.limit) }),
+              body: getLockState().enabled ? t('budget.alert.hiddenBody') : t('budget.alert.tightBody', { left: formatRM(left), limit: formatRM(alert.limit) }),
             }
           : {
               title: t('budget.alert.over', { category: categoryName }),
-              body: t('budget.alert.overBody', { over: formatRM(-left), limit: formatRM(alert.limit) }),
+              body: getLockState().enabled ? t('budget.alert.hiddenBody') : t('budget.alert.overBody', { over: formatRM(-left), limit: formatRM(alert.limit) }),
             },
       trigger: null,
     });

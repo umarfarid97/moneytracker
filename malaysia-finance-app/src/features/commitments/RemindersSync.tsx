@@ -16,7 +16,7 @@ export function RemindersSync() {
     configureNotifications();
   }, []);
   useEffect(() => {
-    scheduleReminders(data, new Date(), reminderDays).catch(() => {});
-  }, [data, reminderDays]);
+    scheduleReminders(data, new Date(), reminderDays, expenses).catch(() => {});
+  }, [data, reminderDays, expenses]);
   return null;
 }

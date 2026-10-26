@@ -1,3 +1,6 @@
+import { monthName, shortMonthName, weekdayName } from '@/i18n/content';
+import { t } from '@/i18n/t';
+
 /** Dates are `YYYY-MM-DD` strings in Asia/Kuala_Lumpur (UTC+8, no DST). */
 const KL_OFFSET_MS = 8 * 60 * 60 * 1000;
 
@@ -28,25 +31,19 @@ export function addDays(date: string, days: number): string {
   return fromUtc(new Date(Date.UTC(y, m - 1, d + days)));
 }
 
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-
 /** "Today", "Yesterday", otherwise "Tue 20 Oct". */
 export function dayLabel(date: string, today: string): string {
-  if (date === today) return 'Today';
-  if (date === addDays(today, -1)) return 'Yesterday';
+  if (date === today) return t('expense.today');
+  if (date === addDays(today, -1)) return t('expense.yesterday');
   const [y, m, d] = parts(date);
-  const weekday = WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
-  return `${weekday} ${d} ${MONTHS[m - 1].slice(0, 3)}`;
+  const weekday = weekdayName(new Date(Date.UTC(y, m - 1, d)).getUTCDay());
+  return `${weekday} ${d} ${shortMonthName(m)}`;
 }
 
 /** "October 2026" from `2026-10`. */
 export function monthLabel(month: string): string {
   const [y, m] = month.split('-').map(Number);
-  return `${MONTHS[m - 1]} ${y}`;
+  return `${monthName(m)} ${y}`;
 }
 
 /** Moves a `YYYY-MM` key by a number of months. */
@@ -66,11 +63,11 @@ export function isValidDate(date: string): boolean {
 /** "Sat 24 Oct". */
 export function shortDate(date: string): string {
   const [y, m, d] = parts(date);
-  return `${WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]} ${d} ${MONTHS[m - 1].slice(0, 3)}`;
+  return `${weekdayName(new Date(Date.UTC(y, m - 1, d)).getUTCDay())} ${d} ${shortMonthName(m)}`;
 }
 
 /** "10 Jun". */
 export function dayMonth(date: string): string {
   const [, m, d] = parts(date);
-  return `${d} ${MONTHS[m - 1].slice(0, 3)}`;
+  return `${d} ${shortMonthName(m)}`;
 }

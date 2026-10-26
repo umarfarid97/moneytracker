@@ -4,11 +4,14 @@ import { nextDueDate } from './commitments';
 import { addDays } from './dates';
 import type { Sen } from './money';
 import { estimateNetMonthly } from './netpay';
+import type { IncomeEntry } from './income';
 import type { Commitment, Expense, Profile } from './types';
 
 export type BalanceLeft = {
   /** Monthly take-home pay from the profile (see netpay). */
   income: Sen;
+  /** Extra income (rent, freelance, allowance) received in the period; already part of `income`. */
+  extra: Sen;
   /** Everything spent in the budget period, bill and loan payments included. */
   spent: Sen;
   /** Active bills and loan payments due later in the period that are not paid yet. */
@@ -37,21 +40,26 @@ function upcomingBills(commitments: Commitment[], expenses: Expense[], key: stri
 }
 
 /**
- * Income minus spending for the budget period `today` falls in. Income is the profile's take-home pay,
- * so there is no separate income to record. Returns null while the profile has no salary.
+ * Income minus spending for the budget period `today` falls in. Income is the profile's take-home pay
+ * plus any extra income received in the period. Returns null while the profile has no salary.
  */
 export function balanceLeft(i: {
   profile: Profile;
   expenses: Expense[];
   commitments: Commitment[];
   today: string;
+  /** Extra income entries; only those dated inside the period count. */
+  extraIncome?: IncomeEntry[];
 }): BalanceLeft | null {
   const startDay = i.profile.budgetStartDay ?? DEFAULT_START_DAY;
-  const income = estimateNetMonthly(i.profile);
-  if (income <= 0) return null;
   const key = periodKey(i.today, startDay);
+  const start = periodStart(key, startDay);
+  const end = periodEnd(key, startDay);
+  const extra = (i.extraIncome ?? []).filter((e) => e.date >= start && e.date <= end).reduce((s, e) => s + e.amount, 0);
+  const income = estimateNetMonthly(i.profile) + extra;
+  if (income <= 0) return null;
   const spent = i.expenses.filter((e) => periodKey(e.date, startDay) === key).reduce((s, e) => s + e.amount, 0);
   const upcoming = upcomingBills(i.commitments, i.expenses, key, startDay);
   const left = income - spent;
-  return { income, spent, upcoming, left, afterBills: left - upcoming };
+  return { income, extra, spent, upcoming, left, afterBills: left - upcoming };
 }
