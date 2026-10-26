@@ -1,6 +1,6 @@
 import { loansBillers } from './loansBillers';
 
-/** All user-facing strings live here so Bahasa Malaysia can be added later without touching screens. */
+/** All user-facing strings live here and ms.ts holds the Bahasa Malaysia version of every key. */
 export const en = {
   'app.name': 'Duit',
 
@@ -436,6 +436,7 @@ export const en = {
   'more.appearance.light': 'Light',
   'more.appearance.dark': 'Dark',
   'more.appearance.system': 'Match device',
+  'more.language': 'Language',
 
   ...loansBillers,
 } as const;

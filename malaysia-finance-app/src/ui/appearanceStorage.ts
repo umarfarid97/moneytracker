@@ -16,3 +16,19 @@ export function saveAppearance(value: string): void {
     // Ignore: the choice simply lasts until the app restarts.
   }
 }
+
+export function loadLanguage(): string | null {
+  try {
+    return Storage.getItemSync('language');
+  } catch {
+    return null;
+  }
+}
+
+export function saveLanguage(value: string): void {
+  try {
+    Storage.setItemSync('language', value);
+  } catch {
+    // Ignore: the choice simply lasts until the app restarts.
+  }
+}

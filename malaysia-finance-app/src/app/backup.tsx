@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { useData } from '@/hooks/DataProvider';
-import { t } from '@/i18n/t';
+import { dateLocale, t } from '@/i18n/t';
 import { backupFileName, BackupTooNewError, createBackup, InvalidBackupError, parseBackup, restoreBackup } from '@/sync/backup';
 import { pickBackupFile, saveBackupFile } from '@/sync/backupFile';
 import { lastSyncedText } from '@/sync/lastSynced';
@@ -64,7 +64,7 @@ export default function Backup() {
       const text = await pickBackupFile();
       if (text === null) return;
       const backup = await parseBackup(db, text);
-      const date = new Date(backup.exportedAt).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' });
+      const date = new Date(backup.exportedAt).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
       const ok = await confirmDelete(
         t('backup.file.restoreTitle'), t('backup.file.restoreMessage', { date }), t('backup.file.restore'), t('common.cancel'),
       );
