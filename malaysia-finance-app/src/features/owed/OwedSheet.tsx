@@ -16,6 +16,10 @@ type Props = {
   existing: OwedEntry | null;
   /** Names used before, offered as chips. */
   people: string[];
+  /** Events used before, offered as chips. */
+  events?: string[];
+  /** Event to start with (from an event's page). */
+  event?: string;
   /** Name to start with (from a person's page). */
   person?: string;
   kind?: OwedKind;
@@ -26,12 +30,13 @@ type Props = {
 };
 
 /** Mount with a fresh `key` each time it opens so the fields start from `existing`. */
-export function OwedSheet({ existing, people, person: startPerson, kind: startKind, today, onClose, onSave, onDelete }: Props) {
+export function OwedSheet({ existing, people, events = [], event: startEvent, person: startPerson, kind: startKind, today, onClose, onSave, onDelete }: Props) {
   const [person, setPerson] = useState(existing?.person ?? startPerson ?? '');
   const [kind, setKind] = useState<OwedKind>(existing?.kind ?? startKind ?? 'lent');
   const [amount, setAmount] = useState(existing ? senToInput(existing.amount) : '');
   const [date, setDate] = useState(existing?.date ?? today);
   const [note, setNote] = useState(existing?.note ?? '');
+  const [event, setEvent] = useState(existing?.event ?? startEvent ?? '');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -77,11 +82,19 @@ export function OwedSheet({ existing, people, person: startPerson, kind: startKi
           </View>
         </View>
         <TextField label={t('common.note')} value={note} onChange={setNote} maxLength={80} />
+        <TextField label={t('owed.event')} value={event} onChange={setEvent} maxLength={40} />
+        {events.length > 0 ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {events.map((name) => (
+              <Chip key={name} compact label={name} selected={normalizeName(event).toLowerCase() === name.toLowerCase()} onPress={() => setEvent(name)} />
+            ))}
+          </View>
+        ) : null}
         {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
         <Button
           title={t('common.save')}
           disabled={!valid || busy}
-          onPress={() => run(() => onSave({ person: normalizeName(person), kind, amount: sen ?? 0, date, note: note.trim() }))}
+          onPress={() => run(() => onSave({ person: normalizeName(person), kind, amount: sen ?? 0, date, note: note.trim(), event: normalizeName(event) }))}
         />
         {existing && onDelete ? (
           <Button title={t('common.delete')} variant="secondary" disabled={busy} onPress={() => run(onDelete)} />

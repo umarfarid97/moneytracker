@@ -63,6 +63,40 @@ describe('Who owes me', () => {
     expect(await db.all('SELECT amount, note, date FROM expenses')).toEqual([{ amount: 3334, note: 'Dinner', date: '2026-10-26' }]);
   });
 
+  test('a bill can be split with a different amount for each person, under an event', async () => {
+    const db = await freshDb();
+    await renderWithData(db, <Owed />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Split a bill' })).toBeTruthy());
+    await fireEvent.press(screen.getByRole('button', { name: 'Split a bill' }));
+    await type('Total bill (you paid)', '100');
+    await type('Event (optional)', 'Penang trip');
+    await type('Name', 'Aina');
+    await fireEvent.press(screen.getByRole('button', { name: 'Add person' }));
+    await type('Name', 'Ben');
+    await fireEvent.press(screen.getByRole('button', { name: 'Add person' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Different amounts' }));
+    await type('Aina owes', '25');
+    await type('Ben owes', '60');
+    expect(screen.getByTestId('split-mine').props.children).toBe('Your share is RM 15.00');
+    await type('Ben owes', '90');
+    expect(screen.getByTestId('split-over')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Save split' })).toBeDisabled();
+    await type('Ben owes', '60');
+    await fireEvent.press(screen.getByRole('button', { name: 'Save split' }));
+
+    await waitFor(() => expect(total()).toBe('RM 85.00'));
+    expect(await db.all('SELECT person, amount, event FROM owed_entries ORDER BY id')).toEqual([
+      { person: 'Aina', amount: 2500, event: 'Penang trip' },
+      { person: 'Ben', amount: 6000, event: 'Penang trip' },
+    ]);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'By event' }));
+    await fireEvent.press(screen.getByRole('button', { name: /Penang trip/ }));
+    expect(screen.getByTestId('event-balance').props.children).toBe('owes you RM 85.00');
+    await fireEvent.press(screen.getByRole('button', { name: 'Settle up Penang trip' }));
+    await waitFor(() => expect(total()).toBe('RM 0.00'));
+  });
+
   test('save stays disabled without a name or amount', async () => {
     const db = await freshDb();
     await renderWithData(db, <Owed />);

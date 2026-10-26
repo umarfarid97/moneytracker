@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { formatRM } from '@/domain/money';
-import { settleUp, splitEntries, type OwedEntry } from '@/domain/owed';
+import { settleEvent, settleUp, splitEntries, type OwedEntry } from '@/domain/owed';
+import { EventSheet } from '@/features/owed/EventSheet';
 import { OwedSheet } from '@/features/owed/OwedSheet';
 import { balanceText, PersonSheet } from '@/features/owed/PersonSheet';
 import { SplitSheet, type SplitInput } from '@/features/owed/SplitSheet';
@@ -15,23 +16,28 @@ import { AppText } from '@/ui/AppText';
 import { BackButton } from '@/ui/BackButton';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { Chip } from '@/ui/Chip';
 import { confirmDelete } from '@/ui/confirm';
 import { EmptyState } from '@/ui/EmptyState';
 import { HeroCard, onHero } from '@/ui/HeroCard';
 import { Screen } from '@/ui/Screen';
 
 type Sheet =
-  | { type: 'entry'; key: number; entry: OwedEntry | null; person?: string }
+  | { type: 'entry'; key: number; entry: OwedEntry | null; person?: string; event?: string }
   | { type: 'split'; key: number };
 
 export default function Owed() {
   const today = useToday();
-  const { people, totals, add, update, remove } = useOwed();
+  const { people, events, totals, add, update, remove } = useOwed();
   const { add: addExpense } = useExpenses();
   const { data: categories } = useCategories();
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+  const [view, setView] = useState<'person' | 'event'>('person');
+  const [openEvent, setOpenEvent] = useState<string | null>(null);
   const names = people.map((p) => p.person);
+  const eventNames = events.map((e) => e.event).filter((e) => e !== '');
+  const shownEvent = events.find((e) => e.event === openEvent) ?? null;
   const openPerson = people.find((p) => p.person === open) ?? null;
 
   async function removeEntry(e: OwedEntry): Promise<boolean> {
@@ -41,7 +47,7 @@ export default function Owed() {
   }
 
   async function saveSplit(input: SplitInput) {
-    const { mine, entries } = splitEntries({ total: input.total, others: input.others, date: today, note: input.note });
+    const { mine, entries } = splitEntries({ total: input.total, others: input.others, date: today, note: input.note, event: input.event, amounts: input.amounts });
     for (const entry of entries) await add(entry);
     if (input.categoryId !== null && mine > 0) {
       await addExpense({ amount: mine, categoryId: input.categoryId, date: today, note: input.note, receiptUri: null });
@@ -74,21 +80,50 @@ export default function Owed() {
       {people.length === 0 ? (
         <EmptyState icon="people" text={t('owed.empty')} hint={t('owed.emptyHint')} />
       ) : (
-        <Card style={{ padding: 0 }}>
-          {people.map((p, i) => (
-            <ListRow
-              key={p.person}
-              first={i === 0}
-              title={p.person}
-              subtitle={balanceText(p.balance)}
-              value={p.balance === 0 ? undefined : formatRM(Math.abs(p.balance))}
-              valueTone={p.balance > 0 ? 'positive' : 'negative'}
-              onPress={() => setOpen(p.person)}
-            />
-          ))}
-        </Card>
+        <>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Chip label={t('owed.byPerson')} selected={view === 'person'} onPress={() => setView('person')} />
+            <Chip label={t('owed.byEvent')} selected={view === 'event'} onPress={() => setView('event')} />
+          </View>
+          <Card style={{ padding: 0 }}>
+            {view === 'person'
+              ? people.map((p, i) => (
+                  <ListRow
+                    key={p.person}
+                    first={i === 0}
+                    title={p.person}
+                    subtitle={balanceText(p.balance)}
+                    value={p.balance === 0 ? undefined : formatRM(Math.abs(p.balance))}
+                    valueTone={p.balance > 0 ? 'positive' : 'negative'}
+                    onPress={() => setOpen(p.person)}
+                  />
+                ))
+              : events.map((e, i) => (
+                  <ListRow
+                    key={e.event || '(none)'}
+                    first={i === 0}
+                    title={e.event || t('owed.noEvent')}
+                    subtitle={balanceText(e.balance)}
+                    value={e.balance === 0 ? undefined : formatRM(Math.abs(e.balance))}
+                    valueTone={e.balance > 0 ? 'positive' : 'negative'}
+                    onPress={() => setOpenEvent(e.event)}
+                  />
+                ))}
+          </Card>
+        </>
       )}
 
+      {shownEvent && !sheet ? (
+        <EventSheet
+          event={shownEvent}
+          onClose={() => setOpenEvent(null)}
+          onSettle={async () => {
+            for (const entry of settleEvent(shownEvent, today)) await add(entry);
+          }}
+          onAdd={() => setSheet({ type: 'entry', key: Date.now(), entry: null, event: shownEvent.event })}
+          onEdit={(entry) => setSheet({ type: 'entry', key: Date.now(), entry })}
+        />
+      ) : null}
       {openPerson && !sheet ? (
         <PersonSheet
           person={openPerson}
@@ -107,6 +142,8 @@ export default function Owed() {
           existing={sheet.entry}
           person={sheet.person}
           people={names}
+          events={eventNames}
+          event={sheet.event}
           today={today}
           onClose={() => setSheet(null)}
           onSave={async (input) => {
@@ -117,7 +154,7 @@ export default function Owed() {
         />
       ) : null}
       {sheet?.type === 'split' ? (
-        <SplitSheet key={sheet.key} people={names} categories={categories} onClose={() => setSheet(null)} onSave={saveSplit} />
+        <SplitSheet key={sheet.key} people={names} events={eventNames} categories={categories} onClose={() => setSheet(null)} onSave={saveSplit} />
       ) : null}
     </Screen>
   );
