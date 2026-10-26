@@ -26,7 +26,7 @@ function goToProject(id: number) {
   router.push({ pathname: '/project', params: { id: String(id) } });
 }
 
-/** Others: every project (a trip, a dinner) with the money lent, borrowed and split in it, and the balance per person. */
+/** Buku 555: every project (a trip, a dinner) with the money lent, borrowed and split in it, and the balance per person. */
 export default function Owed() {
   const today = useToday();
   const { people, projects, projectOps, totals, add } = useOwed();

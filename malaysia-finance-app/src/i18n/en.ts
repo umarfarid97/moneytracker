@@ -459,7 +459,7 @@ export const en = {
   'more.appearance.system': 'Match device',
   'more.language': 'Language',
 
-  'more.owed': 'Others',
+  'more.owed': 'Buku 555',
   'more.income': 'Extra income',
   'fx.field': 'Currency',
   'fx.amount': 'Amount in {code}',
@@ -476,7 +476,7 @@ export const en = {
   'fx.daysAgo': '{count} d ago',
   'fx.original': 'Paid in {code}',
   'fx.originalValue': '{amount} {code} at RM {rate}',
-  'owed.title': 'Others',
+  'owed.title': 'Buku 555',
   'owed.owedToMe': 'Owed to you',
   'owed.iOwe': 'You owe',
   'owed.add': 'Lend or borrow',

@@ -502,7 +502,7 @@ export const ms: Record<StringKey, string> = {
   'budget.daysLeft1': '1 hari lagi',
 
   ...lockRemindersMs,
-  'more.owed': 'Orang lain',
+  'more.owed': 'Buku 555',
   'more.income': 'Pendapatan tambahan',
   'fx.field': 'Mata wang',
   'fx.amount': 'Jumlah dalam {code}',
@@ -519,7 +519,7 @@ export const ms: Record<StringKey, string> = {
   'fx.daysAgo': '{count} h lalu',
   'fx.original': 'Dibayar dalam {code}',
   'fx.originalValue': '{amount} {code} pada kadar RM {rate}',
-  'owed.title': 'Orang lain',
+  'owed.title': 'Buku 555',
   'owed.owedToMe': 'Hutang kepada anda',
   'owed.iOwe': 'Anda berhutang',
   'owed.add': 'Pinjam atau beri pinjam',

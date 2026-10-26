@@ -26,12 +26,12 @@ async function trip(db: Awaited<ReturnType<typeof freshDb>>, members = 'Aina\nBe
   return row!.id;
 }
 
-describe('Others', () => {
+describe('Buku 555', () => {
   test('lists projects, starting with the General one, and creating a project opens it', async () => {
     const db = await freshDb();
     await renderWithData(db, <Owed />);
     await waitFor(() => expect(screen.getByRole('button', { name: 'General' })).toBeTruthy());
-    expect(screen.getByText('Others')).toBeTruthy();
+    expect(screen.getByText('Buku 555')).toBeTruthy();
 
     await press('New project');
     await type('Project name', 'Penang trip');
