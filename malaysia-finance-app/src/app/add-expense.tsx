@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Platform, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
 import { resolveTaxData } from '@/data/tax';
 import { addDays, isValidDate } from '@/domain/dates';
+import { HOME_CURRENCY, parseRate, rateToInput, toMyr } from '@/domain/fx';
 import { formatRM, parseRM, senToInput } from '@/domain/money';
 import { suggestRelief } from '@/domain/reliefSpending';
 import type { ReceiptScan } from '@/domain/receiptText';
@@ -20,6 +21,7 @@ import { AmountInput } from '@/ui/AmountInput';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { CurrencyField, RINGGIT, type CurrencyChoice } from '@/features/currency/CurrencyField';
 import { ExpenseDetails } from '@/features/spending/ExpenseDetails';
 import { Chip } from '@/ui/Chip';
 import { confirmDelete } from '@/ui/confirm';
@@ -48,6 +50,7 @@ export default function AddExpense() {
   const [amountText, setAmountText] = useState('');
   const [categoryId, setCategoryId] = useState<number>(categories[0]?.id ?? 1);
   const [methodId, setMethodId] = useState<number | null>(editingId === null ? (methods[0]?.id ?? null) : null);
+  const [currency, setCurrency] = useState<CurrencyChoice>(RINGGIT);
   const [date, setDate] = useState(today);
   const [note, setNote] = useState('');
   const [reliefId, setReliefId] = useState<string | null>(null);
@@ -64,7 +67,9 @@ export default function AddExpense() {
 
   useEffect(() => {
     if (!existing) return;
-    setAmountText(senToInput(existing.amount));
+    const abroad = existing.currency && existing.currency !== HOME_CURRENCY && existing.foreignAmount != null && existing.fxRate != null;
+    setAmountText(senToInput(abroad ? existing.foreignAmount! : existing.amount));
+    setCurrency(abroad ? { code: existing.currency!, rateText: rateToInput(existing.fxRate!), manual: true } : RINGGIT);
     setCategoryId(existing.categoryId);
     setMethodId(existing.paymentMethodId);
     setDate(existing.date);
@@ -77,7 +82,14 @@ export default function AddExpense() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing?.id]);
 
-  const amount = parseRM(amountText);
+  // Spending abroad: the typed amount is in that currency and the rate turns it into ringgit.
+  const abroad = currency.code !== HOME_CURRENCY;
+  const typed = parseRM(amountText);
+  const rate = abroad ? parseRate(currency.rateText) : null;
+  const amount = abroad ? (typed !== null && rate !== null ? toMyr(typed, rate) : null) : typed;
+  const fx = abroad && typed !== null && rate !== null
+    ? { currency: currency.code, foreignAmount: typed, fxRate: rate }
+    : { currency: HOME_CURRENCY, foreignAmount: null, fxRate: null };
   // The claimable part only matters while a relief is chosen; a leftover value must not block saving.
   const claim = reliefId === null || claimText.trim() === '' ? null : parseRM(claimText);
   const claimTooBig = claim !== null && amount !== null && claim > amount;
@@ -152,10 +164,10 @@ export default function AddExpense() {
       : { reliefId: null, reliefAmount: null };
     try {
       if (existing) {
-        await update({ ...existing, amount, categoryId, paymentMethodId: methodId, date, note: note.trim(), receiptUri, sst: sst !== null && sst < amount ? sst : null, ...tag });
+        await update({ ...existing, amount, categoryId, paymentMethodId: methodId, date, note: note.trim(), receiptUri, sst: sst !== null && sst < amount ? sst : null, ...tag, ...fx });
       } else {
         const alert = budgetAlert({ expenses, budgets, categoryId, date, amount, startDay: profile.budgetStartDay });
-        await add({ amount, categoryId, paymentMethodId: methodId, date, note: note.trim(), receiptUri, sst: sst !== null && sst < amount ? sst : null, ...tag });
+        await add({ amount, categoryId, paymentMethodId: methodId, date, note: note.trim(), receiptUri, sst: sst !== null && sst < amount ? sst : null, ...tag, ...fx });
         if (alert) notifyBudgetAlert(categoryName, alert).catch(() => {});
       }
       router.back();
@@ -205,11 +217,18 @@ export default function AddExpense() {
     <AmountInput
       compact={!wide}
       large={wide}
-      label={t('common.amount')}
+      label={abroad ? t('fx.amount', { code: currency.code }) : t('common.amount')}
+      currency={abroad ? currency.code : undefined}
       value={amountText}
       onChange={(text) => setAmountText(text)}
       autoFocus={!existing}
     />
+  );
+
+  const currencyCard = (
+    <Card style={wide ? undefined : { padding: 14 }}>
+      <CurrencyField value={currency} onChange={setCurrency} ringgit={amount} />
+    </Card>
   );
 
   const categoryField = (
@@ -434,6 +453,7 @@ export default function AddExpense() {
     <Screen compact={!wide} footer={<View style={{ gap: 8 }}>{errorText}{actions}</View>}>
       {title}
       {amountField}
+      {currencyCard}
       {landscape ? (
         <View style={{ flexDirection: 'row', gap, flexGrow: 1 }}>
           <View style={{ flex: 1, gap }}>

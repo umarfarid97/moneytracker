@@ -8,6 +8,7 @@ import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BillsSync } from '@/features/commitments/BillsSync';
+import { IncomeSync } from '@/features/income/IncomeSync';
 import { RemindersSync } from '@/features/commitments/RemindersSync';
 import { useLanguage } from '@/i18n/language';
 import { AppLockGate } from '@/features/security/AppLockGate';
@@ -33,6 +34,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <DataProvider>
           <BillsSync />
+          <IncomeSync />
           <RemindersSync />
           <QuickAddSync />
           <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />

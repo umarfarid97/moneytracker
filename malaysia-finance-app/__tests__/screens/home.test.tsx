@@ -84,3 +84,22 @@ describe('Home', () => {
     await waitFor(() => expect(screen.getByText('RM 0.00')).toBeTruthy());
   });
 });
+
+describe('Home balance left', () => {
+  test('shows take-home pay minus this month spending', async () => {
+    const db = await freshDb();
+    await db.run('UPDATE profile SET gross_monthly = 600000, net_monthly_override = 500000');
+    await addExpenseRow(db, CAT.Makan, 30000, '2026-10-03');
+    await renderWithData(db, <Home />);
+    await waitFor(() => expect(screen.getByText('RM 4,700.00')).toBeTruthy());
+    expect(screen.getByText('Balance left this month')).toBeTruthy();
+  });
+
+  test('asks for a salary when the profile has none and opens the profile', async () => {
+    const db = await freshDb();
+    await renderWithData(db, <Home />);
+    await waitFor(() => expect(screen.getByText('Add salary')).toBeTruthy());
+    fireEvent.press(screen.getByText('Add salary'));
+    expect(router.push).toHaveBeenCalledWith('/profile');
+  });
+});

@@ -12,19 +12,24 @@ import { IconBadge } from '@/ui/IconBadge';
 import { Screen } from '@/ui/Screen';
 import { useTheme } from '@/ui/useTheme';
 
-type Path = '/wealth' | '/backup' | '/tax' | '/profile' | '/budget' | '/categories' | '/payment-methods' | '/tax-calculator' | '/loan-calculator' | '/security' | '/notifications-settings';
+type Path = '/wealth' | '/backup' | '/tax' | '/profile' | '/budget' | '/categories' | '/payment-methods' | '/tax-calculator' | '/loan-calculator' | '/reports' | '/net-worth' | '/import-statement' | '/owed' | '/income' | '/security' | '/notifications-settings';
 
 const ITEMS: { label: StringKey; path: Path; icon: keyof typeof Ionicons.glyphMap; color: string }[] = [
   { label: 'more.profile', path: '/profile', icon: 'person', color: '#4f46e5' },
   { label: 'more.budget', path: '/budget', icon: 'pie-chart', color: '#16a34a' },
+  { label: 'more.reports', path: '/reports', icon: 'bar-chart', color: '#0d5bd3' },
+  { label: 'more.netWorth', path: '/net-worth', icon: 'wallet', color: '#16a34a' },
   { label: 'more.categories', path: '/categories', icon: 'pricetags', color: '#ea580c' },
   { label: 'more.methods', path: '/payment-methods', icon: 'card', color: '#0284c7' },
   { label: 'more.wealth', path: '/wealth', icon: 'trending-up', color: '#0d5bd3' },
+  { label: 'more.owed', path: '/owed', icon: 'people', color: '#0d5bd3' },
+  { label: 'more.income', path: '/income', icon: 'cash', color: '#16a34a' },
   { label: 'tax.title', path: '/tax', icon: 'document-text', color: '#0d5bd3' },
   { label: 'more.taxCalc', path: '/tax-calculator', icon: 'calculator', color: '#db2777' },
   { label: 'more.loan', path: '/loan-calculator', icon: 'home', color: '#7c3aed' },
   { label: 'more.security', path: '/security', icon: 'lock-closed', color: '#0d5bd3' },
   { label: 'more.notifications', path: '/notifications-settings', icon: 'notifications', color: '#ea580c' },
+  { label: 'more.import', path: '/import-statement', icon: 'document-text', color: '#0d5bd3' },
   { label: 'more.backup', path: '/backup', icon: 'cloud-upload', color: '#0d5bd3' },
 ];
 

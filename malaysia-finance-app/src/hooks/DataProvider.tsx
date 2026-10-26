@@ -27,7 +27,11 @@ import {
 import {
   addSavingsAccount, deleteSavingsAccount, listSavingsAccounts, updateSavingsAccount,
 } from '@/db/repos/savings';
+import { addIncomeEntry, addIncomeRule, addRuleEntry, deleteIncomeEntry, deleteIncomeRule, listIncomeEntries, listIncomeRules, updateIncomeEntry, updateIncomeRule } from '@/db/repos/income';
+import { addOwedEntry, deleteOwedEntry, listOwedEntries, updateOwedEntry } from '@/db/repos/owed';
 import type { Db } from '@/db/types';
+import { missedRuns, withRuleDefaults, type IncomeEntry, type IncomeRule, type NewIncomeEntry, type NewIncomeRule } from '@/domain/income';
+import type { NewOwedEntry, OwedEntry } from '@/domain/owed';
 import { missedDueDates } from '@/domain/bills';
 import { byDateDesc as givingNewest, type GivingRecord, type NewGivingRecord } from '@/domain/giving';
 import { isPaidOff, loanBalance, nextPayment } from '@/domain/loanTracker';
@@ -51,6 +55,8 @@ const byNewest = (a: Expense, b: Expense) => {
 const byOrder = (a: Category, b: Category) => a.sortOrder - b.sortOrder || a.id - b.id;
 const byDay = (a: Commitment, b: Commitment) => a.dayOfMonth - b.dayOfMonth || a.id - b.id;
 const byId = (a: { id: number }, b: { id: number }) => a.id - b.id;
+const byNewestDate = (a: { id: number; date: string }, b: { id: number; date: string }) =>
+  a.date === b.date ? b.id - a.id : a.date < b.date ? 1 : -1;
 
 /**
  * useState whose latest value is also readable synchronously through a ref, so several writes in
@@ -109,6 +115,16 @@ export type DataContextValue = {
   /** Tabung Haji, ASB, Hajj fund, PRS and unit trusts (see domain/savings). */
   savingsAccounts: SavingsAccount[];
   savingsOps: CollectionOps<SavingsAccount, NewSavingsAccount>;
+  /** Money lent to, borrowed from or split with people (see domain/owed). */
+  owedEntries: OwedEntry[];
+  owedOps: CollectionOps<OwedEntry, NewOwedEntry>;
+  /** Extra income that repeats, and the income it has added (see domain/income). */
+  incomeRules: IncomeRule[];
+  incomeRuleOps: CollectionOps<IncomeRule, NewIncomeRule>;
+  incomeEntries: IncomeEntry[];
+  incomeEntryOps: CollectionOps<IncomeEntry, NewIncomeEntry>;
+  /** Adds the income entries every active rule has not added yet, up to today; returns how many. */
+  runRecurringIncome: (today: string) => Promise<number>;
   profile: Profile;
   saveProfile: (p: Profile) => Promise<void>;
   /** Year of assessment picked on the tax screens (null = the current year). */
@@ -130,20 +146,22 @@ type Loaded = {
   categories: Category[]; expenses: Expense[]; budgets: Budget[];
   commitments: Commitment[]; reliefClaims: ReliefClaim[]; profile: Profile; paymentMethods: PaymentMethod[];
   retirementEntries: RetirementEntry[]; givingRecords: GivingRecord[]; savingsAccounts: SavingsAccount[];
+  owedEntries: OwedEntry[]; incomeRules: IncomeRule[]; incomeEntries: IncomeEntry[];
 };
 
 async function loadAll(db: Db): Promise<Loaded> {
   const [
     categories, expenses, budgets, commitments, reliefClaims, profile, paymentMethods,
-    retirementEntries, givingRecords, savingsAccounts,
+    retirementEntries, givingRecords, savingsAccounts, owedEntries, incomeRules, incomeEntries,
   ] = await Promise.all([
     listCategories(db), listAllExpenses(db), listAllBudgets(db),
     listCommitments(db), listAllReliefClaims(db), getProfile(db), listPaymentMethods(db),
     listRetirementEntries(db), listGivingRecords(db), listSavingsAccounts(db),
+    listOwedEntries(db), listIncomeRules(db), listIncomeEntries(db),
   ]);
   return {
     categories, expenses, budgets, commitments, reliefClaims, profile, paymentMethods,
-    retirementEntries, givingRecords, savingsAccounts,
+    retirementEntries, givingRecords, savingsAccounts, owedEntries, incomeRules, incomeEntries,
   };
 }
 
@@ -168,6 +186,9 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
   const [retirementEntries, setRetirementEntries, retirementRef] = useSyncedState<RetirementEntry[]>([]);
   const [givingRecords, setGivingRecords, givingRef] = useSyncedState<GivingRecord[]>([]);
   const [savingsAccounts, setSavingsAccounts, savingsRef] = useSyncedState<SavingsAccount[]>([]);
+  const [owedEntries, setOwedEntries, owedRef] = useSyncedState<OwedEntry[]>([]);
+  const [incomeRules, setIncomeRules, incomeRulesRef] = useSyncedState<IncomeRule[]>([]);
+  const [incomeEntries, setIncomeEntries, incomeEntriesRef] = useSyncedState<IncomeEntry[]>([]);
 
   const apply = useCallback((data: Loaded) => {
     setCategories(data.categories); setExpenses(data.expenses); setBudgets(data.budgets);
@@ -175,9 +196,10 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
     setPaymentMethods(data.paymentMethods);
     setRetirementEntries(data.retirementEntries); setGivingRecords(data.givingRecords);
     setSavingsAccounts(data.savingsAccounts);
+    setOwedEntries(data.owedEntries); setIncomeRules(data.incomeRules); setIncomeEntries(data.incomeEntries);
   }, [
     setCategories, setExpenses, setBudgets, setCommitments, setReliefClaims, setProfile, setPaymentMethods,
-    setRetirementEntries, setGivingRecords, setSavingsAccounts,
+    setRetirementEntries, setGivingRecords, setSavingsAccounts, setOwedEntries, setIncomeRules, setIncomeEntries,
   ]);
 
   useEffect(() => {
@@ -231,6 +253,41 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
       remove: (id) => deleteSavingsAccount(db, id),
     }, (a, b) => a.id - b.id, (input: NewSavingsAccount) => input);
 
+    const owedOps = makeOptimisticOps(owedRef, setOwedEntries, {
+      add: (input) => addOwedEntry(db, input),
+      update: (e) => updateOwedEntry(db, e),
+      remove: (id) => deleteOwedEntry(db, id),
+    }, byNewestDate, (input: NewOwedEntry) => input);
+    const incomeRuleOps = makeOptimisticOps(incomeRulesRef, setIncomeRules, {
+      add: (input) => addIncomeRule(db, input),
+      update: (r) => updateIncomeRule(db, r),
+      remove: (id) => deleteIncomeRule(db, id),
+    }, (a, b) => a.dayOfMonth - b.dayOfMonth || a.id - b.id, withRuleDefaults);
+    const incomeEntryOps = makeOptimisticOps(incomeEntriesRef, setIncomeEntries, {
+      add: (input) => addIncomeEntry(db, input),
+      update: (e) => updateIncomeEntry(db, e),
+      remove: (id) => deleteIncomeEntry(db, id),
+    }, byNewestDate, (input: NewIncomeEntry) => input);
+
+    const runRecurringIncome: DataContextValue['runRecurringIncome'] = async (today) => {
+      let count = 0;
+      for (const rule of incomeRulesRef.current) {
+        const days = missedRuns(rule, today);
+        if (days.length === 0) continue;
+        for (const day of days) {
+          const saved = await addRuleEntry(db, rule, day);
+          if (saved) {
+            count++;
+            setIncomeEntries((prev) => [saved, ...prev].sort(byNewestDate));
+          }
+        }
+        // Re-read the rule: it may have been edited (or deleted) while the entries above were saved.
+        const latest = incomeRulesRef.current.find((x) => x.id === rule.id);
+        if (latest) await incomeRuleOps.update({ ...latest, lastRun: days[days.length - 1] });
+      }
+      return count;
+    };
+
     const billCategoryId = (c: Commitment) =>
       c.categoryId ??
       categories.find((x) => x.name === 'Bil')?.id ??
@@ -275,6 +332,7 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
       },
       expenseOps, commitmentOps, reliefClaimOps,
       retirementEntries, retirementOps, givingRecords, givingOps, savingsAccounts, savingsOps,
+      owedEntries, owedOps, incomeRules, incomeRuleOps, incomeEntries, incomeEntryOps, runRecurringIncome,
       paymentMethodOps: {
         async add(input) {
           const saved = await addPaymentMethod(db, input);
@@ -344,7 +402,7 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
       },
     };
   }, [db, loaded, profile, categories, expenses, budgets, commitments, reliefClaims, paymentMethods,
-    retirementEntries, givingRecords, savingsAccounts, taxYearChoice, apply]);
+    retirementEntries, givingRecords, savingsAccounts, owedEntries, incomeRules, incomeEntries, taxYearChoice, apply]);
 
   if (failure) throw failure;
   if (!value) return null;
