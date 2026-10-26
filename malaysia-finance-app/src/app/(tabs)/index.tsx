@@ -16,7 +16,6 @@ import { useToday } from '@/hooks/useToday';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
-import { Card } from '@/ui/Card';
 import { HeroCard, onHero } from '@/ui/HeroCard';
 import { Screen } from '@/ui/Screen';
 import { radius, space } from '@/ui/theme';
@@ -69,30 +68,31 @@ export default function Home() {
             <Button title={t('home.setBudget')} variant="light" onPress={() => router.push('/budget')} />
           </View>
         )}
-      </HeroCard>
+      <View style={{ height: 1, backgroundColor: onHero.chip, marginVertical: 12 }} />
       {balance ? (
-        <Card style={{ gap: 4 }}>
-          <AppText variant="eyebrow" tone="muted">
+        <View style={{ gap: 4 }}>
+          <AppText variant="eyebrow" color={onHero.soft}>
             {t('home.balanceTitle')}
           </AppText>
           <AppText variant="kpi" tone={balance.left < 0 ? 'negative' : 'text'}>
             {balance.left >= 0 ? formatRM(balance.left) : `-${formatRM(-balance.left)}`}
           </AppText>
-          <AppText variant="small" tone="muted">
+          <AppText variant="small" color={onHero.soft}>
             {t('home.balanceDetail', { income: formatRM(balance.income), spent: formatRM(balance.spent) })}
           </AppText>
           {balance.upcoming > 0 ? (
-            <AppText variant="small" tone="muted">
+            <AppText variant="small" color={onHero.soft}>
               {t('home.balanceUpcoming', { upcoming: formatRM(balance.upcoming), free: formatRM(Math.max(0, balance.afterBills)) })}
             </AppText>
           ) : null}
-        </Card>
+        </View>
       ) : (
-        <Card>
-          <AppText variant="small" tone="muted">{t('home.balanceSetup')}</AppText>
+        <View style={{ gap: 8 }}>
+          <AppText variant="small" color={onHero.soft}>{t('home.balanceSetup')}</AppText>
           <Button title={t('home.balanceSetupButton')} variant="light" onPress={() => router.push('/profile')} />
-        </Card>
+        </View>
       )}
+      </HeroCard>
       {home.tiles.length > 0 ? (
         <>
           <AppText variant="section">{t('home.categories')}</AppText>
