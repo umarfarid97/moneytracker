@@ -61,16 +61,20 @@ export function OwedSheet({ existing, people, projectId, today, onClose, onSave,
         <View style={{ gap: 8 }}>
           <AppText variant="eyebrow" tone="muted">{t('owed.type')}</AppText>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            <Chip label={t('owed.type.lend')} selected={type === 'lend'} onPress={() => setType('lend')} />
-            <Chip label={t('owed.type.payback')} selected={type === 'payback'} onPress={() => setType('payback')} />
+            <Chip compact label={t('owed.type.lend')} selected={type === 'lend'} onPress={() => setType('lend')} />
+            <Chip compact label={t('owed.type.payback')} selected={type === 'payback'} onPress={() => setType('payback')} />
           </View>
         </View>
-        <PartyPicker label={t(type === 'lend' ? 'owed.from.lend' : 'owed.from.payback')} value={from} people={people} onChange={setFrom} />
-        <PartyPicker label={t(type === 'lend' ? 'owed.to.lend' : 'owed.to.payback')} value={to} people={people} onChange={setTo} />
-        <AmountInput label={t('common.amount')} value={amount} onChange={setAmount} compact autoFocus={!existing} />
-        <View style={{ gap: 8 }}>
-          <AppText variant="eyebrow" tone="muted">{t('common.date')}</AppText>
-          <View style={{ flexDirection: 'row' }}>
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <PartyPicker label={t('owed.from')} value={from} people={people} onChange={setFrom} />
+          <PartyPicker label={t('owed.to')} value={to} people={people} onChange={setTo} />
+        </View>
+        <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-end' }}>
+          <View style={{ flex: 1 }}>
+            <AmountInput label={t('common.amount')} value={amount} onChange={setAmount} compact autoFocus={!existing} />
+          </View>
+          <View style={{ gap: 8 }}>
+            <AppText variant="eyebrow" tone="muted">{t('common.date')}</AppText>
             <DateField label={t('common.date')} value={date} onChange={setDate} />
           </View>
         </View>

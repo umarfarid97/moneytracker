@@ -1,5 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import More from '@/app/(tabs)/more';
+import Settings from '@/app/settings';
 import Profile from '@/app/profile';
 import { freshDb, renderWithData } from './helpers';
 
@@ -15,12 +16,32 @@ describe('More tab', () => {
     for (const [label, path] of [
       ['Income profile', '/profile'],
       ['Budget', '/budget'],
-      ['Categories', '/categories'],
-      ['Payment methods', '/payment-methods'],
       ['Tax calculator', '/tax-calculator'],
       ['Loan calculator', '/loan-calculator'],
+      ['Settings', '/settings'],
+    ] as const) {
+      await fireEvent.press(screen.getByText(label));
+      expect(router.push).toHaveBeenLastCalledWith(path);
+    }
+  });
+
+  test('the appearance and language options are not loose in More any more', async () => {
+    const db = await freshDb();
+    await renderWithData(db, <More />);
+    await waitFor(() => expect(screen.getByText('Settings')).toBeTruthy());
+    expect(screen.queryByText('Appearance')).toBeNull();
+    expect(screen.queryByText('Language')).toBeNull();
+  });
+
+  test('Settings links to app lock, reminders, categories, payment methods and backup', async () => {
+    const db = await freshDb();
+    await renderWithData(db, <Settings />);
+    await waitFor(() => expect(screen.getByText('App lock')).toBeTruthy());
+    for (const [label, path] of [
       ['App lock', '/security'],
       ['Reminders & quick add', '/notifications-settings'],
+      ['Categories', '/categories'],
+      ['Payment methods', '/payment-methods'],
       ['Backup & sync', '/backup'],
     ] as const) {
       await fireEvent.press(screen.getByText(label));
@@ -28,14 +49,17 @@ describe('More tab', () => {
     }
   });
 
-  test('lets you pick the appearance', async () => {
+  test('Settings lets you pick the appearance and language', async () => {
     const db = await freshDb();
-    await renderWithData(db, <More />);
+    await renderWithData(db, <Settings />);
     await waitFor(() => expect(screen.getByText('Appearance')).toBeTruthy());
     expect(screen.getByRole('button', { name: 'Light', selected: true })).toBeTruthy();
     await fireEvent.press(screen.getByText('Dark'));
     expect(screen.getByRole('button', { name: 'Dark', selected: true })).toBeTruthy();
     await fireEvent.press(screen.getByText('Light'));
+    await fireEvent.press(screen.getByText('Bahasa Malaysia'));
+    expect(screen.getByText('Tetapan')).toBeTruthy();
+    await fireEvent.press(screen.getByText('English'));
   });
 });
 

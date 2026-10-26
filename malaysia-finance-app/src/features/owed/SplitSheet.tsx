@@ -86,7 +86,7 @@ export function SplitSheet({ people, categories, onClose, onSave }: Props) {
         })
       : null;
   const splitOk = result !== null && result.ok;
-  const paid = payers.length === 1
+  const paid = !several
     ? (sen !== null ? [{ name: payers[0], amount: sen }] : null)
     : payers.map((name) => ({ name, amount: parseRM(paidTyped[name.toLowerCase()] ?? '') }));
   const paidOk = paid !== null && paid.every((p) => p.amount !== null && p.amount > 0) && sen !== null
@@ -94,6 +94,8 @@ export function SplitSheet({ people, categories, onClose, onSave }: Props) {
   const transfers = result && splitOk && paidOk && paid
     ? splitTransfers({ paid: paid.map((p) => ({ name: p.name, amount: p.amount ?? 0 })), parts: result.parts, mine: result.mine })
     : [];
+  const paidSum = several ? payers.reduce((sum, name) => sum + (parseRM(paidTyped[name.toLowerCase()] ?? '') ?? 0), 0) : sen ?? 0;
+  const paidLeft = (sen ?? 0) - paidSum;
   const valid = splitOk && paidOk;
   const percentLeft = mode === 'percent' ? 100 - values.reduce<number>((s, v) => s + (v ?? 0), 0) : null;
 
@@ -121,7 +123,22 @@ export function SplitSheet({ people, categories, onClose, onSave }: Props) {
         <AmountInput label={t('split.total')} value={total} onChange={setTotal} compact autoFocus />
         <TextField label={t('split.note')} value={note} onChange={setNote} maxLength={80} />
         <View style={{ gap: 8 }}>
-          <AppText variant="eyebrow" tone="muted">{t('project.paidBy')}</AppText>
+          <AppText variant="eyebrow" tone="muted">{t('split.billType')}</AppText>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            <Chip
+              compact
+              label={t('split.onePaid')}
+              selected={!several}
+              onPress={() => {
+                setSeveral(false);
+                setPayers((prev) => [prev[0] ?? '']);
+              }}
+            />
+            <Chip compact label={t('split.severalPaid')} selected={several} onPress={() => setSeveral(true)} />
+          </View>
+        </View>
+        <View style={{ gap: 8 }}>
+          <AppText variant="eyebrow" tone="muted">{t(several ? 'split.whoPaidMany' : 'project.paidBy')}</AppText>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {['', ...known].map((name) => (
               <Chip
@@ -142,17 +159,7 @@ export function SplitSheet({ people, categories, onClose, onSave }: Props) {
               />
             ))}
           </View>
-          <Chip
-            compact
-            label={t('split.severalPaid')}
-            selected={several}
-            onPress={() => {
-              if (several) setPayers((prev) => [prev[0] ?? '']);
-              setSeveral((v) => !v);
-            }}
-          />
-          <AppText variant="small" tone="muted">{t(payers.length > 1 ? 'split.paidByMany' : several ? 'split.paidByHint' : 'split.paidByOne')}</AppText>
-          {payers.length > 1 ? (
+          {several ? (
             <View style={{ gap: 10 }}>
               {payers.map((name) => (
                 <TextField
@@ -164,6 +171,11 @@ export function SplitSheet({ people, categories, onClose, onSave }: Props) {
                   onChange={(text) => setPaidTyped((prev) => ({ ...prev, [name.toLowerCase()]: text }))}
                 />
               ))}
+              {sen !== null && sen > 0 ? (
+                <AppText testID="split-paid-left" variant="small" tone={paidLeft === 0 ? 'positive' : paidLeft < 0 ? 'negative' : 'muted'}>
+                  {paidLeft === 0 ? t('split.paidAdds') : paidLeft > 0 ? t('split.paidLeft', { amount: formatRM(paidLeft) }) : t('split.paidOver', { amount: formatRM(-paidLeft) })}
+                </AppText>
+              ) : null}
             </View>
           ) : null}
         </View>
@@ -210,7 +222,7 @@ export function SplitSheet({ people, categories, onClose, onSave }: Props) {
 
         {result ? (
           <View style={{ gap: 2 }}>
-            {payers.length === 1 && payers[0] === '' && mode === 'equal' ? (
+            {!several && payers[0] === '' && mode === 'equal' ? (
               <AppText testID="split-each" variant="bodyStrong">{t('split.each', { amount: formatRM(result.parts[0]?.amount ?? 0) })}</AppText>
             ) : null}
             {transfers.map((tr, i) => (
@@ -223,8 +235,7 @@ export function SplitSheet({ people, categories, onClose, onSave }: Props) {
             ) : (
               <AppText testID="split-mine" variant="small" tone="negative">{t('split.over', { amount: formatRM(-result.mine) })}</AppText>
             )}
-            {payers.length > 1 && !paidOk ? <AppText variant="small" tone="negative">{t('split.paidMismatch')}</AppText> : null}
-            {percentLeft !== null && percentLeft >= 0 ? (
+                        {percentLeft !== null && percentLeft >= 0 ? (
               <AppText variant="small" tone="muted">{t('split.percentLeft', { percent: Number(percentLeft.toFixed(2)) })}</AppText>
             ) : null}
           </View>
