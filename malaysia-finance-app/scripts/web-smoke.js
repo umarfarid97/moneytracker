@@ -28,6 +28,30 @@ server.listen(0, async () => {
     await page.goto(`http://localhost:${server.address().port}/`);
     await page.waitForTimeout(6000);
     text = (await page.innerText('body')).trim();
+    // Home's category tiles must form equal-width columns that fill the row at every screen size.
+    for (const [w, h] of [[360, 740], [390, 844], [820, 1180], [1440, 900]]) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.waitForTimeout(500);
+      const problem = await page.evaluate(() => {
+        const grid = document.querySelector('[data-testid="tile-grid"]');
+        if (!grid) return 'no tile grid on Home';
+        const g = grid.getBoundingClientRect();
+        const cells = [...grid.querySelectorAll('[data-testid="tile-grid-cell"]')].map((c) => c.getBoundingClientRect());
+        if (cells.length < 2) return null;
+        const w0 = cells[0].width;
+        if (cells.some((c) => Math.abs(c.width - w0) > 1)) return 'cells differ in width';
+        const firstRow = cells.filter((c) => Math.abs(c.top - cells[0].top) < 2);
+        if (firstRow.length < 2 && g.width >= 330) return `only ${firstRow.length} cell in the first row of a ${g.width}px grid`;
+        if (cells.some((c) => c.left < g.left - 1 || c.right > g.right + 1)) return 'a cell sticks out of the grid';
+        const right = Math.max(...firstRow.map((c) => c.right));
+        if (firstRow.length === cells.length || firstRow.length >= 2) {
+          const gap = firstRow.length > 1 ? firstRow[1].left - firstRow[0].right : 0;
+          if (g.right - right > w0 / 2 + gap) return `the first row leaves ${Math.round(g.right - right)}px empty on the right`;
+        }
+        return null;
+      });
+      if (problem) errors.push(`Home tiles at ${w}px: ${problem}`);
+    }
     await browser.close();
   } catch (e) {
     errors.push(String(e));
