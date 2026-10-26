@@ -1,6 +1,6 @@
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { DRIVE_SCOPE, GOOGLE_WEB_CLIENT_ID, GoogleAuthError, type GoogleAuth } from './googleConfig';
-import { browserSignedIn, browserSignIn, browserSignOut, browserToken } from './googleBrowserAuth';
+import { browserAuthReady, browserSignedIn, browserSignIn, browserSignOut, browserToken } from './googleBrowserAuth';
 
 let configured = false;
 function setup() {
@@ -31,7 +31,8 @@ function explain(e: unknown): never {
 
 /**
  * Phones with Google Play services: Google's own sign-in sheet, which keeps the account signed in.
- * Phones without it (Huawei): sign in through the browser instead.
+ * Phones without it (Huawei), or with a look-alike such as microG that opens the account picker and
+ * then fails: sign in through the browser instead.
  */
 export const googleAuth: GoogleAuth = {
   available: GOOGLE_WEB_CLIENT_ID !== '',
@@ -48,6 +49,8 @@ export const googleAuth: GoogleAuth = {
       }
       return { email: result.data.user.email };
     } catch (e) {
+      // microG and similar stand-ins pass the Play services check but cannot finish the sign-in.
+      if (browserAuthReady()) return browserSignIn().catch(explain);
       return explain(e);
     }
   },

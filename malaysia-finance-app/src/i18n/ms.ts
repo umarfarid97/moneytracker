@@ -291,7 +291,7 @@ export const ms: Record<StringKey, string> = {
   'backup.drive.minutesAgo': 'Disegerakkan {count} min lalu',
   'backup.drive.at': 'Disegerakkan {when}',
   'backup.drive.fail.noPlayServices': "Telefon ini tiada Google Play services, jadi log masuk satu ketik Google tidak boleh berjalan di sini.",
-  'backup.drive.fail.notSetUp': "Log masuk Google belum disediakan sepenuhnya untuk versi Duit ini. Data anda selamat; gunakan fail sandaran buat masa ini.",
+  'backup.drive.fail.notSetUp': "Log masuk biasa Google tidak berfungsi di telefon ini (tiada Google Play services sebenar), dan log masuk melalui pelayar belum disediakan dalam versi Duit ini. Data anda selamat; gunakan fail sandaran buat masa ini.",
   'backup.drive.fail.network': "Tidak dapat menghubungi Google. Semak internet anda dan cuba lagi.",
   'backup.drive.fail.blocked': "Google tidak menyiapkan log masuk. Tutup halaman pelayar dan cuba lagi.",
   'backup.drive.fail.unknown': "Tidak dapat menyambung ke Google. Cuba lagi, atau gunakan fail sandaran buat masa ini.",
