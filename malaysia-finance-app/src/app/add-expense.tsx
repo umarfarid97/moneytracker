@@ -1,10 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
+import { Platform, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
 import { resolveTaxData } from '@/data/tax';
 import { addDays, isValidDate } from '@/domain/dates';
 import { formatRM, parseRM, senToInput } from '@/domain/money';
 import { suggestRelief } from '@/domain/reliefSpending';
+import type { ReceiptScan } from '@/domain/receiptText';
+import { scanReceipt } from '@/receiptScan';
 import { noteSuggestions, type NoteSuggestion } from '@/domain/spendingFilter';
 import { budgetAlert } from '@/domain/summary';
 import { useData } from '@/hooks/DataProvider';
@@ -51,6 +53,10 @@ export default function AddExpense() {
   const [reliefId, setReliefId] = useState<string | null>(null);
   const [claimText, setClaimText] = useState('');
   const [receiptUri, setReceiptUri] = useState<string | null>(null);
+  const [sst, setSst] = useState<number | null>(null);
+  // Receipt scan: while it runs, and what it found (shown under the photo).
+  const [scanState, setScanState] = useState<'idle' | 'scanning' | 'found' | 'none'>('idle');
+  const [scanned, setScanned] = useState<ReceiptScan | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // Saved spending opens read-only; Edit switches to the form.
@@ -66,6 +72,7 @@ export default function AddExpense() {
     setReliefId(existing.reliefId);
     setClaimText(existing.reliefAmount !== null ? senToInput(existing.reliefAmount) : '');
     setReceiptUri(existing.receiptUri);
+    setSst(existing.sst ?? null);
     // Prefill once per expense id, not on every later edit of that expense.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing?.id]);
@@ -109,6 +116,33 @@ export default function AddExpense() {
     setClaimText(r.reliefAmount !== null ? senToInput(r.reliefAmount) : '');
   }
 
+  async function runScan(uri: string, overwrite: boolean) {
+    setScanState('scanning');
+    const scan = await scanReceipt(uri);
+    if (!scan) {
+      setScanState('none');
+      return;
+    }
+    // Fill only what is still empty (or untouched), unless the user asked to scan again.
+    if (scan.total !== null && (overwrite || amountText.trim() === '')) setAmountText(senToInput(scan.total));
+    if (scan.merchant && (overwrite || note.trim() === '')) setNote(scan.merchant);
+    if (scan.date && (overwrite || date === today) && scan.date <= today) setDate(scan.date);
+    if (scan.sst !== null) setSst(scan.sst);
+    setScanned(scan);
+    setScanState('found');
+  }
+
+  function onReceiptChange(uri: string | null) {
+    setReceiptUri(uri);
+    setScanned(null);
+    setScanState('idle');
+    if (uri === null) {
+      setSst(null);
+      return;
+    }
+    void runScan(uri, false);
+  }
+
   async function save() {
     if (!valid || amount === null || busy) return;
     setBusy(true);
@@ -118,10 +152,10 @@ export default function AddExpense() {
       : { reliefId: null, reliefAmount: null };
     try {
       if (existing) {
-        await update({ ...existing, amount, categoryId, paymentMethodId: methodId, date, note: note.trim(), receiptUri, ...tag });
+        await update({ ...existing, amount, categoryId, paymentMethodId: methodId, date, note: note.trim(), receiptUri, sst: sst !== null && sst < amount ? sst : null, ...tag });
       } else {
         const alert = budgetAlert({ expenses, budgets, categoryId, date, amount });
-        await add({ amount, categoryId, paymentMethodId: methodId, date, note: note.trim(), receiptUri, ...tag });
+        await add({ amount, categoryId, paymentMethodId: methodId, date, note: note.trim(), receiptUri, sst: sst !== null && sst < amount ? sst : null, ...tag });
         if (alert) notifyBudgetAlert(categoryName, alert).catch(() => {});
       }
       router.back();
@@ -361,9 +395,33 @@ export default function AddExpense() {
     </View>
   );
   const dateCard = <Card style={pad}>{dateField}</Card>;
+  const scanStatus = (
+    <View style={{ gap: 6 }}>
+      {scanState === 'scanning' ? (
+        <AppText variant="small" tone="muted">{t('scan.reading')}</AppText>
+      ) : scanState === 'found' && scanned ? (
+        <AppText variant="small" tone="muted">
+          {t('scan.found', {
+            amount: scanned.total !== null ? formatRM(scanned.total) : '-',
+            sst: scanned.sst !== null ? formatRM(scanned.sst) : '-',
+          })}
+        </AppText>
+      ) : scanState === 'none' ? (
+        <AppText variant="small" tone="muted">{t('scan.none')}</AppText>
+      ) : sst !== null ? (
+        <AppText variant="small" tone="muted">{t('scan.sstSaved', { sst: formatRM(sst) })}</AppText>
+      ) : null}
+      {scanState !== 'scanning' ? (
+        <View style={{ flexDirection: 'row' }}>
+          <Chip compact icon="scan-outline" label={t('scan.again')} accessibilityLabel={t('scan.again')} onPress={() => void runScan(receiptUri!, true)} />
+        </View>
+      ) : null}
+    </View>
+  );
   const receipt = (
     <Card style={[pad, { flexGrow: 1 }]}>
-      <ReceiptField fill compact={!wide} uri={receiptUri} onChange={setReceiptUri} />
+      <ReceiptField fill compact={!wide} uri={receiptUri} onChange={onReceiptChange} />
+      {receiptUri && Platform.OS !== 'web' ? scanStatus : null}
     </Card>
   );
   const reliefCard = (
