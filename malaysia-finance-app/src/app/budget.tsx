@@ -9,6 +9,7 @@ import { useBudgets } from '@/hooks/useBudgets';
 import { useCategories } from '@/hooks/useCategories';
 import { useProfile } from '@/hooks/useProfile';
 import { useToday } from '@/hooks/useToday';
+import { getLanguage } from '@/i18n/language';
 import { t } from '@/i18n/t';
 import { AmountInput } from '@/ui/AmountInput';
 import { AppText } from '@/ui/AppText';
@@ -23,7 +24,7 @@ import { useTheme } from '@/ui/useTheme';
 import { sanitizeNumber } from '@/ui/numeric';
 
 const PAYDAY_CHOICES = [{ day: 1 }, { day: 15 }, { day: 25 }, { day: 28 }, { day: 31 }];
-const ordinal = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th')}`;
+const ordinal = (n: number) => getLanguage() === 'ms' ? String(n) : `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th')}`;
 
 export default function Budget() {
   const { c } = useTheme();
@@ -183,6 +184,7 @@ export default function Budget() {
         </AppText>
       </Card>
       <Button title={t('budget.copyLast')} variant="secondary" onPress={() => copyFromLast().catch(() => setError(t('common.saveFailed')))} />
+      <Button title={t('budget.seeReport')} variant="secondary" onPress={() => router.push('/reports')} />
       <View style={{ gap: 16 }}>
         {parsed.map(({ category }) => (
           <AmountInput

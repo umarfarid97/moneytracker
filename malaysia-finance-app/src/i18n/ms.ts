@@ -2,6 +2,7 @@ import type { StringKey } from './en';
 import { lockRemindersMs } from './lockReminders';
 import { statementImportMs } from './statementImport';
 import { reportsMs } from './reports';
+import { cleanupMs } from './cleanup';
 
 /** Bahasa Malaysia. Every key in en.ts needs a line here, so the compiler flags anything missed. */
 export const ms: Record<StringKey, string> = {
@@ -83,7 +84,7 @@ export const ms: Record<StringKey, string> = {
   'budget.alert.over': '{category} melebihi bajet',
   'budget.alert.overBody': '{over} melebihi {limit}.',
 
-  'commitments.title': 'Komitmen bulanan',
+  'commitments.title': 'Bil & pinjaman',
   'commitments.total': 'Jumlah setiap bulan',
   'commitments.dueToday': 'Perlu dibayar hari ini',
   'commitments.dueIn': 'Perlu dibayar dalam {days} hari',
@@ -257,7 +258,7 @@ export const ms: Record<StringKey, string> = {
   'methods.kind.transfer': 'Pindahan dalam talian',
   'more.categories': 'Kategori',
   'more.methods': 'Cara bayaran',
-  'more.profile': 'Profil pendapatan',
+  'more.profile': 'Pendapatan & profil',
   'more.budget': 'Bajet',
   'more.taxCalc': 'Kalkulator cukai',
   'more.loan': 'Kalkulator pinjaman',
@@ -326,7 +327,7 @@ export const ms: Record<StringKey, string> = {
   'taxCalc.donationDeduction': 'Derma ditolak (sehingga 10% pendapatan)',
 
   'more.wealth': 'Simpanan, KWSP & pemberian',
-  'wealth.title': 'Simpanan & pemberian',
+  'wealth.title': 'Simpanan, KWSP & pemberian',
   'wealth.total': 'Jumlah simpanan',
   'wealth.totalHint': 'Baki KWSP campur simpanan dan pelaburan anda',
   'wealth.epf.hint': 'Baki dan pandangan persaraan',
@@ -581,6 +582,7 @@ export const ms: Record<StringKey, string> = {
   ...statementImportMs,
 
   ...reportsMs,
+  ...cleanupMs,
 
   'owed.view.person': 'Ikut orang',
   'owed.people': '{count} orang',

@@ -29,9 +29,9 @@ describe('scheduleReminders', () => {
   test('cancels old reminders and schedules one per active commitment', async () => {
     const list = [c(1, 'Astro', 8900, 24), c(2, 'Rumah', 120000, 1), c(3, 'Old gym', 5000, 10, false)];
     const count = await scheduleReminders(list, now);
-    expect(count).toBe(2);
+    expect(count).toBe(6);
     expect(n.cancelAllScheduledNotificationsAsync).toHaveBeenCalledTimes(1);
-    expect(n.scheduleNotificationAsync).toHaveBeenCalledTimes(2);
+    expect(n.scheduleNotificationAsync).toHaveBeenCalledTimes(6);
   });
 
   test('rescheduling twice never doubles up', async () => {
@@ -39,7 +39,14 @@ describe('scheduleReminders', () => {
     await scheduleReminders(list, now);
     await scheduleReminders(list, now);
     expect(n.cancelAllScheduledNotificationsAsync).toHaveBeenCalledTimes(2);
-    expect(n.scheduleNotificationAsync).toHaveBeenCalledTimes(2);
+    expect(n.scheduleNotificationAsync).toHaveBeenCalledTimes(6);
+  });
+
+  test('a due date that is already paid gets no reminder', async () => {
+    const paid = { id: 1, amount: 8900, categoryId: 1, date: '2026-10-20', note: '', receiptUri: null, paymentMethodId: null, reliefId: null, reliefAmount: null, commitmentId: 1, dueDate: '2026-10-24' };
+    await scheduleReminders([c(1, 'Astro', 8900, 24)], now, 1, [paid]);
+    const dates = n.scheduleNotificationAsync.mock.calls.map((x) => (x[0] as { trigger: { date: Date } }).trigger.date.toISOString());
+    expect(dates).toEqual(['2026-11-23T01:00:00.000Z', '2026-12-23T01:00:00.000Z']);
   });
 
   test('notification says what is due, how much and when, and fires at the reminder time', async () => {
@@ -90,7 +97,8 @@ describe('scheduleReminders overlapping runs (review finding: reminders fired tw
     }) as never);
     const list = [c(1, 'TNB', 12000, 24), c(2, 'Astro', 8900, 25), c(3, 'Car', 85000, 26)];
     await Promise.all([scheduleReminders(list, now), scheduleReminders(list, now)]);
-    expect(scheduled.sort()).toEqual(['Astro is due tomorrow', 'Car is due tomorrow', 'TNB is due tomorrow']);
+    expect([...new Set(scheduled)].sort()).toEqual(['Astro is due tomorrow', 'Car is due tomorrow', 'TNB is due tomorrow']);
+    expect(scheduled).toHaveLength(9);
   });
 
   test('a later run replaces an earlier one that is still waiting, using the newest list', async () => {
@@ -104,7 +112,7 @@ describe('scheduleReminders overlapping runs (review finding: reminders fired tw
     const first = scheduleReminders([c(1, 'Old', 100, 24)], now);
     const second = scheduleReminders([c(2, 'New', 200, 24)], now);
     await Promise.all([first, second]);
-    expect(scheduled).toEqual(['New is due tomorrow']);
+    expect(scheduled).toEqual(Array(3).fill('New is due tomorrow'));
   });
 });
 

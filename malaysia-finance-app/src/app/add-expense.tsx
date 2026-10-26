@@ -15,6 +15,7 @@ import { useCategories } from '@/hooks/useCategories';
 import { useExpenses } from '@/hooks/useExpenses';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useToday } from '@/hooks/useToday';
+import { noteLabel, reliefLabel } from '@/i18n/content';
 import { t } from '@/i18n/t';
 import { notifyBudgetAlert } from '@/notifications';
 import { AmountInput } from '@/ui/AmountInput';
@@ -113,7 +114,7 @@ export default function AddExpense() {
   );
 
   function pickSuggestion(s: NoteSuggestion) {
-    setNote(s.note);
+    setNote(s.kind === 'default' ? noteLabel(s.note) : s.note);
     if (s.kind === 'default') {
       const cat = categories.find((x) => x.name === s.category);
       if (cat) setCategoryId(cat.id);
@@ -305,7 +306,7 @@ export default function AddExpense() {
               key={`${sg.kind}-${sg.note}`}
               icon={sg.kind === 'recent' ? 'time-outline' : categoryLook(sg.category, categories.find((cat) => cat.name === sg.category)?.icon).icon}
               color={sg.kind === 'recent' ? undefined : categoryLook(sg.category).color}
-              label={sg.note}
+              label={sg.kind === 'default' ? noteLabel(sg.note) : sg.note}
               accessibilityLabel={t(sg.kind === 'recent' ? 'recent.chip' : 'note.suggestion', { note: sg.note })}
               onPress={() => pickSuggestion(sg)}
             />
@@ -323,8 +324,8 @@ export default function AddExpense() {
           <Chip
             compact
             icon="sparkles"
-            label={t('relief.suggest', { name: suggested.name })}
-            accessibilityLabel={t('relief.suggest', { name: suggested.name })}
+            label={t('relief.suggest', { name: reliefLabel(suggested) })}
+            accessibilityLabel={t('relief.suggest', { name: reliefLabel(suggested) })}
             onPress={() => setReliefId(suggested.id)}
           />
         </View>
@@ -389,7 +390,7 @@ export default function AddExpense() {
         categoryName={categoryName}
         categoryIcon={categories.find((cat) => cat.id === categoryId)?.icon}
         methodName={methods.find((m) => m.id === existing.paymentMethodId)?.name ?? null}
-        reliefName={existing.reliefId ? (reliefs.find((r) => r.id === existing.reliefId)?.name ?? existing.reliefId) : null}
+        reliefName={existing.reliefId ? (() => { const r = reliefs.find((x) => x.id === existing.reliefId); return r ? reliefLabel(r) : existing.reliefId; })() : null}
         error={error}
         busy={busy}
         onEdit={() => setEditMode(true)}

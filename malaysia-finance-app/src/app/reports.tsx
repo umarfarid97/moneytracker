@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
+import { router } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { periodKey, periodLabel } from '@/domain/budgetPeriod';
 import { dayMonth, monthLabel, shiftMonth } from '@/domain/dates';
@@ -102,10 +103,12 @@ export default function Reports() {
             </View>
           );
         })}
+        <Button title={t('reports.editBudget')} variant="secondary" compact onPress={() => router.push('/budget')} />
       </Card>
 
       <Card style={{ gap: 12 }}>
         <AppText variant="bodyStrong">{t('reports.year')} {year}</AppText>
+        <AppText variant="small" tone="muted">{t('reports.yearHint')}</AppText>
         <AppText testID="year-total" variant="kpi">{formatRM(review.total)}</AppText>
         <AppText variant="small" tone="muted">{t('reports.yearTotal', { year })}</AppText>
         <BarChart

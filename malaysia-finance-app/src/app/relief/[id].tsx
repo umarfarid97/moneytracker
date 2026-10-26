@@ -7,6 +7,7 @@ import { capReliefClaims } from '@/domain/reliefs';
 import { useAllReliefClaims } from '@/hooks/useAllReliefClaims';
 import { useExpenses } from '@/hooks/useExpenses';
 import { useTaxYear } from '@/hooks/useTaxYear';
+import { reliefLabel } from '@/i18n/content';
 import { t } from '@/i18n/t';
 import { AmountInput } from '@/ui/AmountInput';
 import { AppText } from '@/ui/AppText';
@@ -80,7 +81,7 @@ export default function ReliefPage() {
     <Screen>
       <BackButton />
       <View style={{ gap: 4 }}>
-        <AppText variant="title">{def.name}</AppText>
+        <AppText variant="title">{reliefLabel(def)}</AppText>
         <AppText variant="bodyStrong" tone="muted">
           {t('tax.limit', { amount: formatRM(def.limit) })}
         </AppText>

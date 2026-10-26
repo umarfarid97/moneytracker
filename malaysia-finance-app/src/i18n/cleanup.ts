@@ -1,0 +1,32 @@
+/** Strings for the grouped More menu, the income link on Profile and the other tidy-ups (merged into `en` and `ms`). */
+export const cleanupEn = {
+  'more.section.money': 'Money',
+  'more.section.wealth': 'Wealth',
+  'more.section.tax': 'Tax & loans',
+  'more.section.tools': 'Tools',
+  'home.balanceDetailExtra': 'Take-home {income} (incl. extra {extra}) - spent {spent}',
+  'profile.extra': 'Extra income',
+  'profile.extraHint': 'Rent, freelance work or an allowance. Received this month: {amount}',
+  'reports.yearHint': 'Calendar year, January to December.',
+  'reports.editBudget': 'Edit budget',
+  'budget.seeReport': 'See report',
+  'commitments.reminder.channel': 'Bill reminders',
+  'commitments.reminder.bodyHidden': 'Due on {date}. Open Duit for the amount.',
+  'budget.alert.hiddenBody': 'Open Duit to see the details.',
+} as const;
+
+export const cleanupMs = {
+  'more.section.money': 'Wang',
+  'more.section.wealth': 'Kekayaan',
+  'more.section.tax': 'Cukai & pinjaman',
+  'more.section.tools': 'Alat',
+  'home.balanceDetailExtra': 'Gaji bersih {income} (termasuk tambahan {extra}) - belanja {spent}',
+  'profile.extra': 'Pendapatan tambahan',
+  'profile.extraHint': 'Sewa, kerja bebas atau elaun. Diterima bulan ini: {amount}',
+  'reports.yearHint': 'Tahun kalendar, Januari hingga Disember.',
+  'reports.editBudget': 'Ubah bajet',
+  'budget.seeReport': 'Lihat laporan',
+  'commitments.reminder.channel': 'Peringatan bil',
+  'commitments.reminder.bodyHidden': 'Perlu dibayar pada {date}. Buka Duit untuk jumlahnya.',
+  'budget.alert.hiddenBody': 'Buka Duit untuk melihat butirannya.',
+} as const;

@@ -16,6 +16,26 @@ const bill = (extra: Partial<Commitment> = {}): Commitment => ({
 });
 
 describe('balanceLeft', () => {
+  test('adds extra income received in the period to the take-home pay', () => {
+    const r = balanceLeft({
+      profile,
+      expenses: [spend(30000, '2026-10-03')],
+      commitments: [],
+      today: '2026-10-24',
+      extraIncome: [
+        { id: 1, name: 'Rent', amount: 120000, date: '2026-10-05' },
+        { id: 2, name: 'Old', amount: 99999, date: '2026-09-30' },
+      ],
+    })!;
+    expect(r).toMatchObject({ income: 620000, extra: 120000, left: 590000 });
+  });
+
+  test('extra income alone is enough to show a balance', () => {
+    const empty = { ...profile, grossMonthly: 0, netMonthlyOverride: null };
+    const r = balanceLeft({ profile: empty, expenses: [], commitments: [], today: '2026-10-24', extraIncome: [{ id: 1, name: 'Gig', amount: 50000, date: '2026-10-02' }] });
+    expect(r?.left).toBe(50000);
+  });
+
   test('is null without a salary', () => {
     const empty = { ...profile, grossMonthly: 0, netMonthlyOverride: null };
     expect(balanceLeft({ profile: empty, expenses: [], commitments: [], today: '2026-10-24' })).toBeNull();
