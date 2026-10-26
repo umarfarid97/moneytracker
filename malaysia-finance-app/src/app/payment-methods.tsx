@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { FALLBACK_PAYMENT_METHOD } from '@/db/repos/paymentMethods';
+import { BRANDS } from '@/domain/banks';
 import type { PaymentKind, PaymentMethod } from '@/domain/types';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { t } from '@/i18n/t';
@@ -8,6 +9,7 @@ import { AppText } from '@/ui/AppText';
 import { BackButton } from '@/ui/BackButton';
 import { Button } from '@/ui/Button';
 import { Chip } from '@/ui/Chip';
+import { MethodBadge } from '@/ui/MethodBadge';
 import { PressableScale } from '@/ui/PressableScale';
 import { Screen } from '@/ui/Screen';
 import { controlHeight, fontFamily, radius } from '@/ui/theme';
@@ -55,6 +57,9 @@ export default function PaymentMethods() {
       setError(t('common.saveFailed'));
     }
   }
+
+  // Banks and e-wallets not added yet, offered as one-tap names.
+  const presets = BRANDS.filter((b) => !taken(b.name));
 
   const field = {
     height: controlHeight,
@@ -126,6 +131,7 @@ export default function PaymentMethods() {
         key={m.id}
         style={{ backgroundColor: c.surface, borderRadius: radius.control, paddingHorizontal: 16, minHeight: 60, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
       >
+        <MethodBadge name={m.name} kind={m.kind} size={36} />
         <View style={{ flex: 1 }}>
           <AppText variant="bodyStrong">{m.name}</AppText>
           {kindLabel !== m.name ? (
@@ -148,6 +154,26 @@ export default function PaymentMethods() {
     <Screen>
       <BackButton />
       <AppText variant="title">{t('methods.title')}</AppText>
+      {presets.length > 0 ? (
+        <View style={{ gap: 8 }}>
+          <AppText variant="smallStrong">{t('methods.presets')}</AppText>
+          <AppText variant="small" tone="muted">
+            {t('methods.presetsHint')}
+          </AppText>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {presets.map((b) => (
+              <Chip
+                key={b.id}
+                label={b.name}
+                accessibilityLabel={t('methods.preset', { name: b.name })}
+                leading={<MethodBadge name={b.name} kind={b.kind} size={22} />}
+                selected={newName.trim() === b.name}
+                onPress={() => { setNewName(b.name); setNewKind(b.kind); }}
+              />
+            ))}
+          </View>
+        </View>
+      ) : null}
       <View style={{ gap: 8 }}>
         <AppText variant="smallStrong">{t('methods.new')}</AppText>
         <TextInput

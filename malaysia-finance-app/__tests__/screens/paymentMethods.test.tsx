@@ -31,6 +31,18 @@ describe('Payment methods screen', () => {
     expect(screen.getByLabelText('New payment method name').props.value).toBe('');
   });
 
+  test('a bank preset fills the name and kind, then shows its badge once added', async () => {
+    const db = await freshDb();
+    await renderWithData(db, <PaymentMethods />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Use Maybank' })).toBeTruthy());
+    await fireEvent.press(screen.getByRole('button', { name: 'Use Maybank' }));
+    expect(screen.getByLabelText('New payment method name').props.value).toBe('Maybank');
+    await fireEvent.press(screen.getByRole('button', { name: 'Add payment method' }));
+    await waitFor(() => expect(screen.getByTestId('brand-maybank')).toBeTruthy());
+    expect(screen.queryByRole('button', { name: 'Use Maybank' })).toBeNull();
+    expect((await methods(db)).find((m) => m.name === 'Maybank')).toEqual({ name: 'Maybank', kind: 'debit' });
+  });
+
   test('refuses a name already used, ignoring case', async () => {
     const db = await freshDb();
     await renderWithData(db, <PaymentMethods />);
