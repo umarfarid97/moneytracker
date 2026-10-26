@@ -10,7 +10,6 @@ import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { Chip } from '@/ui/Chip';
 import { Sheet } from '@/ui/Sheet';
-import { EventPicker } from './EventPicker';
 
 export type SplitInput = {
   total: number;
@@ -19,16 +18,15 @@ export type SplitInput = {
   /** Your own part: the total minus what the others owe. */
   mine: number;
   note: string;
-  event: string;
+  /** Who paid the bill: null when you did, otherwise one of the people (you then owe them your part). */
+  payer: string | null;
   /** Category to record my share as spending under, or null to record nothing. */
   categoryId: number | null;
 };
 
 type Props = {
+  /** People in the project. */
   people: string[];
-  events: string[];
-  /** Event to start with (when splitting from inside an event). */
-  event?: string;
   categories: Category[];
   onClose: () => void;
   onSave: (input: SplitInput) => Promise<void>;
@@ -45,7 +43,7 @@ function valueOf(mode: SplitMode, text: string): number | null {
 }
 
 /** Split a bill you paid between you and friends: equally, or with a different amount, percent or share for each. */
-export function SplitSheet({ people, events, event: startEvent, categories, onClose, onSave }: Props) {
+export function SplitSheet({ people, categories, onClose, onSave }: Props) {
   const [total, setTotal] = useState('');
   const [mode, setMode] = useState<SplitMode>('equal');
   const [chosen, setChosen] = useState<string[]>([]);
@@ -54,7 +52,7 @@ export function SplitSheet({ people, events, event: startEvent, categories, onCl
   const [myShares, setMyShares] = useState('1');
   const [extra, setExtra] = useState('');
   const [note, setNote] = useState('');
-  const [event, setEvent] = useState(startEvent ?? '');
+  const [payer, setPayer] = useState<string | null>(null);
   const [record, setRecord] = useState(false);
   const [categoryId, setCategoryId] = useState<number | null>(categories[0]?.id ?? null);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +61,7 @@ export function SplitSheet({ people, events, event: startEvent, categories, onCl
   const known = [...people, ...chosen.filter((c) => !people.some((p) => sameName(p, c)))];
   const isChosen = (name: string) => chosen.some((c) => sameName(c, name));
   const toggle = (name: string) =>
-    setChosen((prev) => (isChosen(name) ? prev.filter((c) => !sameName(c, name)) : [...prev, name]));
+    payer !== null && sameName(payer, name) ? undefined : setChosen((prev) => (isChosen(name) ? prev.filter((c) => !sameName(c, name)) : [...prev, name]));
   const key = (name: string) => `${mode}|${name.toLowerCase()}`;
 
   function addExtra() {
@@ -91,7 +89,7 @@ export function SplitSheet({ people, events, event: startEvent, categories, onCl
     setError(null);
     try {
       await onSave({
-        total: sen, parts: result.parts, mine: result.mine, note: note.trim(), event: normalizeName(event),
+        total: sen, parts: result.parts, mine: result.mine, note: note.trim(), payer,
         categoryId: record ? categoryId : null,
       });
       onClose();
@@ -107,7 +105,29 @@ export function SplitSheet({ people, events, event: startEvent, categories, onCl
       <View style={{ gap: 16 }}>
         <AmountInput label={t('split.total')} value={total} onChange={setTotal} compact autoFocus />
         <TextField label={t('split.note')} value={note} onChange={setNote} maxLength={80} />
-        <EventPicker value={event} onChange={setEvent} events={events} />
+        {people.length > 0 ? (
+          <View style={{ gap: 8 }}>
+            <AppText variant="eyebrow" tone="muted">{t('project.paidBy')}</AppText>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              <Chip compact label={t('project.me')} selected={payer === null} onPress={() => setPayer(null)} />
+              {people.map((name) => (
+                <Chip
+                  key={name}
+                  compact
+                  label={name}
+                  accessibilityLabel={`${t('project.paidBy')} ${name}`}
+                  selected={payer !== null && sameName(payer, name)}
+                  onPress={() => {
+                    setPayer(name);
+                    // Whoever paid shares the bill too.
+                    setChosen((prev) => (prev.some((c) => sameName(c, name)) ? prev : [...prev, name]));
+                  }}
+                />
+              ))}
+            </View>
+            {payer !== null ? <AppText variant="small" tone="muted">{t('project.paidByOther', { name: payer })}</AppText> : null}
+          </View>
+        ) : null}
         <View style={{ gap: 8 }}>
           <AppText variant="eyebrow" tone="muted">{t('split.with')}</AppText>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -151,7 +171,7 @@ export function SplitSheet({ people, events, event: startEvent, categories, onCl
 
         {result ? (
           <View style={{ gap: 2 }}>
-            {mode === 'equal' ? (
+            {payer !== null ? null : mode === 'equal' ? (
               <AppText testID="split-each" variant="bodyStrong">{t('split.each', { amount: formatRM(result.parts[0]?.amount ?? 0) })}</AppText>
             ) : (
               result.parts.map((p) => (

@@ -1,12 +1,12 @@
 import { useMemo } from 'react';
-import { balances, eventSummaries, totals } from '@/domain/owed';
+import { balances, projectSummaries, totals } from '@/domain/owed';
 import { useData } from './DataProvider';
 
 /** Money lent to or borrowed from people, with one balance per person. */
 export function useOwed() {
-  const { owedEntries, owedOps } = useData();
+  const { owedEntries, owedOps, owedProjects, owedProjectOps } = useData();
   const people = useMemo(() => balances(owedEntries), [owedEntries]);
-  const events = useMemo(() => eventSummaries(owedEntries), [owedEntries]);
+  const projects = useMemo(() => projectSummaries(owedProjects, owedEntries), [owedProjects, owedEntries]);
   const sum = useMemo(() => totals(people), [people]);
-  return { data: owedEntries, people, events, totals: sum, ...owedOps };
+  return { data: owedEntries, people, projects, projectOps: owedProjectOps, totals: sum, ...owedOps };
 }

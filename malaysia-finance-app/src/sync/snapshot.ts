@@ -1,3 +1,4 @@
+import { DEFAULT_PROJECT_UID } from '@/db/migrations';
 import type { Db, SqlParam } from '@/db/types';
 import { FALLBACK_CATEGORY } from '@/db/repos/categories';
 
@@ -13,10 +14,10 @@ export type Row = Record<string, SqlParam>;
 
 export const ENTITY_TABLES = [
   'categories', 'payment_methods', 'commitments', 'expenses', 'relief_claims',
-  'retirement_entries', 'giving_records', 'savings_accounts', 'owed_entries', 'income_rules', 'income_entries',
+  'retirement_entries', 'giving_records', 'savings_accounts', 'owed_projects', 'owed_entries', 'income_rules', 'income_entries',
 ] as const;
 export type EntityTable = (typeof ENTITY_TABLES)[number];
-type Parent = 'categories' | 'payment_methods' | 'commitments';
+type Parent = 'categories' | 'payment_methods' | 'commitments' | 'owed_projects';
 
 /** Columns that point at another table's row. Parents come before their children in ENTITY_TABLES. */
 export const REFS: Record<EntityTable, Partial<Record<string, Parent>>> = {
@@ -28,7 +29,8 @@ export const REFS: Record<EntityTable, Partial<Record<string, Parent>>> = {
   retirement_entries: {},
   giving_records: {},
   savings_accounts: {},
-  owed_entries: {},
+  owed_projects: {},
+  owed_entries: { project_id: 'owed_projects' },
   income_rules: {},
   income_entries: {},
 };
@@ -115,7 +117,28 @@ export function isSnapshot(value: unknown): value is Snapshot {
 export function withAllTables(s: Snapshot): Snapshot {
   const tables = { ...s.tables };
   for (const t of ENTITY_TABLES) if (!Array.isArray(tables[t])) tables[t] = [];
-  return { ...s, tables };
+  return { ...s, tables: withProjects(tables) };
+}
+
+/**
+ * Before projects, lent and borrowed entries carried an event name instead. Turns those into projects named
+ * the same way the database upgrade does, and makes sure the default project exists, so old backups and old
+ * phones' Drive copies line up with the current data.
+ */
+function withProjects(tables: Snapshot['tables']): Snapshot['tables'] {
+  const projects = [...tables.owed_projects];
+  const has = (uid: string) => projects.some((p) => p.uid === uid);
+  if (!has(DEFAULT_PROJECT_UID)) {
+    projects.push({ uid: DEFAULT_PROJECT_UID, name: 'General', start_date: null, end_date: null, members: '', owner: '', updated_at: 0 });
+  }
+  const entries = tables.owed_entries.map((e) => {
+    if ('project_id' in e) return e;
+    const name = String(e.event ?? '').trim();
+    const uid = name === '' ? DEFAULT_PROJECT_UID : `proj-${name.toLowerCase()}`;
+    if (!has(uid)) projects.push({ uid, name, start_date: null, end_date: null, members: '', owner: '', updated_at: 0 });
+    return { ...e, project_id: uid };
+  });
+  return { ...tables, owed_projects: projects, owed_entries: entries };
 }
 
 /**
@@ -157,7 +180,7 @@ export async function applySnapshot(db: Db, snap: Snapshot): Promise<void> {
           await db.run(`INSERT INTO ${t} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`, values);
         }
       }
-      if (t === 'categories' || t === 'payment_methods' || t === 'commitments') {
+      if (t === 'categories' || t === 'payment_methods' || t === 'commitments' || t === 'owed_projects') {
         const ids = await db.all<{ id: number; uid: string }>(`SELECT id, uid FROM ${t}`);
         idOf[t as Parent] = new Map(ids.map((r) => [r.uid, r.id]));
       }

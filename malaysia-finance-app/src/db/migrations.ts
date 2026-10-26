@@ -5,6 +5,9 @@ const NOW_MS = `CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)`;
 /** Triggers stay quiet while a sync writes merged data (it sets its own times and deletions). */
 const NOT_APPLYING = `NOT EXISTS (SELECT 1 FROM sync_state WHERE key = 'applying')`;
 
+/** Id of the project that holds everything that was not put under an event. Same on every phone. */
+export const DEFAULT_PROJECT_UID = 'proj-general';
+
 /**
  * Append-only list. Index i upgrades the database from user_version i to i + 1.
  * Never edit an entry that has shipped; add a new one.
@@ -129,7 +132,34 @@ export const MIGRATIONS: string[] = [
   `
   ALTER TABLE owed_entries ADD COLUMN event TEXT NOT NULL DEFAULT '';
   `,
+  // 11: Others: every lent, borrowed or split entry belongs to a project (a trip, a dinner) with its own people
+  projectsMigration(),
 ];
+
+function projectsMigration(): string {
+  return [
+    trackedTable('owed_projects', `
+    name TEXT NOT NULL,
+    start_date TEXT,
+    end_date TEXT,
+    members TEXT NOT NULL DEFAULT '',
+    owner TEXT NOT NULL DEFAULT ''`),
+    // Ids made from the name, so the same event on two phones becomes one project after a sync.
+    // Inserted with an id and edit time 0 (the sync triggers only act on rows without an id), so a real edit wins.
+    `
+  INSERT INTO owed_projects (name, members, uid, updated_at)
+    VALUES ('General', COALESCE((SELECT group_concat(person, char(10)) FROM (SELECT DISTINCT person FROM owed_entries WHERE trim(event) = '')), ''), '${DEFAULT_PROJECT_UID}', 0);
+  INSERT INTO owed_projects (name, members, uid, updated_at)
+    SELECT MIN(trim(e.event)),
+      COALESCE((SELECT group_concat(person, char(10)) FROM (SELECT DISTINCT o.person FROM owed_entries o WHERE lower(trim(o.event)) = lower(trim(e.event)))), ''),
+      'proj-' || lower(trim(e.event)), 0
+    FROM owed_entries e WHERE trim(e.event) <> '' GROUP BY lower(trim(e.event));
+  ALTER TABLE owed_entries ADD COLUMN project_id INTEGER REFERENCES owed_projects(id);
+  UPDATE owed_entries SET project_id = (SELECT id FROM owed_projects WHERE uid = 'proj-' || lower(trim(owed_entries.event))) WHERE trim(event) <> '';
+  UPDATE owed_entries SET project_id = (SELECT id FROM owed_projects WHERE uid = '${DEFAULT_PROJECT_UID}') WHERE project_id IS NULL;
+  CREATE INDEX idx_owed_project ON owed_entries(project_id);`,
+  ].join('\n');
+}
 
 /** New tables that sync: each gets a uid and edit time from the start, and the same triggers as the older ones. */
 function trackedTable(name: string, columns: string): string {

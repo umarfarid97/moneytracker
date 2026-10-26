@@ -1,3 +1,4 @@
+import { DEFAULT_PROJECT_UID } from '@/db/migrations';
 import { FALLBACK_CATEGORY } from '@/db/repos/categories';
 import { FALLBACK_PAYMENT_METHOD } from '@/db/repos/paymentMethods';
 import {
@@ -74,7 +75,7 @@ export function mergeSnapshots(local: Snapshot, remote: Snapshot): Snapshot {
   fold('payment_methods', rows.payment_methods, (r) => String(r.name), lowerUid, true);
 
   /** Where a reference ends up: the row itself, the row it was folded into, or null if it is gone. */
-  const resolve = (parent: 'categories' | 'payment_methods' | 'commitments', uid: string): string | null => {
+  const resolve = (parent: 'categories' | 'payment_methods' | 'commitments' | 'owed_projects', uid: string): string | null => {
     let cur: string | null = uid;
     for (let hops = 0; cur !== null && hops < 10; hops++) {
       if (rows[parent].has(cur)) return cur;
@@ -91,8 +92,9 @@ export function mergeSnapshots(local: Snapshot, remote: Snapshot): Snapshot {
       null,
     payment_methods: byName('payment_methods', FALLBACK_PAYMENT_METHOD) ?? null,
     commitments: null,
+    owed_projects: rows.owed_projects.has(DEFAULT_PROJECT_UID) ? DEFAULT_PROJECT_UID : null,
   };
-  for (const t of ['commitments', 'expenses'] as const) {
+  for (const t of ['commitments', 'expenses', 'owed_entries'] as const) {
     for (const [uid, r] of rows[t]) {
       let changed: Row | null = null;
       for (const [col, parent] of Object.entries(REFS[t])) {

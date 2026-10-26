@@ -14,8 +14,8 @@ export type OwedEntry = {
   amount: Sen;
   date: string;
   note: string;
-  /** The event this belongs to (a trip, a dinner); '' for none. */
-  event: string;
+  /** The project this belongs to (a trip, a dinner). */
+  projectId: number;
 };
 export type NewOwedEntry = Omit<OwedEntry, 'id'>;
 
@@ -25,7 +25,7 @@ export const signOf = (kind: OwedKind): 1 | -1 => (kind === 'lent' || kind === '
 
 export const normalizeName = (name: string): string => name.trim().replace(/\s+/g, ' ');
 export const sameName = (a: string, b: string) => normalizeName(a).toLowerCase() === normalizeName(b).toLowerCase();
-export const NO_EVENT = '';
+
 
 export type PersonBalance = {
   person: string;
@@ -60,7 +60,7 @@ export function totals(list: PersonBalance[]): { owedToMe: Sen; iOwe: Sen } {
 }
 
 /** The entry that brings a person's balance back to zero, or null if it already is. */
-export function settleUp(p: PersonBalance, date: string, event = NO_EVENT): NewOwedEntry | null {
+export function settleUp(p: PersonBalance, date: string, projectId: number): NewOwedEntry | null {
   if (p.balance === 0) return null;
   return {
     person: p.person,
@@ -68,7 +68,7 @@ export function settleUp(p: PersonBalance, date: string, event = NO_EVENT): NewO
     amount: Math.abs(p.balance),
     date,
     note: '',
-    event,
+    projectId,
   };
 }
 
@@ -109,7 +109,7 @@ export function splitBill(i: {
 
 /** Entries for a bill you paid: each other person owes their part. */
 export function splitEntries(i: {
-  total: Sen; others: string[]; date: string; note: string; event?: string;
+  total: Sen; others: string[]; date: string; note: string; projectId: number;
   mode?: SplitMode; values?: number[]; myShares?: number;
 }): { mine: Sen; entries: NewOwedEntry[] } {
   const { parts, mine } = splitBill({
@@ -119,7 +119,7 @@ export function splitEntries(i: {
   return {
     mine,
     entries: parts.filter((p) => p.amount > 0).map((p) => ({
-      person: p.name, kind: 'lent' as const, amount: p.amount, date: i.date, note: i.note, event: i.event ?? NO_EVENT,
+      person: p.name, kind: 'lent' as const, amount: p.amount, date: i.date, note: i.note, projectId: i.projectId,
     })),
   };
 }
@@ -130,38 +130,58 @@ export function splitEqually(total: Sen, others: string[]): { mine: Sen; share: 
   return { mine, share: parts[0]?.amount ?? Math.floor(total / (others.length + 1)) };
 }
 
-export type EventSummary = {
-  /** '' for entries that belong to no event. */
-  event: string;
+export type OwedProject = {
+  id: number;
+  /** Same on every phone for the default project; random for the rest. */
+  uid: string;
+  name: string;
+  startDate: string | null;
+  endDate: string | null;
+  /** The people in the project (not you), by name. */
+  members: string[];
+  /** Whose phone this project was made on, when it was imported from someone else's share; '' otherwise. */
+  owner: string;
+};
+export type NewOwedProject = Omit<OwedProject, 'id' | 'uid'>;
+
+export { DEFAULT_PROJECT_UID } from '@/db/migrations';
+import { DEFAULT_PROJECT_UID } from '@/db/migrations';
+export const isDefaultProject = (p: Pick<OwedProject, 'uid'>) => p.uid === DEFAULT_PROJECT_UID;
+
+/** The people in a project: those listed on it plus anyone with an entry in it, by name without repeats. */
+export function participants(project: OwedProject, entries: OwedEntry[]): string[] {
+  const out: string[] = [];
+  for (const raw of [...project.members, ...entries.filter((e) => e.projectId === project.id).map((e) => e.person)]) {
+    const name = normalizeName(raw);
+    if (name !== '' && !out.some((x) => sameName(x, name))) out.push(name);
+  }
+  return out;
+}
+
+export type ProjectSummary = {
+  project: OwedProject;
   people: PersonBalance[];
+  /** Everyone in the project, including people with no entries yet. */
+  everyone: string[];
   owedToMe: Sen;
   iOwe: Sen;
   entries: OwedEntry[];
   lastDate: string;
 };
 
-/** One summary per event, newest first, with the entries that have no event last. Names match ignoring case. */
-export function eventSummaries(entries: OwedEntry[]): EventSummary[] {
-  const groups: { event: string; entries: OwedEntry[] }[] = [];
-  for (const e of entries) {
-    const name = normalizeName(e.event ?? '');
-    let g = groups.find((x) => sameName(x.event, name));
-    if (!g) {
-      g = { event: name, entries: [] };
-      groups.push(g);
-    }
-    g.entries.push(e);
-  }
-  return groups
-    .map((g) => {
-      const people = balances(g.entries);
+/** One summary per project, most recent activity first; the default project goes last. */
+export function projectSummaries(projects: OwedProject[], entries: OwedEntry[]): ProjectSummary[] {
+  return projects
+    .map((project) => {
+      const mine = entries.filter((e) => e.projectId === project.id);
+      const people = balances(mine);
       return {
-        event: g.event, people, ...totals(people), entries: g.entries,
-        lastDate: g.entries.reduce((d, e) => (e.date > d ? e.date : d), ''),
+        project, people, ...totals(people), entries: mine, everyone: participants(project, entries),
+        lastDate: mine.reduce((d, e) => (e.date > d ? e.date : d), project.startDate ?? ''),
       };
     })
     .sort((a, b) =>
-      (a.event === NO_EVENT) !== (b.event === NO_EVENT)
-        ? (a.event === NO_EVENT ? 1 : -1)
-        : a.lastDate < b.lastDate ? 1 : a.lastDate > b.lastDate ? -1 : a.event.localeCompare(b.event));
+      isDefaultProject(a.project) !== isDefaultProject(b.project)
+        ? (isDefaultProject(a.project) ? 1 : -1)
+        : a.lastDate < b.lastDate ? 1 : a.lastDate > b.lastDate ? -1 : b.project.id - a.project.id);
 }

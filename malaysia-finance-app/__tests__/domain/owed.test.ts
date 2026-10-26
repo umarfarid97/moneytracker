@@ -1,8 +1,8 @@
-import { balances, eventSummaries, settleUp, splitBill, splitEntries, splitEqually, totals, type OwedEntry } from '@/domain/owed';
+import { balances, participants, projectSummaries, settleUp, splitBill, splitEntries, splitEqually, totals, type OwedEntry, type OwedProject } from '@/domain/owed';
 
 let id = 0;
 const entry = (person: string, kind: OwedEntry['kind'], amount: number, date = '2026-10-01'): OwedEntry => ({
-  id: ++id, person, kind, amount, date, note: '', event: '',
+  id: ++id, person, kind, amount, date, note: '', projectId: 1,
 });
 
 describe('who owes me', () => {
@@ -36,28 +36,28 @@ describe('who owes me', () => {
 
   test('settling up cancels the balance in either direction', () => {
     const [owes] = balances([entry('A', 'lent', 3000)]);
-    expect(settleUp(owes, '2026-10-26')).toMatchObject({ person: 'A', kind: 'repaid', amount: 3000, date: '2026-10-26' });
+    expect(settleUp(owes, '2026-10-26', 1)).toMatchObject({ person: 'A', kind: 'repaid', amount: 3000, date: '2026-10-26' });
     const [iOwe] = balances([entry('B', 'borrowed', 700)]);
-    expect(settleUp(iOwe, '2026-10-26')).toMatchObject({ kind: 'paidBack', amount: 700 });
+    expect(settleUp(iOwe, '2026-10-26', 1)).toMatchObject({ kind: 'paidBack', amount: 700 });
     const [even] = balances([entry('C', 'lent', 5), entry('C', 'repaid', 5)]);
-    expect(settleUp(even, '2026-10-26')).toBeNull();
+    expect(settleUp(even, '2026-10-26', 1)).toBeNull();
   });
 
   test('a split gives every share in whole sen and the leftover sen to the payer', () => {
     expect(splitEqually(10000, ['A', 'B'])).toEqual({ share: 3333, mine: 3334 });
-    const { mine, entries } = splitEntries({ total: 10000, others: ['A', 'b', 'A', ' '], date: '2026-10-26', note: 'Dinner' });
+    const { mine, entries } = splitEntries({ total: 10000, others: ['A', 'b', 'A', ' '], date: '2026-10-26', note: 'Dinner', projectId: 1 });
     expect(entries.map((e) => e.person)).toEqual(['A', 'b']);
     expect(entries.every((e) => e.kind === 'lent' && e.amount === 3333 && e.note === 'Dinner')).toBe(true);
     expect(mine + entries.reduce((s, e) => s + e.amount, 0)).toBe(10000);
   });
 
   test('splitting with nobody records nothing', () => {
-    expect(splitEntries({ total: 500, others: [], date: '2026-10-26', note: '' }).entries).toEqual([]);
+    expect(splitEntries({ total: 500, others: [], date: '2026-10-26', note: '', projectId: 1 }).entries).toEqual([]);
   });
 
-  test('settling up inside an event keeps the entry in that event', () => {
+  test('settling up inside a project keeps the entry in that project', () => {
     const [p] = balances([entry('A', 'lent', 3000)]);
-    expect(settleUp(p, '2026-10-26', 'Penang trip')).toMatchObject({ kind: 'repaid', event: 'Penang trip' });
+    expect(settleUp(p, '2026-10-26', 7)).toMatchObject({ kind: 'repaid', projectId: 7 });
   });
 });
 
@@ -98,36 +98,48 @@ describe('split with different parts', () => {
     expect(splitBill({ total: 10000, mode: 'amount', others: others(0, 1000) }).ok).toBe(false);
   });
 
-  test('entries carry the event and the custom amounts', () => {
+  test('entries carry the project and the custom amounts', () => {
     const { entries, mine } = splitEntries({
-      total: 9000, others: ['A', 'B'], mode: 'amount', values: [2000, 3000], date: '2026-10-26', note: 'Hotel', event: 'Penang trip',
+      total: 9000, others: ['A', 'B'], mode: 'amount', values: [2000, 3000], date: '2026-10-26', note: 'Hotel', projectId: 9,
     });
-    expect(entries.map((e) => [e.person, e.amount, e.event])).toEqual([['A', 2000, 'Penang trip'], ['B', 3000, 'Penang trip']]);
+    expect(entries.map((e) => [e.person, e.amount, e.projectId])).toEqual([['A', 2000, 9], ['B', 3000, 9]]);
     expect(mine).toBe(4000);
   });
 });
 
-describe('events', () => {
-  const ev = (person: string, kind: OwedEntry['kind'], amount: number, event: string, date: string): OwedEntry => ({
-    ...entry(person, kind, amount, date), event,
+describe('projects', () => {
+  const project = (id: number, name: string, over: Partial<OwedProject> = {}): OwedProject => ({
+    id, uid: id === 1 ? 'proj-general' : `p${id}`, name, startDate: null, endDate: null, members: [], owner: '', ...over,
+  });
+  const inProject = (projectId: number, person: string, kind: OwedEntry['kind'], amount: number, date: string): OwedEntry => ({
+    ...entry(person, kind, amount, date), projectId,
   });
 
-  test('groups per event with who owes what inside it, newest event first and no-event last', () => {
-    const list = eventSummaries([
-      ev('A', 'lent', 3000, 'Penang trip', '2026-10-10'),
-      ev('B', 'lent', 2000, 'penang trip', '2026-10-11'),
-      ev('A', 'repaid', 1000, 'Penang trip', '2026-10-12'),
-      ev('A', 'lent', 500, 'Hari Raya dinner', '2026-10-20'),
-      ev('A', 'lent', 100, '', '2026-10-25'),
-    ]);
-    expect(list.map((e) => e.event)).toEqual(['Hari Raya dinner', 'Penang trip', '']);
+  test('summaries hold who owes what inside each project, newest first and the default project last', () => {
+    const list = projectSummaries(
+      [project(1, 'General'), project(2, 'Penang trip'), project(3, 'Hari Raya dinner'), project(4, 'Empty')],
+      [
+        inProject(2, 'A', 'lent', 3000, '2026-10-10'),
+        inProject(2, 'B', 'lent', 2000, '2026-10-11'),
+        inProject(2, 'A', 'repaid', 1000, '2026-10-12'),
+        inProject(3, 'A', 'lent', 500, '2026-10-20'),
+        inProject(1, 'A', 'lent', 100, '2026-10-25'),
+      ],
+    );
+    expect(list.map((s) => s.project.name)).toEqual(['Hari Raya dinner', 'Penang trip', 'Empty', 'General']);
     const trip = list[1];
     expect(trip.owedToMe).toBe(4000);
     expect(trip.people.map((p) => [p.person, p.balance])).toEqual([['A', 2000], ['B', 2000]]);
   });
 
-  test('a person owed in two events has one overall balance', () => {
-    const entries = [ev('A', 'lent', 3000, 'Trip', '2026-10-10'), ev('A', 'lent', 500, 'Dinner', '2026-10-20')];
+  test('a person owed in two projects has one overall balance', () => {
+    const entries = [inProject(2, 'A', 'lent', 3000, '2026-10-10'), inProject(3, 'A', 'lent', 500, '2026-10-20')];
     expect(balances(entries)[0].balance).toBe(3500);
+  });
+
+  test('people in a project are its members plus anyone with an entry, once each', () => {
+    const p = project(2, 'Trip', { members: ['Aina', 'ben'] });
+    const names = participants(p, [inProject(2, 'Ben', 'lent', 100, '2026-10-01'), inProject(2, 'Chen', 'lent', 100, '2026-10-01'), inProject(3, 'Zed', 'lent', 100, '2026-10-01')]);
+    expect(names).toEqual(['Aina', 'ben', 'Chen']);
   });
 });
