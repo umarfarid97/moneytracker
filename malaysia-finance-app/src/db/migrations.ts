@@ -104,7 +104,69 @@ export const MIGRATIONS: string[] = [
   `,
   // 4: sync and backup (see src/sync): stable ids, edit times and deletions, kept up to date by triggers
   syncMigration(),
+  // 5: SST (service tax) read from a scanned receipt, in sen; null when not known
+  `
+  ALTER TABLE expenses ADD COLUMN sst INTEGER;
+  `,
+  // 6: loans with a remaining balance, and a budget period that can start on payday
+  `
+  ALTER TABLE commitments ADD COLUMN loan_type TEXT;
+  ALTER TABLE commitments ADD COLUMN loan_balance INTEGER;
+  ALTER TABLE commitments ADD COLUMN loan_balance_date TEXT;
+  ALTER TABLE commitments ADD COLUMN loan_original INTEGER;
+  ALTER TABLE commitments ADD COLUMN loan_rate_pct REAL;
+  ALTER TABLE profile ADD COLUMN budget_start_day INTEGER NOT NULL DEFAULT 1 CHECK (budget_start_day BETWEEN 1 AND 31);
+  `,
+  // 7: EPF / SOCSO / EIS records, zakat and giving, savings and investments (all synced like other entities)
+  wealthMigration(),
 ];
+
+/** New tables that sync: each gets a uid and edit time from the start, and the same triggers as the older ones. */
+function trackedTable(name: string, columns: string): string {
+  return `
+  CREATE TABLE ${name} (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ${columns},
+    uid TEXT,
+    updated_at INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE UNIQUE INDEX idx_${name}_uid ON ${name}(uid);
+  CREATE TRIGGER ${name}_sync_insert AFTER INSERT ON ${name} WHEN NEW.uid IS NULL
+  BEGIN UPDATE ${name} SET uid = lower(hex(randomblob(16))), updated_at = ${NOW_MS} WHERE id = NEW.id; END;
+  CREATE TRIGGER ${name}_sync_update AFTER UPDATE ON ${name} WHEN NEW.updated_at = OLD.updated_at AND ${NOT_APPLYING}
+  BEGIN UPDATE ${name} SET updated_at = ${NOW_MS} WHERE id = NEW.id; END;
+  CREATE TRIGGER ${name}_sync_delete AFTER DELETE ON ${name} WHEN OLD.uid IS NOT NULL AND ${NOT_APPLYING}
+  BEGIN INSERT OR REPLACE INTO sync_deleted (tbl, uid, deleted_at) VALUES ('${name}', OLD.uid, ${NOW_MS}); END;`;
+}
+
+function wealthMigration(): string {
+  return [
+    trackedTable('retirement_entries', `
+    scheme TEXT NOT NULL CHECK (scheme IN ('epf', 'socso', 'eis')),
+    kind TEXT NOT NULL CHECK (kind IN ('contribution', 'dividend', 'withdrawal', 'opening')),
+    date TEXT NOT NULL,
+    amount INTEGER NOT NULL CHECK (amount >= 0),
+    employer_share INTEGER NOT NULL DEFAULT 0 CHECK (employer_share >= 0 AND employer_share <= amount),
+    note TEXT NOT NULL DEFAULT ''`),
+    `CREATE INDEX idx_retirement_scheme_date ON retirement_entries(scheme, date);`,
+    trackedTable('giving_records', `
+    kind TEXT NOT NULL CHECK (kind IN ('zakat', 'fitrah', 'sedekah', 'waqf')),
+    date TEXT NOT NULL,
+    amount INTEGER NOT NULL CHECK (amount >= 0),
+    recipient TEXT NOT NULL DEFAULT '',
+    note TEXT NOT NULL DEFAULT '',
+    counts_for_tax INTEGER NOT NULL DEFAULT 1`),
+    `CREATE INDEX idx_giving_date ON giving_records(date);`,
+    trackedTable('savings_accounts', `
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('tabung_haji', 'asb', 'hajj', 'prs', 'unit_trust', 'other')),
+    balance INTEGER NOT NULL DEFAULT 0 CHECK (balance >= 0),
+    invested INTEGER NOT NULL DEFAULT 0 CHECK (invested >= 0),
+    target INTEGER CHECK (target IS NULL OR target > 0),
+    monthly INTEGER CHECK (monthly IS NULL OR monthly >= 0),
+    note TEXT NOT NULL DEFAULT ''`),
+  ].join('\n');
+}
 
 function syncMigration(): string {
   const entities = ['categories', 'payment_methods', 'commitments', 'expenses', 'relief_claims'];

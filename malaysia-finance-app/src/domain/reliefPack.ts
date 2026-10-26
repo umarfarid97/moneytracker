@@ -6,6 +6,8 @@ import { capReliefClaims } from './reliefs';
 import type { Expense, ReliefClaim } from './types';
 
 export type PackItem = {
+  /** Id of the spending or the typed-in claim, depending on `source`. */
+  id: number;
   source: 'spending' | 'manual';
   date: string | null;
   note: string;
@@ -60,6 +62,7 @@ export function buildReliefPack(i: {
     ...spending
       .filter((e) => e.reliefId === reliefId)
       .map((e) => ({
+        id: e.id,
         source: 'spending' as const,
         date: e.date,
         note: e.note,
@@ -71,6 +74,7 @@ export function buildReliefPack(i: {
     ...manual
       .filter((c) => c.reliefId === reliefId)
       .map((c) => ({
+        id: c.id,
         source: 'manual' as const,
         date: null,
         note: c.note,

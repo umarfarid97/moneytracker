@@ -4,6 +4,11 @@ import { Pressable, View } from 'react-native';
 import {
   applyBillChange, billEstimate, billStatus, lastPaidFor, paidDueDatesFor, type BillState, type BillStatus,
 } from '@/domain/bills';
+import { billerFor } from '@/domain/billers';
+import { monthLabel, shortDate } from '@/domain/dates';
+import {
+  activeMonthly, bnplFor, isPaidOff, loanBalance, loanProgress, nextPayment, totalOwed, type LoanProgress,
+} from '@/domain/loanTracker';
 import { formatRM } from '@/domain/money';
 import type { Commitment, CommitmentKind } from '@/domain/types';
 import { CommitmentSheet } from '@/features/commitments/CommitmentSheet';
@@ -14,11 +19,13 @@ import { useExpenses } from '@/hooks/useExpenses';
 import { useToday } from '@/hooks/useToday';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
+import { BrandBadge } from '@/ui/BrandBadge';
 import { EmptyState } from '@/ui/EmptyState';
 import { HeroCard, onHero } from '@/ui/HeroCard';
 import { IconBadge } from '@/ui/IconBadge';
 import { confirmDelete } from '@/ui/confirm';
 import { PressableScale } from '@/ui/PressableScale';
+import { ProgressBar } from '@/ui/ProgressBar';
 import { Screen } from '@/ui/Screen';
 import { elevation, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
@@ -30,6 +37,21 @@ const KIND_LOOK: Record<CommitmentKind, { icon: 'flash' | 'business' | 'repeat';
 };
 
 const RANK: Record<BillState, number> = { overdue: 0, due: 1, upcoming: 2, paid: 3, paused: 4 };
+
+/** The brand mark for a biller or pay later provider, or null to use the plain icon of its kind. */
+function brandOf(item: Commitment) {
+  return (item.kind === 'loan' ? bnplFor(item.name) : billerFor(item.name)) ?? null;
+}
+
+function loanLine(p: LoanProgress): string {
+  const parts = [t('loans.owed', { amount: formatRM(p.balance) })];
+  if (p.left === null) parts.push(t('loans.never'));
+  else {
+    parts.push(p.left === 1 ? t('loans.left1') : t('loans.left', { count: p.left }));
+    if (p.payoffDate) parts.push(t('loans.finish', { date: monthLabel(p.payoffDate.slice(0, 7)) }));
+  }
+  return parts.join(' · ');
+}
 
 function statusLabel(s: BillStatus): string {
   switch (s.state) {
@@ -59,10 +81,13 @@ export default function Commitments() {
   const [pay, setPay] = useState<PaySheet>({ open: false, bill: null, dueDate: today, nonce: 0 });
 
   const rows = useMemo(() => {
-    const withStatus = data.map((item) => ({
-      item,
-      status: billStatus({ commitment: item, today, paidDueDates: paidDueDatesFor(item.id, expenses) }),
-    }));
+    const withStatus = data.map((item) => {
+      const base = billStatus({ commitment: item, today, paidDueDates: paidDueDatesFor(item.id, expenses) });
+      const loan = loanProgress(item, expenses, base.dueDate);
+      // A loan with nothing left to pay stops being due; it sits at the bottom as paid off.
+      const status: BillStatus = loan?.paidOff && item.active ? { ...base, state: 'paused' } : base;
+      return { item, status, loan };
+    });
     return withStatus.sort((a, b) => {
       const byState = RANK[a.status.state] - RANK[b.status.state];
       if (byState !== 0) return byState;
@@ -72,9 +97,10 @@ export default function Commitments() {
   }, [data, expenses, today]);
 
   const total = useMemo(
-    () => data.reduce((sum, item) => (item.active ? sum + billEstimate(item, expenses) : sum), 0),
+    () => activeMonthly(data, expenses, (item) => billEstimate(item, expenses)),
     [data, expenses],
   );
+  const owed = useMemo(() => totalOwed(data, expenses), [data, expenses]);
   const anyVariable = data.some((item) => item.active && item.variable);
 
   const openSheet = (editing: Commitment | null) =>
@@ -110,12 +136,17 @@ export default function Commitments() {
             {t('commitments.totalHint')}
           </AppText>
         ) : null}
+        {owed > 0 ? (
+          <AppText testID="loans-owed" variant="smallStrong" color={onHero.soft}>
+            {`${t('loans.totalOwed')} ${formatRM(owed)}`}
+          </AppText>
+        ) : null}
       </HeroCard>
       {rows.length === 0 ? (
         <EmptyState icon="calendar-outline" text={t('commitments.none')} />
       ) : (
         <View style={{ gap: 8 }}>
-          {rows.map(({ item, status }) => {
+          {rows.map(({ item, status, loan }) => {
             const payable = status.state === 'due' || status.state === 'overdue' || status.state === 'upcoming';
             const late = status.state === 'overdue';
             return (
@@ -134,7 +165,11 @@ export default function Commitments() {
                   opacity: item.active ? 1 : 0.6,
                 }, elevation(scheme)]}
               >
-                <IconBadge icon={KIND_LOOK[item.kind].icon} color={KIND_LOOK[item.kind].color} size={42} />
+                {brandOf(item) ? (
+                  <BrandBadge {...brandOf(item)!} size={42} testID={`brand-${brandOf(item)!.id}`} />
+                ) : (
+                  <IconBadge icon={KIND_LOOK[item.kind].icon} color={KIND_LOOK[item.kind].color} size={42} />
+                )}
                 {/* The row and the Mark paid action are siblings: buttons must not be nested. */}
                 <Pressable
                   accessibilityRole="button"
@@ -145,8 +180,18 @@ export default function Commitments() {
                     {item.name}
                   </AppText>
                   <AppText variant="small" tone={late ? 'negative' : 'muted'}>
-                    {item.variable ? `${statusLabel(status)} · ${t('commitments.varies')}` : statusLabel(status)}
+                    {loan?.paidOff
+                      ? t('loans.paidOff')
+                      : item.variable
+                        ? `${statusLabel(status)} · ${t('commitments.varies')}`
+                        : `${statusLabel(status)}${loan ? ` · ${shortDate(status.dueDate)}` : ''}`}
                   </AppText>
+                  {loan && !loan.paidOff ? (
+                    <View style={{ gap: 4 }}>
+                      <AppText testID="loan-line" variant="small" tone="muted">{loanLine(loan)}</AppText>
+                      {loan.fraction !== null ? <ProgressBar fraction={loan.fraction} /> : null}
+                    </View>
+                  ) : null}
                 </Pressable>
                 <View style={{ alignItems: 'flex-end', gap: 2 }}>
                   <AppText variant="bodyStrong">
@@ -179,6 +224,7 @@ export default function Commitments() {
         key={`edit-${sheet.nonce}`}
         visible={sheet.open}
         existing={sheet.editing}
+        currentBalance={sheet.editing ? loanBalance(sheet.editing, expenses) : null}
         onClose={closeSheet}
         onSave={async (input) => {
           if (sheet.editing) await update(applyBillChange(sheet.editing, { ...sheet.editing, ...input }, today));
@@ -198,6 +244,7 @@ export default function Commitments() {
         visible={pay.open}
         bill={pay.bill}
         lastPaid={pay.bill ? lastPaidFor(pay.bill.id, expenses) : null}
+        suggested={pay.bill ? nextPayment(pay.bill, loanBalance(pay.bill, expenses)) : null}
         onClose={closePay}
         onConfirm={async (amount) => {
           if (pay.bill) await payBill(pay.bill, pay.dueDate, { amount, date: today });

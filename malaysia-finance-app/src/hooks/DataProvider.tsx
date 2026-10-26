@@ -20,9 +20,20 @@ import { getProfile, saveProfile } from '@/db/repos/profile';
 import {
   addReliefClaim, deleteReliefClaim, listAllReliefClaims, updateReliefClaim,
 } from '@/db/repos/reliefClaims';
+import { addGivingRecord, deleteGivingRecord, listGivingRecords, updateGivingRecord } from '@/db/repos/giving';
+import {
+  addRetirementEntry, deleteRetirementEntry, listRetirementEntries, updateRetirementEntry,
+} from '@/db/repos/retirement';
+import {
+  addSavingsAccount, deleteSavingsAccount, listSavingsAccounts, updateSavingsAccount,
+} from '@/db/repos/savings';
 import type { Db } from '@/db/types';
 import { missedDueDates } from '@/domain/bills';
+import { byDateDesc as givingNewest, type GivingRecord, type NewGivingRecord } from '@/domain/giving';
+import { isPaidOff, loanBalance, nextPayment } from '@/domain/loanTracker';
 import type { Sen } from '@/domain/money';
+import { byDateDesc as entryNewest, type NewRetirementEntry, type RetirementEntry } from '@/domain/retirement';
+import type { NewSavingsAccount, SavingsAccount } from '@/domain/savings';
 import {
   withCommitmentDefaults, withExpenseDefaults,
   type PaymentKind, type PaymentMethod,
@@ -89,6 +100,15 @@ export type DataContextValue = {
   commitmentOps: CollectionOps<Commitment, NewCommitment>;
   reliefClaims: ReliefClaim[];
   reliefClaimOps: CollectionOps<ReliefClaim, Omit<ReliefClaim, 'id'>>;
+  /** EPF, SOCSO and EIS records (see domain/retirement). */
+  retirementEntries: RetirementEntry[];
+  retirementOps: CollectionOps<RetirementEntry, NewRetirementEntry>;
+  /** Zakat and sedekah given (see domain/giving). */
+  givingRecords: GivingRecord[];
+  givingOps: CollectionOps<GivingRecord, NewGivingRecord>;
+  /** Tabung Haji, ASB, Hajj fund, PRS and unit trusts (see domain/savings). */
+  savingsAccounts: SavingsAccount[];
+  savingsOps: CollectionOps<SavingsAccount, NewSavingsAccount>;
   profile: Profile;
   saveProfile: (p: Profile) => Promise<void>;
   /** Year of assessment picked on the tax screens (null = the current year). */
@@ -109,14 +129,22 @@ export function useData(): DataContextValue {
 type Loaded = {
   categories: Category[]; expenses: Expense[]; budgets: Budget[];
   commitments: Commitment[]; reliefClaims: ReliefClaim[]; profile: Profile; paymentMethods: PaymentMethod[];
+  retirementEntries: RetirementEntry[]; givingRecords: GivingRecord[]; savingsAccounts: SavingsAccount[];
 };
 
 async function loadAll(db: Db): Promise<Loaded> {
-  const [categories, expenses, budgets, commitments, reliefClaims, profile, paymentMethods] = await Promise.all([
+  const [
+    categories, expenses, budgets, commitments, reliefClaims, profile, paymentMethods,
+    retirementEntries, givingRecords, savingsAccounts,
+  ] = await Promise.all([
     listCategories(db), listAllExpenses(db), listAllBudgets(db),
     listCommitments(db), listAllReliefClaims(db), getProfile(db), listPaymentMethods(db),
+    listRetirementEntries(db), listGivingRecords(db), listSavingsAccounts(db),
   ]);
-  return { categories, expenses, budgets, commitments, reliefClaims, profile, paymentMethods };
+  return {
+    categories, expenses, budgets, commitments, reliefClaims, profile, paymentMethods,
+    retirementEntries, givingRecords, savingsAccounts,
+  };
 }
 
 /**
@@ -137,12 +165,20 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
   const [reliefClaims, setReliefClaims, claimsRef] = useSyncedState<ReliefClaim[]>([]);
   const [profile, setProfile, profileRef] = useSyncedState<Profile | null>(null);
   const [paymentMethods, setPaymentMethods] = useSyncedState<PaymentMethod[]>([]);
+  const [retirementEntries, setRetirementEntries, retirementRef] = useSyncedState<RetirementEntry[]>([]);
+  const [givingRecords, setGivingRecords, givingRef] = useSyncedState<GivingRecord[]>([]);
+  const [savingsAccounts, setSavingsAccounts, savingsRef] = useSyncedState<SavingsAccount[]>([]);
 
   const apply = useCallback((data: Loaded) => {
     setCategories(data.categories); setExpenses(data.expenses); setBudgets(data.budgets);
     setCommitments(data.commitments); setReliefClaims(data.reliefClaims); setProfile(data.profile);
     setPaymentMethods(data.paymentMethods);
-  }, [setCategories, setExpenses, setBudgets, setCommitments, setReliefClaims, setProfile, setPaymentMethods]);
+    setRetirementEntries(data.retirementEntries); setGivingRecords(data.givingRecords);
+    setSavingsAccounts(data.savingsAccounts);
+  }, [
+    setCategories, setExpenses, setBudgets, setCommitments, setReliefClaims, setProfile, setPaymentMethods,
+    setRetirementEntries, setGivingRecords, setSavingsAccounts,
+  ]);
 
   useEffect(() => {
     if (injected) { setDb(injected); return; }
@@ -179,6 +215,22 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
       remove: (id) => deleteReliefClaim(db, id),
     }, byId, (input: Omit<ReliefClaim, 'id'>) => input);
 
+    const retirementOps = makeOptimisticOps(retirementRef, setRetirementEntries, {
+      add: (input) => addRetirementEntry(db, input),
+      update: (e) => updateRetirementEntry(db, e),
+      remove: (id) => deleteRetirementEntry(db, id),
+    }, entryNewest, (input: NewRetirementEntry) => input);
+    const givingOps = makeOptimisticOps(givingRef, setGivingRecords, {
+      add: (input) => addGivingRecord(db, input),
+      update: (g) => updateGivingRecord(db, g),
+      remove: (id) => deleteGivingRecord(db, id),
+    }, givingNewest, (input: NewGivingRecord) => input);
+    const savingsOps = makeOptimisticOps(savingsRef, setSavingsAccounts, {
+      add: (input) => addSavingsAccount(db, input),
+      update: (a) => updateSavingsAccount(db, a),
+      remove: (id) => deleteSavingsAccount(db, id),
+    }, (a, b) => a.id - b.id, (input: NewSavingsAccount) => input);
+
     const billCategoryId = (c: Commitment) =>
       c.categoryId ??
       categories.find((x) => x.name === 'Bil')?.id ??
@@ -203,7 +255,10 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
         const dates = missedDueDates(c, today);
         if (dates.length === 0) continue;
         for (const due of dates) {
-          if (await payBill(c, due, { amount: c.amount, date: due })) count++;
+          // A loan stops recording once it is paid off, and its last payment is only what is left.
+          if (isPaidOff(c, expensesRef.current)) break;
+          const amount = nextPayment(c, loanBalance(c, expensesRef.current));
+          if (await payBill(c, due, { amount, date: due })) count++;
         }
         // Re-read the bill: it may have been edited (or deleted) while the payments above were saved.
         const latest = commitmentsRef.current.find((x) => x.id === c.id);
@@ -219,6 +274,7 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
         apply(await loadAll(db));
       },
       expenseOps, commitmentOps, reliefClaimOps,
+      retirementEntries, retirementOps, givingRecords, givingOps, savingsAccounts, savingsOps,
       paymentMethodOps: {
         async add(input) {
           const saved = await addPaymentMethod(db, input);
@@ -287,7 +343,8 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
         }
       },
     };
-  }, [db, loaded, profile, categories, expenses, budgets, commitments, reliefClaims, paymentMethods, taxYearChoice, apply]);
+  }, [db, loaded, profile, categories, expenses, budgets, commitments, reliefClaims, paymentMethods,
+    retirementEntries, givingRecords, savingsAccounts, taxYearChoice, apply]);
 
   if (failure) throw failure;
   if (!value) return null;

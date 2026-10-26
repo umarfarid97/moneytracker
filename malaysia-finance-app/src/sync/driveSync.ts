@@ -4,7 +4,7 @@ import { mergeSnapshots } from './merge';
 import {
   downloadReceipt, isStoredReceipt, RECEIPT_FILES, receiptExists, uploadReceipt,
 } from './receiptFiles';
-import { applySnapshot, canonical, exportSnapshot, isSnapshot, schemaVersion, type Snapshot } from './snapshot';
+import { applySnapshot, canonical, exportSnapshot, isSnapshot, schemaVersion, withAllTables, type Snapshot } from './snapshot';
 
 /** The one data file in the user's hidden Duit folder on Drive. Receipt photos sit beside it. */
 export const SYNC_FILE = 'duit-sync.json';
@@ -26,7 +26,7 @@ export async function syncWithDrive(db: Db, token: string): Promise<{ changedLoc
   let remote: Snapshot | null = null;
   if (dataFile) {
     const parsed: unknown = JSON.parse(await readText(token, dataFile.id));
-    if (isSnapshot(parsed)) remote = parsed;
+    if (isSnapshot(parsed)) remote = withAllTables(parsed);
   }
   if (remote && remote.schema > (await schemaVersion(db))) throw new SyncTooNewError();
 

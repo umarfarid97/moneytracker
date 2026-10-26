@@ -1,6 +1,6 @@
 import type { Db } from '@/db/types';
 import { isStoredReceipt, readReceiptBase64, writeReceiptBase64 } from './receiptFiles';
-import { exportSnapshot, isSnapshot, restoreSnapshot, schemaVersion, type Snapshot } from './snapshot';
+import { exportSnapshot, isSnapshot, restoreSnapshot, schemaVersion, withAllTables, type Snapshot } from './snapshot';
 
 /** A backup file: the snapshot plus receipt photos as base64, keyed by their stored path. */
 export type Backup = Snapshot & { receipts?: Record<string, string> };
@@ -38,7 +38,7 @@ export async function parseBackup(db: Db, text: string): Promise<Backup> {
   }
   if (!isSnapshot(parsed)) throw new InvalidBackupError();
   if (parsed.schema > (await schemaVersion(db))) throw new BackupTooNewError();
-  return parsed as Backup;
+  return withAllTables(parsed) as Backup;
 }
 
 /** Replaces all data on this device with the backup's, receipt photos included. */

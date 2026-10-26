@@ -1,20 +1,26 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { View, useWindowDimensions } from 'react-native';
+import { Pressable, View, useWindowDimensions } from 'react-native';
+import { periodKey } from '@/domain/budgetPeriod';
 import { buildHome } from '@/domain/summary';
 import { shortDate } from '@/domain/dates';
 import { formatRM } from '@/domain/money';
 import { useBudgets } from '@/hooks/useBudgets';
 import { useCategories } from '@/hooks/useCategories';
 import { useExpenses } from '@/hooks/useExpenses';
+import { useRetirement } from '@/hooks/useRetirement';
+import { useSavings } from '@/hooks/useSavings';
+import { useProfile } from '@/hooks/useProfile';
 import { useToday } from '@/hooks/useToday';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
+import { Card } from '@/ui/Card';
 import { Button } from '@/ui/Button';
 import { HeroCard, onHero } from '@/ui/HeroCard';
 import { Screen } from '@/ui/Screen';
 import { radius, space } from '@/ui/theme';
+import { useTheme } from '@/ui/useTheme';
 import { Tile } from '@/ui/Tile';
 
 export default function Home() {
@@ -22,12 +28,18 @@ export default function Home() {
   const { width } = useWindowDimensions();
   const { data: expenses } = useExpenses();
   const { data: categories } = useCategories();
-  const { data: budgets } = useBudgets(today.slice(0, 7));
+  const { data: profile } = useProfile();
+  const startDay = profile.budgetStartDay;
+  const { data: budgets } = useBudgets(periodKey(today, startDay));
   const home = useMemo(
-    () => buildHome({ categories, expenses, budgets, today }),
-    [categories, expenses, budgets, today],
+    () => buildHome({ categories, expenses, budgets, today, startDay }),
+    [categories, expenses, budgets, today, startDay],
   );
   const categoryById = useMemo(() => new Map(categories.map((cat) => [cat.id, cat])), [categories]);
+  const { c } = useTheme();
+  const { epf } = useRetirement(Number(today.slice(0, 4)));
+  const { totals: savings } = useSavings();
+  const saved = epf.balance + savings.balance;
   const tileWidth = (width - space.pad * 2 - space.gap) / 2;
 
   return (
@@ -85,6 +97,18 @@ export default function Home() {
           </View>
         </>
       ) : null}
+      <Pressable accessibilityRole="button" accessibilityLabel={t('wealth.title')} onPress={() => router.push('/wealth')}>
+        <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Ionicons name="trending-up-outline" size={24} color={c.text} />
+          <View style={{ flex: 1 }}>
+            <AppText variant="bodyStrong">{t('wealth.title')}</AppText>
+            <AppText variant="small" tone="muted">
+              {saved > 0 ? t('wealth.homeSaved', { amount: formatRM(saved) }) : t('wealth.homeEmpty')}
+            </AppText>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={c.accent} />
+        </Card>
+      </Pressable>
     </Screen>
   );
 }

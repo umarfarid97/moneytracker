@@ -2,7 +2,7 @@ import { estimateNetMonthly } from '@/domain/netpay';
 import type { Profile } from '@/domain/types';
 
 const base: Profile = {
-  grossMonthly: 500000, netMonthlyOverride: null, epfRate: 0.11, socsoMonthly: 1000, eisMonthly: 400,
+  grossMonthly: 500000, netMonthlyOverride: null, epfRate: 0.11, socsoMonthly: 1000, eisMonthly: 400, budgetStartDay: 1,
 };
 
 describe('estimateNetMonthly', () => {

@@ -8,7 +8,7 @@ import { setBudget, listAllBudgets, deleteBudget } from '@/db/repos/budgets';
 import { getProfile, saveProfile } from '@/db/repos/profile';
 import type { Db } from '@/db/types';
 import { mergeSnapshots } from '@/sync/merge';
-import { applySnapshot, canonical, exportSnapshot, isSnapshot, restoreSnapshot } from '@/sync/snapshot';
+import { applySnapshot, canonical, exportSnapshot, isSnapshot, restoreSnapshot, withAllTables } from '@/sync/snapshot';
 
 const spend = (db: Db, amount: number, note: string, categoryId: number = CAT.Makan, date = '2026-10-01') =>
   addExpense(db, { amount, categoryId, date, note, receiptUri: null });
@@ -248,5 +248,54 @@ describe('restore', () => {
     expect((await listAllExpenses(db)).map((e) => e.note)).toEqual(['kept']);
     drive = await sync(db, drive);
     expect(drive.tables.expenses.map((e) => e.note)).toEqual(['kept']);
+  });
+});
+
+describe('savings, EPF and giving records', () => {
+  const addAll = async (db: Db) => {
+    await db.run(`INSERT INTO retirement_entries (scheme, kind, date, amount, employer_share) VALUES ('epf', 'contribution', '2026-01-31', 50000, 30000)`);
+    await db.run(`INSERT INTO giving_records (kind, date, amount) VALUES ('zakat', '2026-03-01', 10000)`);
+    await db.run(`INSERT INTO savings_accounts (name, kind, balance, invested) VALUES ('ASB', 'asb', 500000, 400000)`);
+  };
+
+  it('are exported with ids and edit times, and merged between phones', async () => {
+    const a = await freshDb();
+    const b = await freshDb();
+    await addAll(a);
+    const snap = await exportSnapshot(a);
+    expect(snap.tables.retirement_entries[0]).toMatchObject({ scheme: 'epf', amount: 50000 });
+    expect(snap.tables.retirement_entries[0].uid).toMatch(/^[0-9a-f]{32}$/);
+    expect(snap.tables.giving_records).toHaveLength(1);
+    expect(snap.tables.savings_accounts[0]).toMatchObject({ name: 'ASB', balance: 500000 });
+
+    const synced = await sync(b, snap);
+    expect(synced.tables.savings_accounts).toHaveLength(1);
+    expect(await b.get('SELECT amount FROM giving_records')).toEqual({ amount: 10000 });
+  });
+
+  it('deleting one on a phone deletes it on the other', async () => {
+    const a = await freshDb();
+    const b = await freshDb();
+    await addAll(a);
+    const first = await sync(b, await exportSnapshot(a));
+    await tick();
+    await b.run('DELETE FROM savings_accounts');
+    const merged = await sync(a, await exportSnapshot(b));
+    expect(first.tables.savings_accounts).toHaveLength(1);
+    expect(merged.tables.savings_accounts).toHaveLength(0);
+  });
+
+  it('an older backup without these tables still restores, and leaves them empty', async () => {
+    const db = await freshDb();
+    await addAll(db);
+    const old = JSON.parse(JSON.stringify(await exportSnapshot(await freshDb()))) as Record<string, any>;
+    delete old.tables.retirement_entries;
+    delete old.tables.giving_records;
+    delete old.tables.savings_accounts;
+    old.schema = 4;
+    expect(isSnapshot(old)).toBe(true);
+    await restoreSnapshot(db, withAllTables(old as any));
+    expect(await db.all('SELECT * FROM savings_accounts')).toEqual([]);
+    expect(await db.all('SELECT * FROM giving_records')).toEqual([]);
   });
 });

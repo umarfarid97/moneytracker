@@ -1,9 +1,10 @@
+import { NO_LOAN } from '@/domain/loanTracker';
 import { applyBillChange, billEstimate, billStatus, lastPaidFor, missedDueDates, paidDueDatesFor, previousDueDate } from '@/domain/bills';
 import type { Commitment, Expense } from '@/domain/types';
 
 const bill = (over: Partial<Commitment> = {}): Commitment => ({
   id: 1, name: 'Astro', amount: 8900, dayOfMonth: 5, kind: 'subscription', active: true,
-  categoryId: null, paymentMethodId: null, reliefId: null, autoRecord: false, startDate: '2026-01-01', lastAutoDue: null, variable: false,
+  categoryId: null, paymentMethodId: null, reliefId: null, autoRecord: false, startDate: '2026-01-01', lastAutoDue: null, variable: false, ...NO_LOAN,
   ...over,
 });
 
