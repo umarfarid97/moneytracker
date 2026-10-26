@@ -13,15 +13,17 @@ type Props = {
   bill: Commitment | null;
   /** What was paid for this bill last time, if ever. */
   lastPaid?: number | null;
+  /** Amount to start with when it is not the bill's usual one (the last payment of a loan is smaller). */
+  suggested?: number | null;
   onClose: () => void;
   /** Called with the amount actually paid. */
   onConfirm: (amount: number) => Promise<void>;
 };
 
 /** Confirms a payment; the amount starts as the bill's usual amount and can be changed. Mount with a fresh `key` per bill. */
-export function MarkPaidSheet({ visible, bill, lastPaid = null, onClose, onConfirm }: Props) {
+export function MarkPaidSheet({ visible, bill, lastPaid = null, suggested = null, onClose, onConfirm }: Props) {
   // A bill that changes monthly starts empty: the amount has to come from this month's bill.
-  const [amountText, setAmountText] = useState(bill && !bill.variable ? senToInput(bill.amount) : '');
+  const [amountText, setAmountText] = useState(bill && !bill.variable ? senToInput(suggested ?? bill.amount) : '');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const amount = parseRM(amountText);
@@ -51,7 +53,7 @@ export function MarkPaidSheet({ visible, bill, lastPaid = null, onClose, onConfi
                   t('commitments.markPaidVariable', { name: bill.name }),
                   lastPaid !== null ? t('commitments.lastPaid', { amount: formatRM(lastPaid) }) : null,
                 ].filter(Boolean).join(' ')
-              : t('commitments.markPaidFor', { name: bill.name, amount: formatRM(bill.amount) })}
+              : t('commitments.markPaidFor', { name: bill.name, amount: formatRM(suggested ?? bill.amount) })}
           </AppText>
         ) : null}
         <AmountInput label={t('common.amount')} value={amountText} onChange={(text) => setAmountText(text)} autoFocus />

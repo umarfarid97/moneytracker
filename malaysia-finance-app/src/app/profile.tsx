@@ -40,6 +40,7 @@ export default function Profile() {
 
   const draft = valid
     ? {
+        ...profile,
         grossMonthly: grossSen,
         netMonthlyOverride: netSen,
         epfRate: epfPct / 100,

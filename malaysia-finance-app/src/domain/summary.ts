@@ -1,5 +1,6 @@
 import { categoryStatus, todayLeft, type Status } from './budget';
-import { daysLeftInMonth, monthKey } from './dates';
+import { daysLeftInPeriod, DEFAULT_START_DAY, periodKey } from './budgetPeriod';
+import { monthKey } from './dates';
 import type { Sen } from './money';
 import type { Budget, Category, Expense } from './types';
 
@@ -38,9 +39,12 @@ export function buildHome(i: {
   expenses: Expense[];
   budgets: Budget[];
   today: string;
+  /** Day the budget period starts (see budgetPeriod); 1 is the calendar month. */
+  startDay?: number;
 }): HomeSummary {
-  const month = monthKey(i.today);
-  const monthExpenses = i.expenses.filter((e) => monthKey(e.date) === month);
+  const startDay = i.startDay ?? DEFAULT_START_DAY;
+  const month = periodKey(i.today, startDay);
+  const monthExpenses = i.expenses.filter((e) => periodKey(e.date, startDay) === month);
   const limits = new Map(i.budgets.filter((b) => b.month === month).map((b) => [b.categoryId, b.limit]));
 
   const tiles: Tile[] = i.categories.map((c) => {
@@ -66,7 +70,7 @@ export function buildHome(i: {
           monthLimit: withBudget.reduce((s, t) => s + t.limit, 0),
           monthSpent: withBudget.reduce((s, t) => s + t.spent, 0),
           todaySpent: budgetedToday,
-          daysLeft: daysLeftInMonth(i.today),
+          daysLeft: daysLeftInPeriod(i.today, startDay),
         })
       : null,
   };
@@ -98,11 +102,13 @@ export function budgetAlert(i: {
   categoryId: number;
   date: string;
   amount: Sen;
+  startDay?: number;
 }): BudgetAlert | null {
-  const month = monthKey(i.date);
+  const startDay = i.startDay ?? DEFAULT_START_DAY;
+  const month = periodKey(i.date, startDay);
   const budget = i.budgets.find((b) => b.categoryId === i.categoryId && b.month === month);
   if (!budget) return null;
-  const spent = sum(i.expenses.filter((e) => e.categoryId === i.categoryId && monthKey(e.date) === month));
+  const spent = sum(i.expenses.filter((e) => e.categoryId === i.categoryId && periodKey(e.date, startDay) === month));
   const before = categoryStatus(spent, budget.limit).status;
   const after = categoryStatus(spent + i.amount, budget.limit).status;
   if (STATUS_RANK[after] <= STATUS_RANK[before] || after === 'on-track') return null;
