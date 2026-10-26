@@ -11,7 +11,7 @@ export const GOOGLE_WEB_CLIENT_ID: string = '253956095950-6jiouhu3p7lhkdu1vrjpp6
  * switched on under Advanced settings). Used for the browser sign-in that phones without Google Play
  * services (Huawei) fall back to. While this is empty those phones get a clear message instead.
  */
-export const GOOGLE_ANDROID_CLIENT_ID: string = '';
+export const GOOGLE_ANDROID_CLIENT_ID: string = '253956095950-72aln9bslqeepbjvtp5vl1ilghug04vr.apps.googleusercontent.com';
 
 /** Only the app's own hidden folder in the user's Drive: Duit cannot see any other file. */
 export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
