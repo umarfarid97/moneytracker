@@ -20,6 +20,8 @@ export type SyncValue = {
   problem: SyncProblem | null;
   /** Signs in to Google and syncs. Resolves false if the user cancelled. */
   connect: () => Promise<boolean>;
+  /** Signs in through the browser: for phones where Google's own sign-in sheet does not work. */
+  connectWithBrowser: (() => Promise<boolean>) | null;
   disconnect: () => Promise<void>;
   syncNow: () => Promise<void>;
 };
@@ -179,6 +181,20 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     retirementEntries, givingRecords, savingsAccounts, run,
   ]);
 
+  const connectWith = useCallback(
+    (signIn: () => Promise<{ email: string } | null>) => async () => {
+      const account = await signIn();
+      if (!account) return false;
+      emailRef.current = account.email;
+      setEmail(account.email);
+      setProblem(null);
+      await saveState('drive.email', account.email);
+      await run(true);
+      return true;
+    },
+    [run, saveState],
+  );
+
   const value = useMemo<SyncValue>(
     () => ({
       available: googleAuth.available,
@@ -186,16 +202,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       lastSyncedAt,
       syncing,
       problem,
-      async connect() {
-        const account = await googleAuth.signIn();
-        if (!account) return false;
-        emailRef.current = account.email;
-        setEmail(account.email);
-        setProblem(null);
-        await saveState('drive.email', account.email);
-        await run(true);
-        return true;
-      },
+      connect: connectWith(() => googleAuth.signIn()),
+      connectWithBrowser: googleAuth.signInWithBrowser ? connectWith(() => googleAuth.signInWithBrowser!()) : null,
       async disconnect() {
         emailRef.current = null;
         setEmail(null);
@@ -207,7 +215,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       },
       syncNow: () => run(true),
     }),
-    [email, lastSyncedAt, syncing, problem, run, saveState],
+    [email, lastSyncedAt, syncing, problem, run, saveState, connectWith],
   );
 
   return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>;

@@ -312,6 +312,7 @@ export const en = {
   'backup.drive.fail.network': "Could not reach Google. Check your internet and try again.",
   'backup.drive.fail.blocked': "Google did not finish the sign-in. Close the browser page and try again.",
   'backup.drive.fail.unknown': "Could not connect to Google. Try again, or use a backup file for now.",
+  'backup.drive.connectBrowser': 'Sign in with browser',
   'backup.drive.connectFailed': 'Could not connect to Google. Check your internet and try again.',
   'backup.problem.signIn': 'Google sign-in has expired. Tap Sync now to sign in again.',
   'backup.problem.tooNew': 'Your Drive data was saved by a newer version of Duit. Update the app on this device to keep syncing.',

@@ -26,11 +26,11 @@ export default function Backup() {
   const [driveNote, setDriveNote] = useState<string | null>(null);
   const [fileNote, setFileNote] = useState<Note | null>(null);
 
-  async function connect() {
+  async function connect(browser = false) {
     setBusy('connect');
     setDriveNote(null);
     try {
-      await sync.connect();
+      await (browser && sync.connectWithBrowser ? sync.connectWithBrowser() : sync.connect());
     } catch (e) {
       const reason = e instanceof GoogleAuthError ? e.reason : 'unknown';
       setDriveNote(t(`backup.drive.fail.${reason}`));
@@ -122,11 +122,19 @@ export default function Backup() {
           </AppText>
         ) : null}
         {sync.available && !sync.email ? (
-          <Button title={t('backup.drive.connect')} disabled={busy !== null} onPress={connect} />
+          <View style={{ gap: 10 }}>
+            <Button title={t('backup.drive.connect')} disabled={busy !== null} onPress={() => void connect()} />
+            {sync.connectWithBrowser ? (
+              <Button title={t('backup.drive.connectBrowser')} variant="secondary" disabled={busy !== null} onPress={() => void connect(true)} />
+            ) : null}
+          </View>
         ) : null}
         {sync.email ? (
           <View style={{ gap: 10 }}>
             <Button title={t('backup.drive.syncNow')} disabled={sync.syncing} onPress={() => void sync.syncNow()} />
+            {sync.problem === 'signIn' && sync.connectWithBrowser ? (
+              <Button title={t('backup.drive.connectBrowser')} variant="secondary" disabled={busy !== null} onPress={() => void connect(true)} />
+            ) : null}
             <Button title={t('backup.drive.disconnect')} variant="secondary" onPress={disconnect} />
           </View>
         ) : null}
