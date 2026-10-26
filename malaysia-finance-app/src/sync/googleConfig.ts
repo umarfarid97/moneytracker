@@ -6,8 +6,23 @@
  */
 export const GOOGLE_WEB_CLIENT_ID: string = '253956095950-6jiouhu3p7lhkdu1vrjpp6j48i7bm1q6.apps.googleusercontent.com';
 
+/**
+ * OAuth "Android" client ID (package my.duit.app + the signing key's SHA-1, with "Custom URI scheme"
+ * switched on under Advanced settings). Used for the browser sign-in that phones without Google Play
+ * services (Huawei) fall back to. While this is empty those phones get a clear message instead.
+ */
+export const GOOGLE_ANDROID_CLIENT_ID: string = '253956095950-72aln9bslqeepbjvtp5vl1ilghug04vr.apps.googleusercontent.com';
+
 /** Only the app's own hidden folder in the user's Drive: Duit cannot see any other file. */
 export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+
+/** Why a sign-in failed, so the screen can say something useful. */
+export type GoogleAuthFailure = 'noPlayServices' | 'notSetUp' | 'network' | 'blocked' | 'unknown';
+export class GoogleAuthError extends Error {
+  constructor(readonly reason: GoogleAuthFailure, detail?: string) {
+    super(detail ?? reason);
+  }
+}
 
 export type GoogleAuth = {
   /** False until a client ID is set above. */

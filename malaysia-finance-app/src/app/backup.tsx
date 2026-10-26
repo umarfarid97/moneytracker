@@ -4,6 +4,7 @@ import { useData } from '@/hooks/DataProvider';
 import { dateLocale, t } from '@/i18n/t';
 import { backupFileName, BackupTooNewError, createBackup, InvalidBackupError, parseBackup, restoreBackup } from '@/sync/backup';
 import { pickBackupFile, saveBackupFile } from '@/sync/backupFile';
+import { GoogleAuthError } from '@/sync/googleConfig';
 import { lastSyncedText } from '@/sync/lastSynced';
 import { RECEIPT_FILES } from '@/sync/receiptFiles';
 import { useSync } from '@/sync/SyncProvider';
@@ -30,8 +31,9 @@ export default function Backup() {
     setDriveNote(null);
     try {
       await sync.connect();
-    } catch {
-      setDriveNote(t('backup.drive.connectFailed'));
+    } catch (e) {
+      const reason = e instanceof GoogleAuthError ? e.reason : 'unknown';
+      setDriveNote(t(`backup.drive.fail.${reason}`));
     } finally {
       setBusy(null);
     }
