@@ -1,3 +1,4 @@
+/* global __dirname */
 // Renders the SVG sources in this folder to the PNGs Expo uses. Run: node assets/branding/render.js
 const { chromium } = require('playwright');
 const fs = require('fs'), path = require('path');
