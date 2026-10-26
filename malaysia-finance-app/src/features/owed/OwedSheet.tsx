@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { isValidDate } from '@/domain/dates';
 import { parseRM, senToInput } from '@/domain/money';
 import { normalizeName, OWED_KINDS, type NewOwedEntry, type OwedEntry, type OwedKind } from '@/domain/owed';
+import { EventPicker } from './EventPicker';
 import { TextField } from '@/features/wealth/TextField';
 import { t } from '@/i18n/t';
 import { AmountInput } from '@/ui/AmountInput';
@@ -19,6 +20,9 @@ type Props = {
   /** Name to start with (from a person's page). */
   person?: string;
   kind?: OwedKind;
+  /** Events used before, and the one to start with. */
+  events: string[];
+  event?: string;
   today: string;
   onClose: () => void;
   onSave: (input: NewOwedEntry) => Promise<void>;
@@ -26,12 +30,13 @@ type Props = {
 };
 
 /** Mount with a fresh `key` each time it opens so the fields start from `existing`. */
-export function OwedSheet({ existing, people, person: startPerson, kind: startKind, today, onClose, onSave, onDelete }: Props) {
+export function OwedSheet({ existing, people, person: startPerson, kind: startKind, events, event: startEvent, today, onClose, onSave, onDelete }: Props) {
   const [person, setPerson] = useState(existing?.person ?? startPerson ?? '');
   const [kind, setKind] = useState<OwedKind>(existing?.kind ?? startKind ?? 'lent');
   const [amount, setAmount] = useState(existing ? senToInput(existing.amount) : '');
   const [date, setDate] = useState(existing?.date ?? today);
   const [note, setNote] = useState(existing?.note ?? '');
+  const [event, setEvent] = useState(existing?.event ?? startEvent ?? '');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -76,12 +81,13 @@ export function OwedSheet({ existing, people, person: startPerson, kind: startKi
             <DateField label={t('common.date')} value={date} onChange={setDate} />
           </View>
         </View>
+        <EventPicker value={event} onChange={setEvent} events={events} />
         <TextField label={t('common.note')} value={note} onChange={setNote} maxLength={80} />
         {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
         <Button
           title={t('common.save')}
           disabled={!valid || busy}
-          onPress={() => run(() => onSave({ person: normalizeName(person), kind, amount: sen ?? 0, date, note: note.trim() }))}
+          onPress={() => run(() => onSave({ person: normalizeName(person), kind, amount: sen ?? 0, date, note: note.trim(), event: normalizeName(event) }))}
         />
         {existing && onDelete ? (
           <Button title={t('common.delete')} variant="secondary" disabled={busy} onPress={() => run(onDelete)} />

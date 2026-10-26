@@ -125,6 +125,10 @@ export const MIGRATIONS: string[] = [
   `
   ALTER TABLE profile ADD COLUMN reminder_days INTEGER NOT NULL DEFAULT 1 CHECK (reminder_days BETWEEN 0 AND 7);
   `,
+  // 10: lent, borrowed and split money grouped by event (a trip, a dinner); '' means no event
+  `
+  ALTER TABLE owed_entries ADD COLUMN event TEXT NOT NULL DEFAULT '';
+  `,
 ];
 
 /** New tables that sync: each gets a uid and edit time from the start, and the same triggers as the older ones. */

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { formatRM } from '@/domain/money';
-import { settleUp, splitEntries, type OwedEntry } from '@/domain/owed';
+import { NO_EVENT, sameName, settleUp, type OwedEntry, type PersonBalance } from '@/domain/owed';
+import { EventSheet, eventTitle } from '@/features/owed/EventSheet';
 import { OwedSheet } from '@/features/owed/OwedSheet';
 import { balanceText, PersonSheet } from '@/features/owed/PersonSheet';
 import { SplitSheet, type SplitInput } from '@/features/owed/SplitSheet';
@@ -11,6 +12,7 @@ import { useExpenses } from '@/hooks/useExpenses';
 import { useOwed } from '@/hooks/useOwed';
 import { useToday } from '@/hooks/useToday';
 import { t } from '@/i18n/t';
+import { Chip } from '@/ui/Chip';
 import { AppText } from '@/ui/AppText';
 import { BackButton } from '@/ui/BackButton';
 import { Button } from '@/ui/Button';
@@ -21,17 +23,21 @@ import { HeroCard, onHero } from '@/ui/HeroCard';
 import { Screen } from '@/ui/Screen';
 
 type Sheet =
-  | { type: 'entry'; key: number; entry: OwedEntry | null; person?: string }
-  | { type: 'split'; key: number };
+  | { type: 'entry'; key: number; entry: OwedEntry | null; person?: string; event?: string }
+  | { type: 'split'; key: number; event?: string };
 
 export default function Owed() {
   const today = useToday();
-  const { people, totals, add, update, remove } = useOwed();
+  const { people, events, totals, add, update, remove } = useOwed();
   const { add: addExpense } = useExpenses();
   const { data: categories } = useCategories();
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+  const [openEvent, setOpenEvent] = useState<string | null>(null);
+  const [view, setView] = useState<'event' | 'person'>('event');
   const names = people.map((p) => p.person);
+  const eventNames = events.filter((e) => e.event !== NO_EVENT).map((e) => e.event);
+  const eventSummary = openEvent === null ? null : events.find((e) => sameName(e.event, openEvent)) ?? null;
   const openPerson = people.find((p) => p.person === open) ?? null;
 
   async function removeEntry(e: OwedEntry): Promise<boolean> {
@@ -41,10 +47,11 @@ export default function Owed() {
   }
 
   async function saveSplit(input: SplitInput) {
-    const { mine, entries } = splitEntries({ total: input.total, others: input.others, date: today, note: input.note });
-    for (const entry of entries) await add(entry);
-    if (input.categoryId !== null && mine > 0) {
-      await addExpense({ amount: mine, categoryId: input.categoryId, date: today, note: input.note, receiptUri: null });
+    for (const part of input.parts) {
+      await add({ person: part.name, kind: 'lent', amount: part.amount, date: today, note: input.note, event: input.event });
+    }
+    if (input.categoryId !== null && input.mine > 0) {
+      await addExpense({ amount: input.mine, categoryId: input.categoryId, date: today, note: input.note, receiptUri: null });
     }
   }
 
@@ -71,8 +78,35 @@ export default function Owed() {
         </View>
       </View>
 
+      {people.length > 0 ? (
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Chip label={t('owed.view.event')} selected={view === 'event'} onPress={() => setView('event')} />
+          <Chip label={t('owed.view.person')} selected={view === 'person'} onPress={() => setView('person')} />
+        </View>
+      ) : null}
+
       {people.length === 0 ? (
         <EmptyState icon="people" text={t('owed.empty')} hint={t('owed.emptyHint')} />
+      ) : view === 'event' ? (
+        <Card style={{ padding: 0 }}>
+          {events.map((e, i) => {
+            const net = e.owedToMe - e.iOwe;
+            return (
+              <ListRow
+                key={e.event || '(none)'}
+                first={i === 0}
+                title={eventTitle(e.event)}
+                subtitle={[
+                  t(e.people.length === 1 ? 'owed.onePerson' : 'owed.people', { count: e.people.length }),
+                  net > 0 ? t('owed.netOwed', { amount: formatRM(net) }) : net < 0 ? t('owed.netIOwe', { amount: formatRM(-net) }) : t('owed.settled'),
+                ].join(' · ')}
+                value={net === 0 ? undefined : formatRM(Math.abs(net))}
+                valueTone={net > 0 ? 'positive' : 'negative'}
+                onPress={() => setOpenEvent(e.event)}
+              />
+            );
+          })}
+        </Card>
       ) : (
         <Card style={{ padding: 0 }}>
           {people.map((p, i) => (
@@ -89,7 +123,20 @@ export default function Owed() {
         </Card>
       )}
 
-      {openPerson && !sheet ? (
+      {eventSummary && !sheet ? (
+        <EventSheet
+          summary={eventSummary}
+          onClose={() => setOpenEvent(null)}
+          onAdd={() => setSheet({ type: 'entry', key: Date.now(), entry: null, event: eventSummary.event })}
+          onSplit={() => setSheet({ type: 'split', key: Date.now(), event: eventSummary.event })}
+          onSettle={async (p: PersonBalance) => {
+            const entry = settleUp(p, today, eventSummary.event);
+            if (entry) await add(entry);
+          }}
+          onEdit={(entry) => setSheet({ type: 'entry', key: Date.now(), entry })}
+        />
+      ) : null}
+      {openPerson && !sheet && !eventSummary ? (
         <PersonSheet
           person={openPerson}
           onClose={() => setOpen(null)}
@@ -106,6 +153,8 @@ export default function Owed() {
           key={sheet.key}
           existing={sheet.entry}
           person={sheet.person}
+          event={sheet.event}
+          events={eventNames}
           people={names}
           today={today}
           onClose={() => setSheet(null)}
@@ -117,7 +166,7 @@ export default function Owed() {
         />
       ) : null}
       {sheet?.type === 'split' ? (
-        <SplitSheet key={sheet.key} people={names} categories={categories} onClose={() => setSheet(null)} onSave={saveSplit} />
+        <SplitSheet key={sheet.key} people={names} events={eventNames} event={sheet.event} categories={categories} onClose={() => setSheet(null)} onSave={saveSplit} />
       ) : null}
     </Screen>
   );
