@@ -11,7 +11,10 @@ import { FALLBACK_CATEGORY } from '@/db/repos/categories';
  */
 export type Row = Record<string, SqlParam>;
 
-export const ENTITY_TABLES = ['categories', 'payment_methods', 'commitments', 'expenses', 'relief_claims'] as const;
+export const ENTITY_TABLES = [
+  'categories', 'payment_methods', 'commitments', 'expenses', 'relief_claims',
+  'retirement_entries', 'giving_records', 'savings_accounts',
+] as const;
 export type EntityTable = (typeof ENTITY_TABLES)[number];
 type Parent = 'categories' | 'payment_methods' | 'commitments';
 
@@ -22,6 +25,9 @@ export const REFS: Record<EntityTable, Partial<Record<string, Parent>>> = {
   commitments: { category_id: 'categories', payment_method_id: 'payment_methods' },
   expenses: { category_id: 'categories', payment_method_id: 'payment_methods', commitment_id: 'commitments' },
   relief_claims: {},
+  retirement_entries: {},
+  giving_records: {},
+  savings_accounts: {},
 };
 
 /** A deleted row. `mergedInto` is set when a duplicate was folded into another row (see merge.ts). */
@@ -90,13 +96,23 @@ export function canonical(s: Snapshot): string {
   });
 }
 
-/** Checks that parsed JSON is a snapshot (a backup file or the Drive copy). */
+/** Tables every snapshot has had since the first version; later ones may be missing from older files. */
+const ORIGINAL_TABLES = ['categories', 'payment_methods', 'commitments', 'expenses', 'relief_claims', 'budgets'] as const;
+
+/** Checks that parsed JSON is a snapshot (a backup file or the Drive copy). Run `withAllTables` on it before use. */
 export function isSnapshot(value: unknown): value is Snapshot {
   const s = value as Snapshot | null;
   return (
     !!s && s.app === 'duit' && s.format === 1 && typeof s.schema === 'number' && !!s.tables &&
-    [...ENTITY_TABLES, 'budgets' as const].every((t) => Array.isArray(s.tables[t])) && Array.isArray(s.deleted)
+    ORIGINAL_TABLES.every((t) => Array.isArray(s.tables[t])) && Array.isArray(s.deleted)
   );
+}
+
+/** A snapshot written by an older version has no rows for tables added since; they count as empty. */
+export function withAllTables(s: Snapshot): Snapshot {
+  const tables = { ...s.tables };
+  for (const t of ENTITY_TABLES) if (!Array.isArray(tables[t])) tables[t] = [];
+  return { ...s, tables };
 }
 
 /**

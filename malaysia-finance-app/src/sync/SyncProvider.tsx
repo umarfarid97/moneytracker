@@ -157,7 +157,10 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   }, [ready, email, run]);
 
   // A few seconds after the user changes something (but not after a sync reloaded the data).
-  const { expenses, categories, commitments, reliefClaims, budgets, profile, paymentMethods } = data;
+  const {
+    expenses, categories, commitments, reliefClaims, budgets, profile, paymentMethods,
+    retirementEntries, givingRecords, savingsAccounts,
+  } = data;
   const firstData = useRef(true);
   useEffect(() => {
     if (firstData.current) {
@@ -171,7 +174,10 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     if (!emailRef.current) return;
     const timer = setTimeout(() => void run(false), CHANGE_DELAY);
     return () => clearTimeout(timer);
-  }, [expenses, categories, commitments, reliefClaims, budgets, profile, paymentMethods, run]);
+  }, [
+    expenses, categories, commitments, reliefClaims, budgets, profile, paymentMethods,
+    retirementEntries, givingRecords, savingsAccounts, run,
+  ]);
 
   const value = useMemo<SyncValue>(
     () => ({

@@ -42,10 +42,13 @@ describe('loans and the budget start day in backup and sync', () => {
   });
 
   it('restoring a backup from before this version leaves the loan fields empty and the start day alone', async () => {
-    const old = await createTestDb();
-    await migrate(old, MIGRATIONS.slice(0, 5));
+    // A backup written before this version simply has no loan columns and no start day.
+    const old = await freshDb();
     await old.run(`INSERT INTO commitments (name, amount, day_of_month, kind) VALUES ('Car', 80000, 1, 'loan')`);
-    const text = JSON.stringify(await exportSnapshot(old));
+    const snap = await exportSnapshot(old);
+    for (const r of snap.tables.commitments) for (const k of Object.keys(r)) if (k.startsWith('loan_')) delete r[k];
+    delete snap.profile!.budget_start_day;
+    const text = JSON.stringify(snap);
 
     const db = await freshDb();
     await restoreBackup(db, await parseBackup(db, text));
