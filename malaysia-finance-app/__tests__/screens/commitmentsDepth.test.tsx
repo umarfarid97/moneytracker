@@ -98,7 +98,7 @@ describe('Bills: mark paid', () => {
     await renderWithData(db, <Commitments />);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Mark paid Bill' })).toBeTruthy());
     await fireEvent.press(screen.getByRole('button', { name: 'Mark paid Bill' }));
-    await fireEvent.changeText(screen.getByLabelText('Amount'), '12.999');
+    await fireEvent.changeText(screen.getByLabelText('Amount'), 'abc');
     expect(screen.getByRole('button', { name: 'Confirm paid' })).toBeDisabled();
   });
 });

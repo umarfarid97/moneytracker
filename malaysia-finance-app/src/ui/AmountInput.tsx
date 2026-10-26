@@ -3,6 +3,7 @@ import { Platform, TextInput, View, type TextStyle } from 'react-native';
 import { parseRM, type Sen } from '@/domain/money';
 import { t } from '@/i18n/t';
 import { AppText } from './AppText';
+import { sanitizeNumber } from './numeric';
 import { elevation, fontFamily, radius } from './theme';
 import { useTheme } from './useTheme';
 
@@ -52,7 +53,10 @@ export function AmountInput({ label, value, onChange, autoFocus, compact = false
           accessibilityLabel={label}
           autoFocus={autoFocus}
           value={value}
-          onChangeText={(text) => onChange(text, parseRM(text))}
+          onChangeText={(raw) => {
+            const text = sanitizeNumber(raw);
+            onChange(text, parseRM(text));
+          }}
           keyboardType="decimal-pad"
           inputMode="decimal"
           placeholder={t('amount.placeholder')}

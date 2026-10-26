@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
+import { CATEGORY_PRESETS } from '@/domain/categoryPresets';
 import { FALLBACK_CATEGORY } from '@/db/repos/categories';
 import type { Category } from '@/domain/types';
 import { useCategories } from '@/hooks/useCategories';
@@ -8,6 +9,7 @@ import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
 import { BackButton } from '@/ui/BackButton';
 import { Button } from '@/ui/Button';
+import { Chip } from '@/ui/Chip';
 import { PressableScale } from '@/ui/PressableScale';
 import { IconBadge } from '@/ui/IconBadge';
 import { IconPicker } from '@/ui/IconPicker';
@@ -71,6 +73,8 @@ export default function Categories() {
     fontFamily: fontFamily.medium,
     fontSize: 16,
   } as const;
+
+  const suggestions = CATEGORY_PRESETS.filter((preset) => !taken(preset.name));
 
   const pickingCat = typeof picking === 'number' ? categories.find((cat) => cat.id === picking) : undefined;
 
@@ -193,6 +197,23 @@ export default function Categories() {
           onPress={() => run(async () => { await add({ name: newName.trim(), icon: newIcon }); setNewName(''); setNewIcon(NEW_ICON); })}
         />
       </View>
+      {suggestions.length > 0 ? (
+        <View style={{ gap: 8 }}>
+          <AppText variant="smallStrong">{t('categories.suggestions')}</AppText>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {suggestions.map((preset) => (
+              <Chip
+                key={preset.name}
+                compact
+                label={preset.name}
+                icon={preset.icon as IconName}
+                accessibilityLabel={t('categories.addPreset', { name: preset.name })}
+                onPress={() => run(() => add({ name: preset.name, icon: preset.icon }))}
+              />
+            ))}
+          </View>
+        </View>
+      ) : null}
       {error ? (
         <AppText variant="small" tone="negative">
           {error}

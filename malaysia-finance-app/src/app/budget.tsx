@@ -17,6 +17,7 @@ import { Chip } from '@/ui/Chip';
 import { Screen } from '@/ui/Screen';
 import { controlHeight, fontFamily, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
+import { sanitizeNumber } from '@/ui/numeric';
 
 const PAYDAY_CHOICES = [{ day: 1 }, { day: 15 }, { day: 25 }, { day: 28 }, { day: 31 }];
 const ordinal = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th')}`;
@@ -119,7 +120,7 @@ export default function Budget() {
           <TextInput
             accessibilityLabel={t('budget.startDay.day')}
             value={dayText}
-            onChangeText={setDayText}
+            onChangeText={(text) => setDayText(sanitizeNumber(text, 0))}
             keyboardType="number-pad"
             maxLength={2}
             placeholder={t('budget.startDay.day')}

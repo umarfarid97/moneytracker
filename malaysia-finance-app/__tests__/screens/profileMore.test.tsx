@@ -85,7 +85,7 @@ describe('Income profile', () => {
     await renderWithData(db, <Profile />);
     await waitFor(() => expect(screen.getByLabelText('Monthly salary before deductions')).toBeTruthy());
     await fireEvent.changeText(screen.getByLabelText('Monthly salary before deductions'), '12.999');
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    expect(screen.getByLabelText('Monthly salary before deductions').props.value).toBe('12.99');
     await fireEvent.changeText(screen.getByLabelText('Monthly salary before deductions'), '5000');
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
     await fireEvent.changeText(screen.getByLabelText('EPF rate you pay (%)'), '101');

@@ -84,3 +84,30 @@ export function calculateZakat(i: ZakatInput): ZakatResult {
   const income = due(Math.max(0, i.annualIncome - i.annualNeeds));
   return { nisab, savings, gold: goldDue, income, total: savings + goldDue + income, hasNisab };
 }
+
+/** A rough nisab for zakat pendapatan. Zakat centres publish their own each year, so the screen lets you change it. */
+export const DEFAULT_INCOME_NISAB: Sen = 2_400_000;
+
+export type IncomeZakatInput = {
+  /** Income for the year, before or after EPF as the person chooses to enter it. */
+  annualIncome: Sen;
+  /** EPF contributions for the year, deducted when the state allows it. */
+  annualEpf: Sen;
+  /** Living costs (had kifayah) for the year, deducted when the state allows it. */
+  annualNeeds: Sen;
+  nisab: Sen;
+};
+
+export type IncomeZakatResult = {
+  /** What zakat is worked out on, after the deductions. */
+  base: Sen;
+  total: Sen;
+  reachesNisab: boolean;
+};
+
+/** Zakat pendapatan: 2.5% of income after allowed deductions, once that reaches the nisab. No gold price needed. */
+export function calculateIncomeZakat(i: IncomeZakatInput): IncomeZakatResult {
+  const base = Math.max(0, i.annualIncome - Math.max(0, i.annualEpf) - Math.max(0, i.annualNeeds));
+  const reachesNisab = i.nisab > 0 && base >= i.nisab;
+  return { base, total: reachesNisab ? rate(base) : 0, reachesNisab };
+}

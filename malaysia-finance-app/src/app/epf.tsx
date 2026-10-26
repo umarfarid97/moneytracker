@@ -122,8 +122,8 @@ export default function Epf() {
       <Card style={{ gap: 14 }}>
         <AppText variant="section">{t('epf.retirement')}</AppText>
         <AppText variant="small" tone="muted">{t('epf.retirementHint')}</AppText>
-        <TextField label={t('epf.age')} value={age} onChange={setAge} numeric maxLength={3} />
-        <TextField label={t('epf.retireAt')} value={retireAt} onChange={setRetireAt} numeric maxLength={3} />
+        <TextField label={t('epf.age')} value={age} onChange={setAge} numeric decimals={0} maxLength={3} />
+        <TextField label={t('epf.retireAt')} value={retireAt} onChange={setRetireAt} numeric decimals={0} maxLength={3} />
         <TextField label={t('epf.dividend')} value={dividend} onChange={setDividend} numeric maxLength={5} />
         <AmountInput label={t('epf.monthly')} value={monthlyText} onChange={setMonthlyText} compact />
         {projection ? (

@@ -1,4 +1,4 @@
-import { calculateZakat, donationDeduction, summariseGiving, type GivingRecord } from '@/domain/giving';
+import { calculateIncomeZakat, calculateZakat, donationDeduction, summariseGiving, type GivingRecord } from '@/domain/giving';
 import {
   projectRetirement, suggestedEpf, summariseEpf, summariseSocso, type RetirementEntry,
 } from '@/domain/retirement';
@@ -123,5 +123,16 @@ describe('tax bill with donations', () => {
     expect(some.chargeable).toBe(none.chargeable - 200_000);
     expect(calculateTaxBill({ ...input, donations: 9_000_000 }, data).donationDeduction).toBe(600_000);
     expect(none.donationDeduction).toBe(0);
+  });
+});
+
+describe('zakat pendapatan', () => {
+  const base = { annualIncome: 6_000_000, annualEpf: 660_000, annualNeeds: 0, nisab: 2_400_000 };
+  test('is 2.5% of income after deductions once it reaches the nisab', () => {
+    expect(calculateIncomeZakat(base)).toEqual({ base: 5_340_000, total: 133_500, reachesNisab: true });
+  });
+  test('is nothing below the nisab, and never negative', () => {
+    expect(calculateIncomeZakat({ ...base, annualIncome: 2_000_000 })).toMatchObject({ total: 0, reachesNisab: false });
+    expect(calculateIncomeZakat({ ...base, annualNeeds: 9_000_000 }).base).toBe(0);
   });
 });

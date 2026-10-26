@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Platform, TextInput, View, type TextStyle } from 'react-native';
 import { AppText } from '@/ui/AppText';
+import { sanitizeNumber } from '@/ui/numeric';
 import { fontFamily, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
@@ -14,10 +15,12 @@ type Props = {
   numeric?: boolean;
   placeholder?: string;
   maxLength?: number;
+  /** Digits allowed after the decimal point in a numeric field; 0 for whole numbers. */
+  decimals?: number;
 };
 
 /** A labelled text box in the same style as the amount field, for names, notes, ages and percentages. */
-export function TextField({ label, value, onChange, numeric = false, placeholder, maxLength }: Props) {
+export function TextField({ label, value, onChange, numeric = false, placeholder, maxLength, decimals = 3 }: Props) {
   const { c } = useTheme();
   const [focused, setFocused] = useState(false);
   return (
@@ -26,9 +29,9 @@ export function TextField({ label, value, onChange, numeric = false, placeholder
       <TextInput
         accessibilityLabel={label}
         value={value}
-        onChangeText={onChange}
-        keyboardType={numeric ? 'decimal-pad' : 'default'}
-        inputMode={numeric ? 'decimal' : 'text'}
+        onChangeText={(text) => onChange(numeric ? sanitizeNumber(text, decimals) : text)}
+        keyboardType={numeric ? (decimals > 0 ? 'decimal-pad' : 'number-pad') : 'default'}
+        inputMode={numeric ? (decimals > 0 ? 'decimal' : 'numeric') : 'text'}
         placeholder={placeholder}
         placeholderTextColor={c.control}
         maxLength={maxLength}
