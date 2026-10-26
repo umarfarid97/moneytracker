@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 import {
   applyBillChange, billEstimate, billStatus, lastPaidFor, paidDueDatesFor, type BillState, type BillStatus,
@@ -20,6 +20,7 @@ import { useToday } from '@/hooks/useToday';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
 import { BrandBadge } from '@/ui/BrandBadge';
+import { Chip } from '@/ui/Chip';
 import { EmptyState } from '@/ui/EmptyState';
 import { HeroCard, onHero } from '@/ui/HeroCard';
 import { IconBadge } from '@/ui/IconBadge';
@@ -35,6 +36,8 @@ const KIND_LOOK: Record<CommitmentKind, { icon: 'flash' | 'business' | 'repeat';
   loan: { icon: 'business', color: '#4f46e5' },
   subscription: { icon: 'repeat', color: '#db2777' },
 };
+
+const KINDS: CommitmentKind[] = ['bill', 'loan', 'subscription'];
 
 const RANK: Record<BillState, number> = { overdue: 0, due: 1, upcoming: 2, paid: 3, paused: 4 };
 
@@ -78,6 +81,7 @@ export default function Commitments() {
   const { data, add, update, remove } = useCommitments();
   const { data: expenses } = useExpenses();
   const [sheet, setSheet] = useState<SheetState>({ open: false, editing: null, nonce: 0 });
+  const [filter, setFilter] = useState<CommitmentKind | 'all'>('all');
   const [pay, setPay] = useState<PaySheet>({ open: false, bill: null, dueDate: today, nonce: 0 });
 
   const rows = useMemo(() => {
@@ -100,6 +104,18 @@ export default function Commitments() {
     () => activeMonthly(data, expenses, (item) => billEstimate(item, expenses)),
     [data, expenses],
   );
+  const byKind = useMemo(
+    () => KINDS.map((kind) => {
+      const list = data.filter((item) => item.kind === kind);
+      return {
+        kind,
+        rows: rows.filter((r) => r.item.kind === kind),
+        count: list.length,
+        total: activeMonthly(list, expenses, (item) => billEstimate(item, expenses)),
+      };
+    }),
+    [data, rows, expenses],
+  );
   const owed = useMemo(() => totalOwed(data, expenses), [data, expenses]);
   const anyVariable = data.some((item) => item.active && item.variable);
 
@@ -110,43 +126,7 @@ export default function Commitments() {
     setPay((p) => ({ open: true, bill, dueDate, nonce: p.nonce + 1 }));
   const closePay = () => setPay((p) => ({ ...p, open: false }));
 
-  return (
-    <Screen fab>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <AppText variant="title" style={{ flexShrink: 1 }}>{t('commitments.title')}</AppText>
-        <PressableScale
-          accessibilityRole="button"
-          accessibilityLabel={t('commitments.add')}
-          hitSlop={8}
-          onPress={() => openSheet(null)}
-          style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Ionicons name="add" size={22} color={c.accentInk} />
-        </PressableScale>
-      </View>
-      <HeroCard hero="mint" style={{ gap: 6 }}>
-        <AppText variant="eyebrow" color={onHero.soft}>
-          {t('commitments.total')}
-        </AppText>
-        <AppText testID="commitments-total" variant="kpi" color={onHero.ink} style={{ fontSize: 40, lineHeight: 48 }}>
-          {formatRM(total)}
-        </AppText>
-        {anyVariable ? (
-          <AppText variant="small" color={onHero.soft}>
-            {t('commitments.totalHint')}
-          </AppText>
-        ) : null}
-        {owed > 0 ? (
-          <AppText testID="loans-owed" variant="smallStrong" color={onHero.soft}>
-            {`${t('loans.totalOwed')} ${formatRM(owed)}`}
-          </AppText>
-        ) : null}
-      </HeroCard>
-      {rows.length === 0 ? (
-        <EmptyState icon="calendar-outline" text={t('commitments.none')} />
-      ) : (
-        <View style={{ gap: 8 }}>
-          {rows.map(({ item, status, loan }) => {
+  const renderRow = ({ item, status, loan }: (typeof rows)[number]): ReactNode => {
             const payable = status.state === 'due' || status.state === 'overdue' || status.state === 'upcoming';
             const late = status.state === 'overdue';
             return (
@@ -217,7 +197,65 @@ export default function Commitments() {
                 </View>
               </View>
             );
-          })}
+  };
+
+  return (
+    <Screen fab>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <AppText variant="title" style={{ flexShrink: 1 }}>{t('commitments.title')}</AppText>
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel={t('commitments.add')}
+          hitSlop={8}
+          onPress={() => openSheet(null)}
+          style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Ionicons name="add" size={22} color={c.accentInk} />
+        </PressableScale>
+      </View>
+      <HeroCard hero="mint" style={{ gap: 6 }}>
+        <AppText variant="eyebrow" color={onHero.soft}>
+          {t('commitments.total')}
+        </AppText>
+        <AppText testID="commitments-total" variant="kpi" color={onHero.ink} style={{ fontSize: 40, lineHeight: 48 }}>
+          {formatRM(total)}
+        </AppText>
+        {anyVariable ? (
+          <AppText variant="small" color={onHero.soft}>
+            {t('commitments.totalHint')}
+          </AppText>
+        ) : null}
+        {owed > 0 ? (
+          <AppText testID="loans-owed" variant="smallStrong" color={onHero.soft}>
+            {`${t('loans.totalOwed')} ${formatRM(owed)}`}
+          </AppText>
+        ) : null}
+      </HeroCard>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        <Chip compact label={t('commitments.filter.all')} selected={filter === 'all'} onPress={() => setFilter('all')} />
+        {KINDS.map((kind) => (
+          <Chip key={kind} compact label={t(`commitments.group.${kind}`)} selected={filter === kind} onPress={() => setFilter(kind)} />
+        ))}
+      </View>
+      {rows.length === 0 ? (
+        <EmptyState icon="calendar-outline" text={t('commitments.none')} />
+      ) : (
+        <View style={{ gap: 16 }}>
+          {byKind.filter((g) => filter === 'all' || g.kind === filter).map((g) => (
+            <View key={g.kind} style={{ gap: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                <AppText variant="section" testID={`group-${g.kind}`}>{t(`commitments.group.${g.kind}`)}</AppText>
+                {g.count > 0 ? (
+                  <AppText variant="smallStrong" tone="muted" testID={`group-total-${g.kind}`}>{formatRM(g.total)}</AppText>
+                ) : null}
+              </View>
+              {g.rows.length === 0 ? (
+                <AppText variant="small" tone="muted">{t(`commitments.group.none.${g.kind}`)}</AppText>
+              ) : (
+                g.rows.map((r) => <View key={r.item.id}>{renderRow(r)}</View>)
+              )}
+            </View>
+          ))}
         </View>
       )}
       <CommitmentSheet

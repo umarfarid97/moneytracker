@@ -30,7 +30,23 @@ describe('Commitments screen', () => {
     expect(screen.getByText('Due in 8 days')).toBeTruthy();
     expect(screen.getByTestId('commitments-total').props.children).toBe('RM 1,439.00');
     const names = screen.getAllByTestId('commitment-name').map((n) => n.props.children);
-    expect(names).toEqual(['Astro', 'Gym', 'Rumah']);
+    expect(names).toEqual(['Rumah', 'Astro', 'Gym']);
+  });
+
+  test('groups by Bills, Loans and Subscriptions with a total each, and a filter', async () => {
+    const db = await freshDb();
+    await addRow(db, 'Rumah', 120000, 1, 'loan');
+    await addRow(db, 'TNB', 10000, 5, 'bill');
+    await addRow(db, 'Astro', 8900, 24, 'subscription');
+    await addRow(db, 'Gym', 15000, 25, 'subscription');
+    await renderWithData(db, <Commitments />);
+    await waitFor(() => expect(screen.getByText('Astro')).toBeTruthy());
+    expect(screen.getByTestId('group-total-bill').props.children).toBe('RM 100.00');
+    expect(screen.getByTestId('group-total-loan').props.children).toBe('RM 1,200.00');
+    expect(screen.getByTestId('group-total-subscription').props.children).toBe('RM 239.00');
+    expect(screen.getAllByTestId('commitment-name').map((n) => n.props.children)).toEqual(['TNB', 'Rumah', 'Astro', 'Gym']);
+    await fireEvent.press(screen.getAllByRole('button', { name: 'Loans' })[0]);
+    expect(screen.getAllByTestId('commitment-name').map((n) => n.props.children)).toEqual(['Rumah']);
   });
 
   test('paused commitments are listed last and left out of the total', async () => {
