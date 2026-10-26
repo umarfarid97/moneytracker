@@ -26,3 +26,20 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test -- --ci
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: malaysia-finance-app/package-lock.json
+      - run: npm ci
+      - run: npx expo export --platform web
+        env:
+          CI: '1'
+      - run: npm install --no-save playwright && npx playwright install --with-deps chromium
+      - name: Load the web build in a browser
+        run: npm run web:smoke
