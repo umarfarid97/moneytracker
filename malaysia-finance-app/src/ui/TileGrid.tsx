@@ -19,11 +19,11 @@ export function TileGrid({ children, columns = 2 }: Props) {
   const rows: ReactNode[][] = [];
   for (let i = 0; i < items.length; i += columns) rows.push(items.slice(i, i + columns));
   return (
-    <View style={{ gap: space.gap }}>
+    <View testID="tile-grid" style={{ gap: space.gap }}>
       {rows.map((row, r) => (
         <View key={r} style={{ flexDirection: 'row', alignItems: 'stretch', gap: space.gap }}>
           {row.map((item, i) => (
-            <View key={i} style={{ flex: 1, flexBasis: 0, minWidth: 0, flexDirection: 'row' }}>
+            <View key={i} testID="tile-grid-cell" style={{ flex: 1, flexBasis: 0, minWidth: 0, flexDirection: 'row' }}>
               {item}
             </View>
           ))}
