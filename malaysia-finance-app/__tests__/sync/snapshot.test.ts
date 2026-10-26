@@ -1,6 +1,7 @@
 import { freshDb, CAT } from '../screens/helpers';
 import { createTestDb } from '../../test-support/sqljsDb';
 import { migrate, MIGRATIONS } from '@/db/migrations';
+import { deleteOwedProject } from '@/db/repos/owed';
 import { addExpense, deleteExpense, listAllExpenses, updateExpense } from '@/db/repos/expenses';
 import { addCategory, deleteCategory, listCategories, renameCategory } from '@/db/repos/categories';
 import { addCommitment } from '@/db/repos/commitments';
@@ -318,22 +319,90 @@ describe('foreign currency, owed money and extra income', () => {
   });
 });
 
-describe('owed entries by event', () => {
-  it('keeps the event through export and merge', async () => {
-    const a = await freshDb();
-    const b = await freshDb();
-    await a.run(`INSERT INTO owed_entries (person, kind, amount, date, event) VALUES ('Aina', 'lent', 5000, '2026-10-20', 'Penang trip')`);
-    const snap = await exportSnapshot(a);
-    expect(snap.tables.owed_entries[0]).toMatchObject({ event: 'Penang trip' });
-    await sync(b, snap);
-    expect(await b.get('SELECT event FROM owed_entries')).toEqual({ event: 'Penang trip' });
+describe('Others: projects', () => {
+  it('the upgrade turns event names into projects and puts the rest in the default project', async () => {
+    const db = await createTestDb();
+    await migrate(db, MIGRATIONS.slice(0, 10));
+    await db.run(`INSERT INTO owed_entries (person, kind, amount, date, event) VALUES
+      ('Aina', 'lent', 5000, '2026-10-20', 'Penang trip'), ('Ben', 'lent', 100, '2026-10-21', 'penang trip'),
+      ('Aina', 'lent', 700, '2026-10-22', ''), ('Chen', 'lent', 300, '2026-10-23', 'Dinner')`);
+    await migrate(db);
+    const projects = await db.all('SELECT name, uid, members FROM owed_projects ORDER BY uid');
+    expect(projects.map((p: any) => p.uid)).toEqual(['proj-dinner', 'proj-general', 'proj-penang trip']);
+    const rows = await db.all<{ person: string; project: string }>(
+      'SELECT e.person AS person, p.uid AS project FROM owed_entries e JOIN owed_projects p ON p.id = e.project_id ORDER BY e.id',
+    );
+    expect(rows.map((r) => [r.person, r.project])).toEqual([
+      ['Aina', 'proj-penang trip'], ['Ben', 'proj-penang trip'], ['Aina', 'proj-general'], ['Chen', 'proj-dinner'],
+    ]);
+    expect((projects.find((p: any) => p.uid === 'proj-penang trip') as any).members.split('\n').sort()).toEqual(['Aina', 'Ben']);
   });
 
-  it('a backup from before events restores with no event', async () => {
+  it('projects and the entries in them are exported and merged between phones', async () => {
+    const a = await freshDb();
+    const b = await freshDb();
+    await a.run(`INSERT INTO owed_projects (name, members) VALUES ('Trip', 'Aina')`);
+    const project = await a.get<{ id: number }>(`SELECT id FROM owed_projects WHERE name = 'Trip'`);
+    await a.run(`INSERT INTO owed_entries (person, kind, amount, date, project_id) VALUES ('Aina', 'lent', 5000, '2026-10-20', ?)`, [project!.id]);
+    const snap = await exportSnapshot(a);
+    expect(snap.tables.owed_entries[0].project_id).toBe(snap.tables.owed_projects.find((p) => p.name === 'Trip')!.uid);
+    await sync(b, snap);
+    expect(await b.get(`SELECT e.person AS person, p.name AS project FROM owed_entries e JOIN owed_projects p ON p.id = e.project_id`)).toEqual({
+      person: 'Aina', project: 'Trip',
+    });
+    // The default project is the same on both phones, so it is not duplicated.
+    expect((await b.all(`SELECT 1 FROM owed_projects WHERE uid = 'proj-general'`)).length).toBe(1);
+  });
+
+  it('deleting a project deletes its entries, and that reaches the other phone', async () => {
+    const a = await freshDb();
+    const b = await freshDb();
+    await a.run(`INSERT INTO owed_projects (name) VALUES ('Trip')`);
+    const project = (await a.get<{ id: number }>(`SELECT id FROM owed_projects WHERE name = 'Trip'`))!;
+    await a.run(`INSERT INTO owed_entries (person, kind, amount, date, project_id) VALUES ('Aina', 'lent', 5000, '2026-10-20', ?)`, [project.id]);
+    await sync(b, await exportSnapshot(a));
+    await tick();
+    await deleteOwedProject(b, (await b.get<{ id: number }>(`SELECT id FROM owed_projects WHERE name = 'Trip'`))!.id);
+    await sync(a, await exportSnapshot(b));
+    expect(await a.all('SELECT 1 FROM owed_projects WHERE name = ?', ['Trip'])).toEqual([]);
+    expect(await a.all('SELECT 1 FROM owed_entries')).toEqual([]);
+  });
+
+  it('the default project cannot be deleted', async () => {
+    const db = await freshDb();
+    const general = (await db.get<{ id: number }>(`SELECT id FROM owed_projects WHERE uid = 'proj-general'`))!;
+    await deleteOwedProject(db, general.id);
+    expect((await db.all('SELECT 1 FROM owed_projects WHERE uid = ?', ['proj-general'])).length).toBe(1);
+  });
+
+  it('a backup from before projects restores its event names as projects', async () => {
     const db = await freshDb();
     const old = JSON.parse(JSON.stringify(await exportSnapshot(await freshDb()))) as Record<string, any>;
-    old.tables.owed_entries = [{ uid: 'old1', updated_at: 5, person: 'Aina', kind: 'lent', amount: 100, date: '2026-10-01', note: '' }];
+    delete old.tables.owed_projects;
+    old.tables.owed_entries = [
+      { uid: 'old1', updated_at: 5, person: 'Aina', kind: 'lent', amount: 100, date: '2026-10-01', note: '', event: 'Penang trip' },
+      { uid: 'old2', updated_at: 5, person: 'Ben', kind: 'lent', amount: 200, date: '2026-10-01', note: '' },
+    ];
     await restoreSnapshot(db, withAllTables(old as any));
-    expect(await db.get('SELECT person, event FROM owed_entries')).toEqual({ person: 'Aina', event: '' });
+    const rows = await db.all<{ person: string; project: string }>(
+      'SELECT e.person AS person, p.uid AS project FROM owed_entries e JOIN owed_projects p ON p.id = e.project_id ORDER BY e.id',
+    );
+    expect(rows.map((r) => [r.person, r.project])).toEqual([['Aina', 'proj-penang trip'], ['Ben', 'proj-general']]);
+  });
+
+  it('an entry whose project was deleted on another phone moves to the default project', async () => {
+    const a = await freshDb();
+    const b = await freshDb();
+    await a.run(`INSERT INTO owed_projects (name) VALUES ('Trip')`);
+    const trip = (await a.get<{ id: number }>(`SELECT id FROM owed_projects WHERE name = 'Trip'`))!;
+    await sync(b, await exportSnapshot(a));
+    await tick();
+    await deleteOwedProject(b, (await b.get<{ id: number }>(`SELECT id FROM owed_projects WHERE name = 'Trip'`))!.id);
+    await tick();
+    // Meanwhile phone A adds an entry to the project that B just deleted.
+    await a.run(`INSERT INTO owed_entries (person, kind, amount, date, project_id) VALUES ('Aina', 'lent', 100, '2026-10-20', ?)`, [trip.id]);
+    const merged = await sync(b, await exportSnapshot(a));
+    expect(merged.tables.owed_entries).toHaveLength(1);
+    expect(await b.get(`SELECT p.uid AS project FROM owed_entries e JOIN owed_projects p ON p.id = e.project_id`)).toEqual({ project: 'proj-general' });
   });
 });

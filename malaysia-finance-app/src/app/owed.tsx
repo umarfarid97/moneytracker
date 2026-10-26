@@ -1,57 +1,51 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { formatRM } from '@/domain/money';
-import { NO_EVENT, sameName, settleUp, type OwedEntry, type PersonBalance } from '@/domain/owed';
-import { EventSheet, eventTitle } from '@/features/owed/EventSheet';
-import { OwedSheet } from '@/features/owed/OwedSheet';
+import { settleUp, type PersonBalance } from '@/domain/owed';
+import { projectName } from '@/features/owed/projectName';
 import { balanceText, PersonSheet } from '@/features/owed/PersonSheet';
-import { SplitSheet, type SplitInput } from '@/features/owed/SplitSheet';
+import { ImportSheet } from '@/features/owed/ImportSheet';
+import { ProjectSheet } from '@/features/owed/ProjectSheet';
 import { ListRow } from '@/features/wealth/ListRow';
-import { useCategories } from '@/hooks/useCategories';
-import { useExpenses } from '@/hooks/useExpenses';
 import { useOwed } from '@/hooks/useOwed';
 import { useToday } from '@/hooks/useToday';
 import { t } from '@/i18n/t';
-import { Chip } from '@/ui/Chip';
 import { AppText } from '@/ui/AppText';
 import { BackButton } from '@/ui/BackButton';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
-import { confirmDelete } from '@/ui/confirm';
+import { Chip } from '@/ui/Chip';
 import { EmptyState } from '@/ui/EmptyState';
 import { HeroCard, onHero } from '@/ui/HeroCard';
 import { Screen } from '@/ui/Screen';
 
-type Sheet =
-  | { type: 'entry'; key: number; entry: OwedEntry | null; person?: string; event?: string }
-  | { type: 'split'; key: number; event?: string };
+type Sheet = { type: 'new'; key: number } | { type: 'import'; key: number };
 
+function goToProject(id: number) {
+  router.push({ pathname: '/project', params: { id: String(id) } });
+}
+
+/** Buku 555: every project (a trip, a dinner) with the money lent, borrowed and split in it, and the balance per person. */
 export default function Owed() {
   const today = useToday();
-  const { people, events, totals, add, update, remove } = useOwed();
-  const { add: addExpense } = useExpenses();
-  const { data: categories } = useCategories();
+  const { people, projects, projectOps, totals, add } = useOwed();
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [open, setOpen] = useState<string | null>(null);
-  const [openEvent, setOpenEvent] = useState<string | null>(null);
-  const [view, setView] = useState<'event' | 'person'>('event');
-  const names = people.map((p) => p.person);
-  const eventNames = events.filter((e) => e.event !== NO_EVENT).map((e) => e.event);
-  const eventSummary = openEvent === null ? null : events.find((e) => sameName(e.event, openEvent)) ?? null;
+  const [view, setView] = useState<'project' | 'person'>('project');
   const openPerson = people.find((p) => p.person === open) ?? null;
+  const knownPeople = people.map((p) => p.person);
+  const nameOf = (id: number) => {
+    const found = projects.find((p) => p.project.id === id)?.project;
+    return found ? projectName(found) : '';
+  };
 
-  async function removeEntry(e: OwedEntry): Promise<boolean> {
-    if (!(await confirmDelete(t('owed.deleteTitle'), t('owed.deleteMessage'), t('common.delete'), t('common.cancel')))) return false;
-    await remove(e.id);
-    return true;
-  }
-
-  async function saveSplit(input: SplitInput) {
-    for (const part of input.parts) {
-      await add({ person: part.name, kind: 'lent', amount: part.amount, date: today, note: input.note, event: input.event });
-    }
-    if (input.categoryId !== null && input.mine > 0) {
-      await addExpense({ amount: input.mine, categoryId: input.categoryId, date: today, note: input.note, receiptUri: null });
+  async function settleEverywhere(person: PersonBalance) {
+    // One settling entry per project the person still has a balance in.
+    for (const s of projects) {
+      const inProject = s.people.find((p) => p.person === person.person);
+      const entry = inProject ? settleUp(inProject, today, s.project.id) : null;
+      if (entry) await add(entry);
     }
   }
 
@@ -71,42 +65,41 @@ export default function Owed() {
 
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <View style={{ flex: 1 }}>
-          <Button title={t('owed.add')} onPress={() => setSheet({ type: 'entry', key: Date.now(), entry: null })} />
+          <Button title={t('owed.newProject')} onPress={() => setSheet({ type: 'new', key: Date.now() })} />
         </View>
         <View style={{ flex: 1 }}>
-          <Button title={t('owed.split')} variant="secondary" onPress={() => setSheet({ type: 'split', key: Date.now() })} />
+          <Button title={t('owed.importProject')} variant="secondary" onPress={() => setSheet({ type: 'import', key: Date.now() })} />
         </View>
       </View>
 
-      {people.length > 0 ? (
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Chip label={t('owed.view.event')} selected={view === 'event'} onPress={() => setView('event')} />
-          <Chip label={t('owed.view.person')} selected={view === 'person'} onPress={() => setView('person')} />
-        </View>
-      ) : null}
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <Chip label={t('owed.view.project')} selected={view === 'project'} onPress={() => setView('project')} />
+        <Chip label={t('owed.view.person')} selected={view === 'person'} onPress={() => setView('person')} />
+      </View>
 
-      {people.length === 0 ? (
-        <EmptyState icon="people" text={t('owed.empty')} hint={t('owed.emptyHint')} />
-      ) : view === 'event' ? (
+      {view === 'project' ? (
         <Card style={{ padding: 0 }}>
-          {events.map((e, i) => {
-            const net = e.owedToMe - e.iOwe;
+          {projects.map((s, i) => {
+            const net = s.owedToMe - s.iOwe;
+            const count = s.everyone.length;
             return (
               <ListRow
-                key={e.event || '(none)'}
+                key={s.project.id}
                 first={i === 0}
-                title={eventTitle(e.event)}
+                title={projectName(s.project)}
                 subtitle={[
-                  t(e.people.length === 1 ? 'owed.onePerson' : 'owed.people', { count: e.people.length }),
+                  count === 0 ? t('project.people.none') : t(count === 1 ? 'project.people.one' : 'project.people.count', { count }),
                   net > 0 ? t('owed.netOwed', { amount: formatRM(net) }) : net < 0 ? t('owed.netIOwe', { amount: formatRM(-net) }) : t('owed.settled'),
                 ].join(' · ')}
                 value={net === 0 ? undefined : formatRM(Math.abs(net))}
                 valueTone={net > 0 ? 'positive' : 'negative'}
-                onPress={() => setOpenEvent(e.event)}
+                onPress={() => goToProject(s.project.id)}
               />
             );
           })}
         </Card>
+      ) : people.length === 0 ? (
+        <EmptyState icon="people" text={t('owed.empty')} hint={t('owed.emptyHint')} />
       ) : (
         <Card style={{ padding: 0 }}>
           {people.map((p, i) => (
@@ -123,50 +116,38 @@ export default function Owed() {
         </Card>
       )}
 
-      {eventSummary && !sheet ? (
-        <EventSheet
-          summary={eventSummary}
-          onClose={() => setOpenEvent(null)}
-          onAdd={() => setSheet({ type: 'entry', key: Date.now(), entry: null, event: eventSummary.event })}
-          onSplit={() => setSheet({ type: 'split', key: Date.now(), event: eventSummary.event })}
-          onSettle={async (p: PersonBalance) => {
-            const entry = settleUp(p, today, eventSummary.event);
-            if (entry) await add(entry);
-          }}
-          onEdit={(entry) => setSheet({ type: 'entry', key: Date.now(), entry })}
-        />
-      ) : null}
-      {openPerson && !sheet && !eventSummary ? (
+      {openPerson && !sheet ? (
         <PersonSheet
           person={openPerson}
+          projectName={nameOf}
           onClose={() => setOpen(null)}
-          onSettle={async () => {
-            const entry = settleUp(openPerson, today);
-            if (entry) await add(entry);
-          }}
-          onAdd={() => setSheet({ type: 'entry', key: Date.now(), entry: null, person: openPerson.person })}
-          onEdit={(entry) => setSheet({ type: 'entry', key: Date.now(), entry })}
+          onSettle={() => settleEverywhere(openPerson)}
+          onEdit={(entry) => { setOpen(null); goToProject(entry.projectId); }}
         />
       ) : null}
-      {sheet?.type === 'entry' ? (
-        <OwedSheet
+      {sheet?.type === 'new' ? (
+        <ProjectSheet
           key={sheet.key}
-          existing={sheet.entry}
-          person={sheet.person}
-          event={sheet.event}
-          events={eventNames}
-          people={names}
+          existing={null}
+          suggestions={knownPeople}
           today={today}
           onClose={() => setSheet(null)}
           onSave={async (input) => {
-            if (sheet.entry) await update({ ...sheet.entry, ...input });
-            else await add(input);
+            const saved = await projectOps.add(input);
+            goToProject(saved.id);
           }}
-          onDelete={sheet.entry ? () => removeEntry(sheet.entry!) : undefined}
         />
       ) : null}
-      {sheet?.type === 'split' ? (
-        <SplitSheet key={sheet.key} people={names} events={eventNames} event={sheet.event} categories={categories} onClose={() => setSheet(null)} onSave={saveSplit} />
+      {sheet?.type === 'import' ? (
+        <ImportSheet
+          key={sheet.key}
+          onClose={() => setSheet(null)}
+          onImport={async (project, entries) => {
+            const saved = await projectOps.add(project);
+            for (const e of entries) await add({ ...e, projectId: saved.id });
+            goToProject(saved.id);
+          }}
+        />
       ) : null}
     </Screen>
   );

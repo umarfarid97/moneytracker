@@ -28,10 +28,13 @@ import {
   addSavingsAccount, deleteSavingsAccount, listSavingsAccounts, updateSavingsAccount,
 } from '@/db/repos/savings';
 import { addIncomeEntry, addIncomeRule, addRuleEntry, deleteIncomeEntry, deleteIncomeRule, listIncomeEntries, listIncomeRules, updateIncomeEntry, updateIncomeRule } from '@/db/repos/income';
-import { addOwedEntry, deleteOwedEntry, listOwedEntries, updateOwedEntry } from '@/db/repos/owed';
+import {
+  addOwedEntry, addOwedProject, deleteOwedEntry, deleteOwedProject, listOwedEntries, listOwedProjects, updateOwedEntry,
+  updateOwedProject,
+} from '@/db/repos/owed';
 import type { Db } from '@/db/types';
 import { missedRuns, withRuleDefaults, type IncomeEntry, type IncomeRule, type NewIncomeEntry, type NewIncomeRule } from '@/domain/income';
-import type { NewOwedEntry, OwedEntry } from '@/domain/owed';
+import type { NewOwedEntry, NewOwedProject, OwedEntry, OwedProject } from '@/domain/owed';
 import { missedDueDates } from '@/domain/bills';
 import { byDateDesc as givingNewest, type GivingRecord, type NewGivingRecord } from '@/domain/giving';
 import { isPaidOff, loanBalance, nextPayment } from '@/domain/loanTracker';
@@ -118,6 +121,13 @@ export type DataContextValue = {
   /** Money lent to, borrowed from or split with people (see domain/owed). */
   owedEntries: OwedEntry[];
   owedOps: CollectionOps<OwedEntry, NewOwedEntry>;
+  /** The projects (a trip, a dinner) those entries belong to. Removing one removes its entries too. */
+  owedProjects: OwedProject[];
+  owedProjectOps: {
+    add: (input: NewOwedProject) => Promise<OwedProject>;
+    update: (project: OwedProject) => Promise<void>;
+    remove: (id: number) => Promise<void>;
+  };
   /** Extra income that repeats, and the income it has added (see domain/income). */
   incomeRules: IncomeRule[];
   incomeRuleOps: CollectionOps<IncomeRule, NewIncomeRule>;
@@ -146,22 +156,22 @@ type Loaded = {
   categories: Category[]; expenses: Expense[]; budgets: Budget[];
   commitments: Commitment[]; reliefClaims: ReliefClaim[]; profile: Profile; paymentMethods: PaymentMethod[];
   retirementEntries: RetirementEntry[]; givingRecords: GivingRecord[]; savingsAccounts: SavingsAccount[];
-  owedEntries: OwedEntry[]; incomeRules: IncomeRule[]; incomeEntries: IncomeEntry[];
+  owedEntries: OwedEntry[]; owedProjects: OwedProject[]; incomeRules: IncomeRule[]; incomeEntries: IncomeEntry[];
 };
 
 async function loadAll(db: Db): Promise<Loaded> {
   const [
     categories, expenses, budgets, commitments, reliefClaims, profile, paymentMethods,
-    retirementEntries, givingRecords, savingsAccounts, owedEntries, incomeRules, incomeEntries,
+    retirementEntries, givingRecords, savingsAccounts, owedEntries, owedProjects, incomeRules, incomeEntries,
   ] = await Promise.all([
     listCategories(db), listAllExpenses(db), listAllBudgets(db),
     listCommitments(db), listAllReliefClaims(db), getProfile(db), listPaymentMethods(db),
     listRetirementEntries(db), listGivingRecords(db), listSavingsAccounts(db),
-    listOwedEntries(db), listIncomeRules(db), listIncomeEntries(db),
+    listOwedEntries(db), listOwedProjects(db), listIncomeRules(db), listIncomeEntries(db),
   ]);
   return {
     categories, expenses, budgets, commitments, reliefClaims, profile, paymentMethods,
-    retirementEntries, givingRecords, savingsAccounts, owedEntries, incomeRules, incomeEntries,
+    retirementEntries, givingRecords, savingsAccounts, owedEntries, owedProjects, incomeRules, incomeEntries,
   };
 }
 
@@ -187,6 +197,7 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
   const [givingRecords, setGivingRecords, givingRef] = useSyncedState<GivingRecord[]>([]);
   const [savingsAccounts, setSavingsAccounts, savingsRef] = useSyncedState<SavingsAccount[]>([]);
   const [owedEntries, setOwedEntries, owedRef] = useSyncedState<OwedEntry[]>([]);
+  const [owedProjects, setOwedProjects, owedProjectsRef] = useSyncedState<OwedProject[]>([]);
   const [incomeRules, setIncomeRules, incomeRulesRef] = useSyncedState<IncomeRule[]>([]);
   const [incomeEntries, setIncomeEntries, incomeEntriesRef] = useSyncedState<IncomeEntry[]>([]);
 
@@ -196,10 +207,10 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
     setPaymentMethods(data.paymentMethods);
     setRetirementEntries(data.retirementEntries); setGivingRecords(data.givingRecords);
     setSavingsAccounts(data.savingsAccounts);
-    setOwedEntries(data.owedEntries); setIncomeRules(data.incomeRules); setIncomeEntries(data.incomeEntries);
+    setOwedEntries(data.owedEntries); setOwedProjects(data.owedProjects); setIncomeRules(data.incomeRules); setIncomeEntries(data.incomeEntries);
   }, [
     setCategories, setExpenses, setBudgets, setCommitments, setReliefClaims, setProfile, setPaymentMethods,
-    setRetirementEntries, setGivingRecords, setSavingsAccounts, setOwedEntries, setIncomeRules, setIncomeEntries,
+    setRetirementEntries, setGivingRecords, setSavingsAccounts, setOwedEntries, setOwedProjects, setIncomeRules, setIncomeEntries,
   ]);
 
   useEffect(() => {
@@ -258,6 +269,27 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
       update: (e) => updateOwedEntry(db, e),
       remove: (id) => deleteOwedEntry(db, id),
     }, byNewestDate, (input: NewOwedEntry) => input);
+    const owedProjectOps: DataContextValue['owedProjectOps'] = {
+      async add(input) {
+        const saved = await addOwedProject(db, input);
+        setOwedProjects((prev) => [...prev, saved]);
+        return saved;
+      },
+      async update(project) {
+        const before = owedProjectsRef.current;
+        setOwedProjects((prev) => prev.map((p) => (p.id === project.id ? project : p)));
+        try {
+          await updateOwedProject(db, project);
+        } catch (e) {
+          setOwedProjects(before);
+          throw e;
+        }
+      },
+      async remove(id) {
+        await deleteOwedProject(db, id);
+        apply(await loadAll(db));
+      },
+    };
     const incomeRuleOps = makeOptimisticOps(incomeRulesRef, setIncomeRules, {
       add: (input) => addIncomeRule(db, input),
       update: (r) => updateIncomeRule(db, r),
@@ -332,7 +364,7 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
       },
       expenseOps, commitmentOps, reliefClaimOps,
       retirementEntries, retirementOps, givingRecords, givingOps, savingsAccounts, savingsOps,
-      owedEntries, owedOps, incomeRules, incomeRuleOps, incomeEntries, incomeEntryOps, runRecurringIncome,
+      owedEntries, owedOps, owedProjects, owedProjectOps, incomeRules, incomeRuleOps, incomeEntries, incomeEntryOps, runRecurringIncome,
       paymentMethodOps: {
         async add(input) {
           const saved = await addPaymentMethod(db, input);
@@ -402,7 +434,7 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
       },
     };
   }, [db, loaded, profile, categories, expenses, budgets, commitments, reliefClaims, paymentMethods,
-    retirementEntries, givingRecords, savingsAccounts, owedEntries, incomeRules, incomeEntries, taxYearChoice, apply]);
+    retirementEntries, givingRecords, savingsAccounts, owedEntries, owedProjects, incomeRules, incomeEntries, taxYearChoice, apply]);
 
   if (failure) throw failure;
   if (!value) return null;
