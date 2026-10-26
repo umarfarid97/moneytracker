@@ -61,7 +61,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "test": "jest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "web:smoke": "node scripts/web-smoke.js"
   },
   "private": true
 }
