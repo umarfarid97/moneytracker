@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Switch, TextInput, View } from 'react-native';
 import { resolveTaxData } from '@/data/tax';
 import { BILLER_GROUPS, billersIn, type BillerGroup } from '@/domain/billers';
+import { SUBSCRIPTION_GROUPS, subscriptionsIn, type SubscriptionGroup } from '@/domain/subscriptions';
 import { BNPL_PROVIDERS, bnplFor, LOAN_TYPES } from '@/domain/loanTracker';
 import { parsePercent, parseRM, senToInput, type Sen } from '@/domain/money';
 import type { Commitment, CommitmentKind, LoanType, NewCommitment } from '@/domain/types';
@@ -63,6 +64,7 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
   const [originalText, setOriginalText] = useState(existing?.loanOriginal != null ? senToInput(existing.loanOriginal) : '');
   const [rateText, setRateText] = useState(existing?.loanRatePct != null ? String(existing.loanRatePct) : '');
   const [group, setGroup] = useState<BillerGroup>('utilities');
+  const [subGroup, setSubGroup] = useState<SubscriptionGroup>('streaming');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -161,7 +163,34 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
               </View>
             ) : null}
           </View>
-        ) : existing ? null : (
+        ) : existing ? null : kind === 'subscription' ? (
+          <View style={{ gap: 8 }}>
+            <AppText variant="smallStrong">{t('subscriptions.pick')}</AppText>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {SUBSCRIPTION_GROUPS.map((g) => (
+                <Chip key={g} compact label={t(`subscriptions.group.${g}`)} selected={subGroup === g} onPress={() => setSubGroup(g)} />
+              ))}
+            </View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {subscriptionsIn(subGroup).map((b) => (
+                <Chip
+                  key={b.id}
+                  label={b.name}
+                  accessibilityLabel={`Subscription ${b.name}`}
+                  leading={<BrandBadge initials={b.initials} color={b.color} ink={b.ink} size={22} />}
+                  selected={name === b.name}
+                  onPress={() => {
+                    setName(b.name);
+                    setVariable(false);
+                    const cat = categories.find((x) => x.name === b.category);
+                    if (cat) setCategoryId(cat.id);
+                  }}
+                />
+              ))}
+            </View>
+            <AppText variant="small" tone="muted">{t('subscriptions.hint')}</AppText>
+          </View>
+        ) : (
           <View style={{ gap: 8 }}>
             <AppText variant="smallStrong">{t('billers.pick')}</AppText>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>

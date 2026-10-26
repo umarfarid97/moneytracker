@@ -14,7 +14,6 @@ describe('billers', () => {
   test('usage based bills change monthly and subscriptions are fixed', () => {
     expect(billerFor('TNB')?.variable).toBe(true);
     expect(billerFor('Air Selangor')?.variable).toBe(true);
-    expect(billerFor('Netflix')).toMatchObject({ kind: 'subscription', variable: false, category: 'Hiburan' });
   });
 
   test('matches by name, longer brands before shorter ones', () => {

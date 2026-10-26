@@ -1,5 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import Budget from '@/app/budget';
+import BudgetEdit from '@/app/budget-edit';
 import { CAT, freshDb, renderWithData } from './helpers';
 
 jest.mock('@/hooks/useToday', () => ({ useToday: () => '2026-10-24' }));
@@ -26,11 +27,16 @@ describe('Budget period', () => {
     await waitFor(() => expect(screen.getByText('25 Sep - 24 Oct')).toBeTruthy());
     expect(screen.getByText('1 day left')).toBeTruthy();
     expect(await startDay(db)).toBe(25);
+  });
 
-    await fireEvent.press(screen.getByRole('button', { name: 'Edit budgets' }));
+  test('budgets typed on the edit page are saved under the payday period', async () => {
+    const db = await freshDb();
+    await db.run('UPDATE profile SET budget_start_day = 25');
+    await renderWithData(db, <BudgetEdit />);
+    await waitFor(() => expect(screen.getByText('25 Sep - 24 Oct')).toBeTruthy());
     await fireEvent.changeText(screen.getByLabelText('Makan'), '600');
     await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(screen.queryByLabelText('Makan')).toBeNull());
+    await waitFor(() => expect(router.back).toHaveBeenCalled());
     expect(await db.all('SELECT category_id, month, limit_sen FROM budgets')).toEqual([
       { category_id: CAT.Makan, month: '2026-09', limit_sen: 60000 },
     ]);

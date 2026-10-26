@@ -1,8 +1,8 @@
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { daysLeftInPeriod, parseStartDay, periodKey, periodLabel } from '@/domain/budgetPeriod';
-import { formatRM, parseRM, senToInput } from '@/domain/money';
+import { formatRM } from '@/domain/money';
 import { buildHome, type BudgetTile } from '@/domain/summary';
 import { useExpenses } from '@/hooks/useExpenses';
 import { useBudgets } from '@/hooks/useBudgets';
@@ -11,7 +11,6 @@ import { useProfile } from '@/hooks/useProfile';
 import { useToday } from '@/hooks/useToday';
 import { getLanguage } from '@/i18n/language';
 import { t } from '@/i18n/t';
-import { AmountInput } from '@/ui/AmountInput';
 import { AppText } from '@/ui/AppText';
 import { BackButton } from '@/ui/BackButton';
 import { Button } from '@/ui/Button';
@@ -33,7 +32,7 @@ export default function Budget() {
   const startDay = profile.budgetStartDay;
   const month = periodKey(today, startDay);
   const { data: categories } = useCategories();
-  const { data: budgets, set, remove, copyFromLast } = useBudgets(month);
+  const { data: budgets } = useBudgets(month);
   const { data: expenses } = useExpenses();
   const { tiles } = useMemo(
     () => buildHome({ categories, expenses, budgets, today, startDay }),
@@ -42,15 +41,7 @@ export default function Budget() {
   const budgeted = tiles.filter((x): x is BudgetTile => x.limit !== null);
   const warnings = budgeted.filter((x) => x.status !== 'on-track');
 
-  const saved = useMemo(
-    () => Object.fromEntries(budgets.map((b) => [b.categoryId, senToInput(b.limit)])) as Record<number, string>,
-    [budgets],
-  );
-  const [drafts, setDrafts] = useState<Record<number, string>>(saved);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  // Amounts are read-only until Edit budgets is tapped.
-  const [editing, setEditing] = useState(false);
   const [dayText, setDayText] = useState(startDay === 1 ? '' : String(startDay));
 
   /** The budget period changes with the start day, so budgets already typed in are left as they were. */
@@ -65,42 +56,8 @@ export default function Budget() {
     }
   }
 
-  // When stored budgets change (first load, "copy last month"), show them in the fields.
-  useEffect(() => setDrafts(saved), [saved]);
-
-  const parsed = categories.map((c) => {
-    const text = (drafts[c.id] ?? '').trim();
-    return { category: c, text, sen: text === '' ? null : parseRM(text) };
-  });
-  const allValid = parsed.every((p) => p.text === '' || p.sen !== null);
-  const total = parsed.reduce((sum, p) => sum + (p.sen ?? 0), 0);
-
-  function cancelEdit() {
-    setDrafts(saved);
-    setError(null);
-    setEditing(false);
-  }
-
-  async function save() {
-    if (!allValid || busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      for (const { category, text, sen } of parsed) {
-        const existing = budgets.find((b) => b.categoryId === category.id);
-        if (text === '') {
-          if (existing) await remove(category.id);
-        } else if (sen !== null && sen !== existing?.limit) {
-          await set({ categoryId: category.id, month, limit: sen });
-        }
-      }
-      setEditing(false);
-    } catch {
-      setError(t('common.saveFailed'));
-    } finally {
-      setBusy(false);
-    }
-  }
+  const total = budgets.reduce((sum, b) => sum + b.limit, 0);
+  const limitOf = (id: number) => budgets.find((b) => b.categoryId === id)?.limit ?? null;
 
   return (
     <Screen>
@@ -191,57 +148,29 @@ export default function Budget() {
           {formatRM(total)}
         </AppText>
       </Card>
-      {editing ? (
-        <>
-          <Button title={t('budget.copyLast')} variant="secondary" onPress={() => copyFromLast().catch(() => setError(t('common.saveFailed')))} />
-          <View style={{ gap: 16 }}>
-            {parsed.map(({ category }) => (
-              <AmountInput
-                key={category.id}
-                label={category.name}
-                value={drafts[category.id] ?? ''}
-                onChange={(next) => setDrafts((prev) => ({ ...prev, [category.id]: next }))}
-              />
-            ))}
-          </View>
-          {error ? (
-            <AppText variant="small" tone="negative">
-              {error}
-            </AppText>
-          ) : null}
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <View style={{ flex: 1 }}>
-              <Button title={t('common.cancel')} variant="secondary" onPress={cancelEdit} disabled={busy} />
+      <Card style={{ gap: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <AppText variant="bodyStrong" style={{ flex: 1 }}>{t('budget.amounts')}</AppText>
+          <Chip compact icon="create-outline" label={t('budget.edit')} onPress={() => router.push('/budget-edit')} />
+        </View>
+        {categories.map((category) => {
+          const limit = limitOf(category.id);
+          return (
+            <View key={category.id} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
+              <AppText variant="body" style={{ flex: 1 }}>{category.name}</AppText>
+              <AppText variant="bodyStrong" tone={limit === null ? 'muted' : undefined} testID={`budget-amount-${category.id}`}>
+                {limit === null ? t('budget.notSet') : formatRM(limit)}
+              </AppText>
             </View>
-            <View style={{ flex: 1 }}>
-              <Button title={t('common.save')} onPress={save} disabled={!allValid || busy} />
-            </View>
-          </View>
-        </>
-      ) : (
-        <>
-          <Card style={{ gap: 10 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <AppText variant="bodyStrong" style={{ flex: 1 }}>{t('budget.amounts')}</AppText>
-              <Chip compact icon="create-outline" label={t('budget.edit')} onPress={() => setEditing(true)} />
-            </View>
-            {parsed.map(({ category, sen }) => (
-              <View key={category.id} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
-                <AppText variant="body" style={{ flex: 1 }}>{category.name}</AppText>
-                <AppText variant="bodyStrong" tone={sen === null ? 'muted' : undefined} testID={`budget-amount-${category.id}`}>
-                  {sen === null ? t('budget.notSet') : formatRM(sen)}
-                </AppText>
-              </View>
-            ))}
-          </Card>
-          {error ? (
-            <AppText variant="small" tone="negative">
-              {error}
-            </AppText>
-          ) : null}
-          <Button title={t('budget.seeReport')} variant="secondary" onPress={() => router.push('/reports')} />
-        </>
-      )}
+          );
+        })}
+      </Card>
+      {error ? (
+        <AppText variant="small" tone="negative">
+          {error}
+        </AppText>
+      ) : null}
+      <Button title={t('budget.seeReport')} variant="secondary" onPress={() => router.push('/reports')} />
     </Screen>
   );
 }

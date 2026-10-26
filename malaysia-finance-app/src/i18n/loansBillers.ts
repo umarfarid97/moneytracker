@@ -8,6 +8,13 @@ export const loansBillers = {
   'billers.group.tv': 'TV and streaming',
   'billers.group.insurance': 'Insurance',
   'billers.group.home': 'Home',
+  'subscriptions.pick': 'Pick a subscription',
+  'subscriptions.group.streaming': 'Streaming',
+  'subscriptions.group.cloud': 'Cloud storage',
+  'subscriptions.group.ai': 'AI',
+  'subscriptions.group.apps': 'Apps',
+  'subscriptions.group.life': 'Lifestyle',
+  'subscriptions.hint': 'Tap one to fill in the name and category. Then add the amount and the day it is charged.',
 
   'loans.type': 'Type of loan',
   'loans.type.home': 'Home loan',

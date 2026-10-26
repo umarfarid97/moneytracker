@@ -1,13 +1,12 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import Budget from '@/app/budget';
+import BudgetEdit from '@/app/budget-edit';
 import { CAT, freshDb, renderWithData, setBudgetRow } from './helpers';
 
 jest.mock('@/hooks/useToday', () => ({ useToday: () => '2026-10-24' }));
 const { router } = jest.requireMock('expo-router');
 
 beforeEach(() => jest.clearAllMocks());
-
-const edit = () => fireEvent.press(screen.getByRole('button', { name: 'Edit budgets' }));
 
 const budgetsIn = (db: Awaited<ReturnType<typeof freshDb>>, month = '2026-10') =>
   db.all<{ category_id: number; limit_sen: number }>(
@@ -16,28 +15,32 @@ const budgetsIn = (db: Awaited<ReturnType<typeof freshDb>>, month = '2026-10') =
   );
 
 describe('Budget', () => {
-  test('amounts are read-only until Edit budgets is tapped; Cancel drops the changes', async () => {
+  test('the Budget page shows amounts read-only and Edit budgets opens the edit page', async () => {
     const db = await freshDb();
     await setBudgetRow(db, CAT.Makan, '2026-10', 60000);
     await renderWithData(db, <Budget />);
     await waitFor(() => expect(screen.getByTestId(`budget-amount-${CAT.Makan}`).props.children).toBe('RM 600.00'));
     expect(screen.getByTestId(`budget-amount-${CAT.Bil}`).props.children).toBe('Not set');
     expect(screen.queryByLabelText('Makan')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
-    await edit();
+    await fireEvent.press(screen.getByRole('button', { name: 'Edit budgets' }));
+    expect(router.push).toHaveBeenCalledWith('/budget-edit');
+  });
+
+  test('Cancel leaves the edit page without saving', async () => {
+    const db = await freshDb();
+    await setBudgetRow(db, CAT.Makan, '2026-10', 60000);
+    await renderWithData(db, <BudgetEdit />);
+    await waitFor(() => expect(screen.getByLabelText('Makan').props.value).toBe('600.00'));
     await fireEvent.changeText(screen.getByLabelText('Makan'), '999');
     await fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
-    expect(screen.queryByLabelText('Makan')).toBeNull();
+    expect(router.back).toHaveBeenCalled();
     expect(await budgetsIn(db)).toEqual([{ category_id: CAT.Makan, limit_sen: 60000 }]);
-    await edit();
-    expect(screen.getByLabelText('Makan').props.value).toBe('600.00');
   });
 
   test('shows the month and a field for every category', async () => {
     const db = await freshDb();
-    await renderWithData(db, <Budget />);
+    await renderWithData(db, <BudgetEdit />);
     await waitFor(() => expect(screen.getByText('October 2026')).toBeTruthy());
-    await edit();
     for (const name of ['Makan', 'Transport', 'Bil', 'Rumah', 'Hiburan', 'Kesihatan', 'Pendidikan', 'Lain-lain']) {
       expect(screen.getByLabelText(name)).toBeTruthy();
     }
@@ -45,14 +48,13 @@ describe('Budget', () => {
 
   test('typing limits updates the total and save stores them in sen', async () => {
     const db = await freshDb();
-    await renderWithData(db, <Budget />);
-    await edit();
+    await renderWithData(db, <BudgetEdit />);
     await waitFor(() => expect(screen.getByLabelText('Makan')).toBeTruthy());
     await fireEvent.changeText(screen.getByLabelText('Makan'), '600');
     await fireEvent.changeText(screen.getByLabelText('Transport'), '35.50');
     expect(screen.getByTestId('budget-total').props.children).toBe('RM 635.50');
     await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(screen.queryByLabelText('Makan') ?? screen.queryByLabelText('Hiburan')).toBeNull());
+    await waitFor(() => expect(router.back).toHaveBeenCalled());
     expect(await budgetsIn(db)).toEqual([
       { category_id: CAT.Makan, limit_sen: 60000 },
       { category_id: CAT.Transport, limit_sen: 3550 },
@@ -63,19 +65,17 @@ describe('Budget', () => {
     const db = await freshDb();
     await setBudgetRow(db, CAT.Makan, '2026-10', 60000);
     await setBudgetRow(db, CAT.Bil, '2026-10', 25000);
-    await renderWithData(db, <Budget />);
-    await edit();
+    await renderWithData(db, <BudgetEdit />);
     await waitFor(() => expect(screen.getByLabelText('Makan').props.value).toBe('600.00'));
     await fireEvent.changeText(screen.getByLabelText('Makan'), '');
     await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(screen.queryByLabelText('Makan') ?? screen.queryByLabelText('Hiburan')).toBeNull());
+    await waitFor(() => expect(router.back).toHaveBeenCalled());
     expect(await budgetsIn(db)).toEqual([{ category_id: CAT.Bil, limit_sen: 25000 }]);
   });
 
   test('letters and extra decimals are dropped as you type', async () => {
     const db = await freshDb();
-    await renderWithData(db, <Budget />);
-    await edit();
+    await renderWithData(db, <BudgetEdit />);
     await waitFor(() => expect(screen.getByLabelText('Makan')).toBeTruthy());
     await fireEvent.changeText(screen.getByLabelText('Makan'), '12a.999');
     expect(screen.getByLabelText('Makan').props.value).toBe('12.99');
@@ -83,12 +83,11 @@ describe('Budget', () => {
 
   test('zero is a valid budget and means any spending is over', async () => {
     const db = await freshDb();
-    await renderWithData(db, <Budget />);
-    await edit();
+    await renderWithData(db, <BudgetEdit />);
     await waitFor(() => expect(screen.getByLabelText('Hiburan')).toBeTruthy());
     await fireEvent.changeText(screen.getByLabelText('Hiburan'), '0');
     await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(screen.queryByLabelText('Makan') ?? screen.queryByLabelText('Hiburan')).toBeNull());
+    await waitFor(() => expect(router.back).toHaveBeenCalled());
     expect(await budgetsIn(db)).toEqual([{ category_id: CAT.Hiburan, limit_sen: 0 }]);
   });
 
@@ -97,8 +96,7 @@ describe('Budget', () => {
     await setBudgetRow(db, CAT.Makan, '2026-09', 50000);
     await setBudgetRow(db, CAT.Transport, '2026-09', 30000);
     await setBudgetRow(db, CAT.Transport, '2026-10', 35000);
-    await renderWithData(db, <Budget />);
-    await edit();
+    await renderWithData(db, <BudgetEdit />);
     await waitFor(() => expect(screen.getByLabelText('Transport').props.value).toBe('350.00'));
     await fireEvent.press(screen.getByRole('button', { name: 'Copy last month' }));
     await waitFor(() => expect(screen.getByLabelText('Makan').props.value).toBe('500.00'));
