@@ -1,7 +1,9 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { applyBillChange, billStatus, paidDueDatesFor, type BillState, type BillStatus } from '@/domain/bills';
-import { monthlyCommitmentTotal } from '@/domain/commitments';
+import {
+  applyBillChange, billEstimate, billStatus, lastPaidFor, paidDueDatesFor, type BillState, type BillStatus,
+} from '@/domain/bills';
 import { formatRM } from '@/domain/money';
 import type { Commitment, CommitmentKind } from '@/domain/types';
 import { CommitmentSheet } from '@/features/commitments/CommitmentSheet';
@@ -12,10 +14,10 @@ import { useExpenses } from '@/hooks/useExpenses';
 import { useToday } from '@/hooks/useToday';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
-import { Button } from '@/ui/Button';
 import { EmptyState } from '@/ui/EmptyState';
 import { HeroCard, onHero } from '@/ui/HeroCard';
 import { IconBadge } from '@/ui/IconBadge';
+import { confirmDelete } from '@/ui/confirm';
 import { PressableScale } from '@/ui/PressableScale';
 import { Screen } from '@/ui/Screen';
 import { elevation, radius } from '@/ui/theme';
@@ -69,6 +71,12 @@ export default function Commitments() {
     });
   }, [data, expenses, today]);
 
+  const total = useMemo(
+    () => data.reduce((sum, item) => (item.active ? sum + billEstimate(item, expenses) : sum), 0),
+    [data, expenses],
+  );
+  const anyVariable = data.some((item) => item.active && item.variable);
+
   const openSheet = (editing: Commitment | null) =>
     setSheet((s) => ({ open: true, editing, nonce: s.nonce + 1 }));
   const closeSheet = () => setSheet((s) => ({ ...s, open: false }));
@@ -78,16 +86,31 @@ export default function Commitments() {
 
   return (
     <Screen fab>
-      <AppText variant="title">{t('commitments.title')}</AppText>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <AppText variant="title" style={{ flexShrink: 1 }}>{t('commitments.title')}</AppText>
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel={t('commitments.add')}
+          hitSlop={8}
+          onPress={() => openSheet(null)}
+          style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Ionicons name="add" size={22} color={c.accentInk} />
+        </PressableScale>
+      </View>
       <HeroCard hero="mint" style={{ gap: 6 }}>
         <AppText variant="eyebrow" color={onHero.soft}>
           {t('commitments.total')}
         </AppText>
         <AppText testID="commitments-total" variant="kpi" color={onHero.ink} style={{ fontSize: 40, lineHeight: 48 }}>
-          {formatRM(monthlyCommitmentTotal(data))}
+          {formatRM(total)}
         </AppText>
+        {anyVariable ? (
+          <AppText variant="small" color={onHero.soft}>
+            {t('commitments.totalHint')}
+          </AppText>
+        ) : null}
       </HeroCard>
-      <Button title={t('commitments.add')} onPress={() => openSheet(null)} />
       {rows.length === 0 ? (
         <EmptyState icon="calendar-outline" text={t('commitments.none')} />
       ) : (
@@ -122,11 +145,13 @@ export default function Commitments() {
                     {item.name}
                   </AppText>
                   <AppText variant="small" tone={late ? 'negative' : 'muted'}>
-                    {statusLabel(status)}
+                    {item.variable ? `${statusLabel(status)} · ${t('commitments.varies')}` : statusLabel(status)}
                   </AppText>
                 </Pressable>
                 <View style={{ alignItems: 'flex-end', gap: 2 }}>
-                  <AppText variant="bodyStrong">{formatRM(item.amount)}</AppText>
+                  <AppText variant="bodyStrong">
+                    {item.variable ? `~${formatRM(billEstimate(item, expenses))}` : formatRM(item.amount)}
+                  </AppText>
                   {payable && item.id > 0 ? (
                     <PressableScale
                       accessibilityRole="button"
@@ -159,12 +184,20 @@ export default function Commitments() {
           if (sheet.editing) await update(applyBillChange(sheet.editing, { ...sheet.editing, ...input }, today));
           else await add(input);
         }}
-        onDelete={sheet.editing ? () => remove(sheet.editing!.id) : undefined}
+        onDelete={sheet.editing ? async () => {
+          const bill = sheet.editing!;
+          const ok = await confirmDelete(
+            t('confirm.deleteBill'), t('confirm.deleteBillBody', { name: bill.name }), t('common.delete'), t('common.cancel'),
+          );
+          if (ok) await remove(bill.id);
+          return ok;
+        } : undefined}
       />
       <MarkPaidSheet
         key={`pay-${pay.nonce}`}
         visible={pay.open}
         bill={pay.bill}
+        lastPaid={pay.bill ? lastPaidFor(pay.bill.id, expenses) : null}
         onClose={closePay}
         onConfirm={async (amount) => {
           if (pay.bill) await payBill(pay.bill, pay.dueDate, { amount, date: today });

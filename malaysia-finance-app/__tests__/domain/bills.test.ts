@@ -1,9 +1,9 @@
-import { applyBillChange, billStatus, missedDueDates, paidDueDatesFor, previousDueDate } from '@/domain/bills';
+import { applyBillChange, billEstimate, billStatus, lastPaidFor, missedDueDates, paidDueDatesFor, previousDueDate } from '@/domain/bills';
 import type { Commitment, Expense } from '@/domain/types';
 
 const bill = (over: Partial<Commitment> = {}): Commitment => ({
   id: 1, name: 'Astro', amount: 8900, dayOfMonth: 5, kind: 'subscription', active: true,
-  categoryId: null, paymentMethodId: null, reliefId: null, autoRecord: false, startDate: '2026-01-01', lastAutoDue: null,
+  categoryId: null, paymentMethodId: null, reliefId: null, autoRecord: false, startDate: '2026-01-01', lastAutoDue: null, variable: false,
   ...over,
 });
 
@@ -149,3 +149,23 @@ describe('applyBillChange (review findings: edits must not invent payments)', ()
     expect(applyBillChange(null, added, today)).toEqual(added);
   });
 });
+
+describe('billEstimate', () => {
+  const paid = (amount: number, dueDate: string, commitmentId = 1): Expense => ({
+    id: amount, amount, categoryId: 3, date: dueDate, note: '', receiptUri: null,
+    paymentMethodId: null, reliefId: null, reliefAmount: null, commitmentId, dueDate,
+  });
+  const expenses = [paid(12000, '2026-08-05'), paid(14000, '2026-09-05'), paid(99900, '2026-10-05', 2)];
+
+  test('a fixed bill is always its amount', () => {
+    expect(billEstimate(bill(), expenses)).toBe(8900);
+  });
+
+  test('a variable bill uses the latest payment, or its estimate before the first one', () => {
+    expect(lastPaidFor(1, expenses)).toBe(14000);
+    expect(billEstimate(bill({ variable: true }), expenses)).toBe(14000);
+    expect(billEstimate(bill({ variable: true }), [])).toBe(8900);
+    expect(lastPaidFor(1, [])).toBeNull();
+  });
+});
+

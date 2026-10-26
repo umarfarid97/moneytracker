@@ -107,9 +107,9 @@ describe('AddExpense (tax relief tag)', () => {
     const db = await freshDb();
     await ready(db);
     await pickRelief('lifestyle', LIFESTYLE);
-    expect(screen.getByText('This relief needs a receipt. Add a photo below.')).toBeTruthy();
+    expect(screen.getByText('This relief needs a receipt. Add a photo above.')).toBeTruthy();
     await pickRelief('EPF', 'EPF / approved pension scheme contributions');
-    expect(screen.queryByText('This relief needs a receipt. Add a photo below.')).toBeNull();
+    expect(screen.queryByText('This relief needs a receipt. Add a photo above.')).toBeNull();
   });
 
   test('editing shows the saved method, relief and claimable amount', async () => {
@@ -117,6 +117,7 @@ describe('AddExpense (tax relief tag)', () => {
     await db.run("INSERT INTO expenses (amount, category_id, date, note, payment_method_id, relief_id, relief_amount) VALUES (20000, 1, '2026-10-20', 'Phone case', 3, 'lifestyle', 4000)");
     useLocalSearchParams.mockReturnValue({ id: '1' });
     await renderWithData(db, <AddExpense />);
+    await fireEvent.press(await screen.findByRole('button', { name: 'Edit' }));
     await waitFor(() => expect(screen.getByLabelText('Amount').props.value).toBe('200.00'));
     expect(screen.getByRole('button', { name: 'Credit card' })).toBeSelected();
     expect(screen.getByLabelText('Claimable amount (optional)').props.value).toBe('40.00');
@@ -142,8 +143,34 @@ describe('AddExpense (recent)', () => {
     await addExpenseRow(db, CAT.Makan, 350, '2026-10-20', 'Teh tarik');
     useLocalSearchParams.mockReturnValue({ id: '1' });
     await renderWithData(db, <AddExpense />);
+    await fireEvent.press(await screen.findByRole('button', { name: 'Edit' }));
     await waitFor(() => expect(screen.getByLabelText('Amount').props.value).toBe('3.50'));
     expect(screen.queryByRole('button', { name: 'Recent: Teh tarik' })).toBeNull();
+  });
+});
+
+describe('AddExpense (note suggestions)', () => {
+  test('typing offers a default note that also picks its category', async () => {
+    const db = await freshDb();
+    await ready(db);
+    await fireEvent.changeText(screen.getByLabelText('Note'), 'pet');
+    await fireEvent.press(screen.getByRole('button', { name: 'Suggestion: Petrol' }));
+    expect(screen.getByLabelText('Note').props.value).toBe('Petrol');
+    expect(screen.getByRole('button', { name: 'Transport' })).toBeSelected();
+  });
+
+  test('typing offers recent spending, which keeps an amount already typed', async () => {
+    const db = await freshDb();
+    await db.run("INSERT INTO expenses (amount, category_id, date, note, payment_method_id) VALUES (350, 2, '2026-10-20', 'Teh tarik', 4)");
+    await ready(db);
+    await fireEvent.changeText(screen.getByLabelText('Amount'), '4.20');
+    await fireEvent.changeText(screen.getByLabelText('Note'), 'teh');
+    expect(screen.queryByRole('button', { name: 'Suggestion: Teh tarik' })).toBeNull(); // the recent one wins
+    await fireEvent.press(screen.getByRole('button', { name: 'Recent: Teh tarik' }));
+    expect(screen.getByLabelText('Amount').props.value).toBe('4.20');
+    expect(screen.getByRole('button', { name: 'Transport' })).toBeSelected();
+    expect(screen.getByRole('button', { name: 'E-wallet' })).toBeSelected();
+    expect(screen.queryByRole('button', { name: 'Recent: Teh tarik' })).toBeNull(); // chosen, so no longer offered
   });
 });
 

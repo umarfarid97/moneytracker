@@ -8,6 +8,7 @@ import { useAllReliefClaims } from '@/hooks/useAllReliefClaims';
 import { useTaxYear } from '@/hooks/useTaxYear';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
+import { BackButton } from '@/ui/BackButton';
 import { Button } from '@/ui/Button';
 import { HeroCard, onHero } from '@/ui/HeroCard';
 import { IconBadge } from '@/ui/IconBadge';
@@ -26,7 +27,8 @@ export default function Tax() {
   const warn = statusStyle('tight', scheme);
 
   return (
-    <Screen fab>
+    <Screen>
+      <BackButton />
       <View style={{ gap: 4 }}>
         <AppText variant="title">{t('tax.title')}</AppText>
         <AppText variant="bodyStrong" tone="muted">
@@ -85,7 +87,7 @@ export default function Tax() {
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <AppText variant="bodyStrong" style={{ flex: 1 }}>{def.name}</AppText>
-                <Ionicons name="chevron-forward" size={18} color={c.muted} />
+                <Ionicons name="chevron-forward" size={18} color={c.accent} />
               </View>
               <AppText variant="small" tone="muted">
                 {entry

@@ -22,7 +22,7 @@ describe('buildHome', () => {
 
   test('one tile per budgeted category with left amount and status', () => {
     const home = buildHome({ categories, expenses, budgets, today });
-    expect(home.tiles.map((t) => [t.name, t.spent, t.left, t.status])).toEqual([
+    expect(home.tiles.map((t) => (t.limit === null ? null : [t.name, t.spent, t.left, t.status]))).toEqual([
       ['Makan', 42000, 18000, 'on-track'],
       ['Transport', 31000, 4000, 'tight'],
       ['Hiburan', 26000, -6000, 'over'],
@@ -34,16 +34,22 @@ describe('buildHome', () => {
     expect(home.todaySpent).toBe(8640 + 500);
   });
 
-  test('categories without a budget this month get no tile', () => {
+  test('categories without a budget this month still get a tile, with what was spent', () => {
     const home = buildHome({ categories, expenses, budgets: [budget(1, 60000)], today });
-    expect(home.tiles.map((t) => t.name)).toEqual(['Makan']);
+    expect(home.tiles.map((t) => [t.name, t.limit, t.spent])).toEqual([
+      ['Makan', 60000, 42000],
+      ['Transport', null, 31000],
+      ['Hiburan', null, 26000],
+    ]);
     expect(home.hasBudget).toBe(true);
+    // only the budgeted category counts towards today's allowance
+    expect(home.today).toEqual({ perDay: (60000 - 33360) / 8 - 0, left: (60000 - 33360) / 8 - 8640 });
   });
 
-  test('no budgets at all means no tiles and no daily allowance', () => {
+  test('no budgets at all means every tile says so and no daily allowance', () => {
     const home = buildHome({ categories, expenses, budgets: [], today });
     expect(home.hasBudget).toBe(false);
-    expect(home.tiles).toEqual([]);
+    expect(home.tiles.map((t) => t.limit)).toEqual([null, null, null]);
     expect(home.today).toBeNull();
   });
 
@@ -56,7 +62,8 @@ describe('buildHome', () => {
 
   test('a budget on a deleted category is ignored', () => {
     const home = buildHome({ categories, expenses, budgets: [budget(99, 1000)], today });
-    expect(home.tiles).toEqual([]);
+    expect(home.tiles.map((t) => t.categoryId)).toEqual([1, 2, 3]);
+    expect(home.hasBudget).toBe(false);
   });
 });
 

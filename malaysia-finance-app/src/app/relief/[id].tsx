@@ -13,6 +13,7 @@ import { AppText } from '@/ui/AppText';
 import { BackButton } from '@/ui/BackButton';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { confirmDelete } from '@/ui/confirm';
 import { ReceiptField } from '@/ui/ReceiptField';
 import { Screen } from '@/ui/Screen';
 import { controlHeight, fontFamily, radius, statusStyle } from '@/ui/theme';
@@ -162,7 +163,16 @@ export default function ReliefPage() {
                 <AppText variant="bodyStrong">{formatRM(claim.amount)}</AppText>
               </View>
               {def.requiresReceipt && !claim.receiptUri ? missingBadge : null}
-              <Button title={t('common.delete')} variant="secondary" onPress={() => remove(claim.id).catch(() => {})} />
+              <Button
+                title={t('common.delete')}
+                variant="secondary"
+                onPress={async () => {
+                  const ok = await confirmDelete(
+                    t('confirm.deleteClaim'), t('confirm.deleteClaimBody', { amount: formatRM(claim.amount) }), t('common.delete'), t('common.cancel'),
+                  );
+                  if (ok) remove(claim.id).catch(() => {});
+                }}
+              />
             </View>
           ))}
         </View>

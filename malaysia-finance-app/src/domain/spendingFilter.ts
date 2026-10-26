@@ -92,3 +92,63 @@ export function recentTemplates(expenses: Expense[], count: number): SpendingTem
   }
   return out;
 }
+
+/** Common notes offered before there is any history, with the category they usually belong to. */
+export const DEFAULT_NOTES: { note: string; category: string }[] = [
+  { note: 'Breakfast', category: 'Makan' },
+  { note: 'Lunch', category: 'Makan' },
+  { note: 'Dinner', category: 'Makan' },
+  { note: 'Nasi lemak', category: 'Makan' },
+  { note: 'Teh tarik', category: 'Makan' },
+  { note: 'Coffee', category: 'Makan' },
+  { note: 'Groceries', category: 'Rumah' },
+  { note: 'Petrol', category: 'Transport' },
+  { note: 'Grab', category: 'Transport' },
+  { note: 'Parking', category: 'Transport' },
+  { note: 'Toll', category: 'Transport' },
+  { note: 'LRT / MRT', category: 'Transport' },
+  { note: 'Electricity (TNB)', category: 'Bil' },
+  { note: 'Water', category: 'Bil' },
+  { note: 'Internet', category: 'Bil' },
+  { note: 'Phone bill', category: 'Bil' },
+  { note: 'Rent', category: 'Rumah' },
+  { note: 'Movie', category: 'Hiburan' },
+  { note: 'Clinic', category: 'Kesihatan' },
+  { note: 'Pharmacy', category: 'Kesihatan' },
+  { note: 'Books', category: 'Pendidikan' },
+  { note: 'Tuition', category: 'Pendidikan' },
+];
+
+/** A note to offer while typing: from your own recent spending (re-fills the form) or a common default. */
+export type NoteSuggestion =
+  | { kind: 'recent'; note: string; template: SpendingTemplate }
+  | { kind: 'default'; note: string; category: string };
+
+/**
+ * Notes to offer for what has been typed so far. Your recent notes come first, then the defaults;
+ * notes that start with the text rank above ones that only contain it. With nothing typed, it offers
+ * your most recent notes, topped up with defaults. The note already typed in full is not offered.
+ */
+export function noteSuggestions(query: string, expenses: Expense[], limit = 6): NoteSuggestion[] {
+  const q = query.trim().toLowerCase();
+  const recent: NoteSuggestion[] = recentTemplates(expenses, 50).map((template) => ({ kind: 'recent', note: template.note, template }));
+  const defaults: NoteSuggestion[] = DEFAULT_NOTES.map((d) => ({ kind: 'default', note: d.note, category: d.category }));
+  const rank = (s: NoteSuggestion) => {
+    const n = s.note.toLowerCase();
+    if (q === '') return 0;
+    if (n === q) return -1;
+    return n.startsWith(q) ? 0 : n.includes(q) ? 1 : -1;
+  };
+  const seen = new Set<string>();
+  const out: NoteSuggestion[] = [];
+  for (const pass of [0, 1]) {
+    for (const s of [...recent, ...defaults]) {
+      const key = s.note.toLowerCase();
+      if (rank(s) !== pass || seen.has(key)) continue;
+      seen.add(key);
+      out.push(s);
+      if (out.length === limit) return out;
+    }
+  }
+  return out;
+}

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { memo, useCallback, useMemo, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, TextInput, View } from 'react-native';
 import { LATEST_TAX_YEAR } from '@/data/tax';
 import { dayLabel, monthKey, monthLabel, shiftMonth } from '@/domain/dates';
@@ -19,13 +19,14 @@ import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Chip } from '@/ui/Chip';
+import { confirmDelete } from '@/ui/confirm';
 import { EmptyState } from '@/ui/EmptyState';
 import { HeroCard, onHero } from '@/ui/HeroCard';
 import { IconBadge } from '@/ui/IconBadge';
 import { Screen } from '@/ui/Screen';
 import { Sheet } from '@/ui/Sheet';
 import { SwipeRow } from '@/ui/SwipeRow';
-import { categoryLook, categoryTint, controlHeight, elevation, fontFamily, radius, statusStyle } from '@/ui/theme';
+import { categoryLook, categoryTint, controlHeight, elevation, fontFamily, radius, space, statusStyle } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
 type Item =
@@ -46,7 +47,7 @@ const Row = memo(function Row({
   const { c, scheme } = useTheme();
   const name = category?.name ?? '';
   const tint = categoryTint(name, scheme);
-  const look = categoryLook(name);
+  const look = categoryLook(name, category?.icon);
   const accent = { bg: c.accentSoft, ink: c.accentInk };
   const warn = statusStyle('tight', scheme);
   const tagged = expense.reliefId !== null;
@@ -91,7 +92,8 @@ const Row = memo(function Row({
             {needsReceipt ? pill(warn, t('tax.missingReceipt')) : null}
           </View>
         </View>
-        <AppText variant="bodyStrong">{formatRM(expense.amount)}</AppText>
+        {/* Money out, in red-orange like the reference design. */}
+        <AppText variant="bodyStrong" tone="negative">{formatRM(expense.amount)}</AppText>
       </Pressable>
     </SwipeRow>
   );
@@ -104,6 +106,15 @@ export default function Spending() {
   const [month, setMonth] = useState(thisMonth);
   const [filters, setFilters] = useState<SpendingFilters>(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // A Home tile opens this tab on that category's spending for this month.
+  // `at` changes on every tap, so tapping the same tile again re-applies it.
+  const params = useLocalSearchParams<{ categoryId?: string; at?: string }>();
+  useEffect(() => {
+    const id = Number(params.categoryId);
+    if (!params.categoryId || !Number.isFinite(id)) return;
+    setFilters({ ...EMPTY_FILTERS, categoryId: id });
+    setMonth(thisMonth);
+  }, [params.categoryId, params.at]);
   const { data: expenses, remove } = useExpenses();
   const { data: categories } = useCategories();
   const { data: methods } = usePaymentMethods();
@@ -122,6 +133,7 @@ export default function Spending() {
     [visible, today],
   );
   const categoryById = useMemo(() => new Map(categories.map((cat) => [cat.id, cat])), [categories]);
+  const filterCategory = filters.categoryId !== null ? categoryById.get(filters.categoryId) : undefined;
   const methodById = useMemo(() => new Map(methods.map((m) => [m.id, m.name])), [methods]);
   const methodTotals = useMemo(() => totalsByMethod(inMonth, methods, t('methods.noMethod')), [inMonth, methods]);
   const filterCount = activeFilterCount(filters);
@@ -130,17 +142,55 @@ export default function Spending() {
   const open = useCallback((e: Expense) => {
     if (e.id > 0) router.push({ pathname: '/add-expense', params: { id: String(e.id) } });
   }, []);
-  const del = useCallback((e: Expense) => {
-    remove(e.id).catch(() => {});
-  }, [remove]);
+  const del = useCallback(async (e: Expense) => {
+    const name = e.note || categoryById.get(e.categoryId)?.name || '';
+    const ok = await confirmDelete(
+      t('confirm.deleteSpending'),
+      t('confirm.deleteSpendingBody', { name, amount: formatRM(e.amount) }),
+      t('common.delete'),
+      t('common.cancel'),
+    );
+    if (ok) remove(e.id).catch(() => {});
+  }, [remove, categoryById]);
   const set = (patch: Partial<SpendingFilters>) => setFilters((f) => ({ ...f, ...patch }));
+
+  // Stable, so scrolling and typing in search don't re-render rows that haven't changed.
+  const renderItem = useCallback(
+    ({ item }: { item: Item }) =>
+      item.type === 'header' ? (
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingHorizontal: 4 }}>
+          <AppText variant="eyebrow" tone="muted">
+            {item.label}
+          </AppText>
+          <AppText variant="smallStrong" tone="muted">
+            {formatRM(item.total)}
+          </AppText>
+        </View>
+      ) : (
+        <Row
+          expense={item.expense}
+          category={categoryById.get(item.expense.categoryId)}
+          methodName={item.expense.paymentMethodId === null ? null : methodById.get(item.expense.paymentMethodId) ?? null}
+          onOpen={open}
+          onDelete={del}
+        />
+      ),
+    [categoryById, methodById, open, del],
+  );
 
   return (
     <Screen scroll={false} fab>
       <FlatList
         data={items}
         keyExtractor={(item) => item.key}
-        contentContainerStyle={{ gap: 8, paddingBottom: 100 }}
+        // Long months stay smooth: draw a screenful first, then render ahead in small batches so fast
+        // scrolling doesn't outrun the list. Rows aren't detached when off screen: on Android that left
+        // blank, cut-off rows at the bottom while scrolling.
+        initialNumToRender={12}
+        maxToRenderPerBatch={8}
+        updateCellsBatchingPeriod={30}
+        windowSize={15}
+        contentContainerStyle={{ gap: 8, paddingHorizontal: space.pad, paddingBottom: 48 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
@@ -226,6 +276,19 @@ export default function Spending() {
                 />
               </View>
             </View>
+            {filterCategory ? (
+              <View style={{ flexDirection: 'row' }}>
+                <Chip
+                  compact
+                  selected
+                  icon="close-circle"
+                  color={categoryLook(filterCategory.name, filterCategory.icon).color}
+                  label={filterCategory.name}
+                  accessibilityLabel={t('spending.allCategories', { name: filterCategory.name })}
+                  onPress={() => set({ categoryId: null })}
+                />
+              </View>
+            ) : null}
             {narrowed && inMonth.length > 0 ? (
               <AppText variant="small" tone="muted">
                 {t('spending.showing', { count: visible.length, total: inMonth.length })}
@@ -239,26 +302,7 @@ export default function Spending() {
             text={narrowed && inMonth.length > 0 ? t('spending.noMatch') : t('expense.none')}
           />
         }
-        renderItem={({ item }) =>
-          item.type === 'header' ? (
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingHorizontal: 4 }}>
-              <AppText variant="eyebrow" tone="muted">
-                {item.label}
-              </AppText>
-              <AppText variant="smallStrong" tone="muted">
-                {formatRM(item.total)}
-              </AppText>
-            </View>
-          ) : (
-            <Row
-              expense={item.expense}
-              category={categoryById.get(item.expense.categoryId)}
-              methodName={item.expense.paymentMethodId === null ? null : methodById.get(item.expense.paymentMethodId) ?? null}
-              onOpen={open}
-              onDelete={del}
-            />
-          )
-        }
+        renderItem={renderItem}
       />
 
       <Sheet visible={filtersOpen} title={t('spending.filters')} onClose={() => setFiltersOpen(false)}>
@@ -275,8 +319,8 @@ export default function Spending() {
               <Chip
                 key={cat.id}
                 label={cat.name}
-                icon={categoryLook(cat.name).icon}
-                color={categoryLook(cat.name).color}
+                icon={categoryLook(cat.name, cat.icon).icon}
+                color={categoryLook(cat.name, cat.icon).color}
                 accessibilityLabel={`Filter category ${cat.name}`}
                 selected={filters.categoryId === cat.id}
                 onPress={() => set({ categoryId: cat.id })}

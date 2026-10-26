@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { Share } from 'react-native';
-import Tax from '@/app/(tabs)/tax';
+import Tax from '@/app/tax';
 import TaxPack from '@/app/tax-pack';
 import { freshDb, renderWithData } from './helpers';
 

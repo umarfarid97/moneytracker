@@ -10,11 +10,11 @@ jest.mock('@/notifications', () => ({ scheduleReminders: jest.fn(async () => 0),
 type TestDb = Awaited<ReturnType<typeof freshDb>>;
 beforeEach(() => jest.clearAllMocks());
 
-async function bill(db: TestDb, o: { name: string; amount: number; day: number; start?: string; active?: number; auto?: number; cat?: number | null; method?: number | null; relief?: string | null }) {
+async function bill(db: TestDb, o: { name: string; amount: number; day: number; start?: string; active?: number; auto?: number; cat?: number | null; method?: number | null; relief?: string | null; variable?: number }) {
   await db.run(
-    `INSERT INTO commitments (name, amount, day_of_month, kind, active, category_id, payment_method_id, relief_id, auto_record, start_date)
-     VALUES (?, ?, ?, 'bill', ?, ?, ?, ?, ?, ?)`,
-    [o.name, o.amount, o.day, o.active ?? 1, o.cat ?? null, o.method ?? null, o.relief ?? null, o.auto ?? 0, o.start ?? '2026-10-01'],
+    `INSERT INTO commitments (name, amount, day_of_month, kind, active, category_id, payment_method_id, relief_id, auto_record, start_date, variable)
+     VALUES (?, ?, ?, 'bill', ?, ?, ?, ?, ?, ?, ?)`,
+    [o.name, o.amount, o.day, o.active ?? 1, o.cat ?? null, o.method ?? null, o.relief ?? null, o.auto ?? 0, o.start ?? '2026-10-01', o.variable ?? 0],
   );
 }
 const billSpending = (db: TestDb) =>
@@ -205,3 +205,57 @@ describe('Bills: editing cannot invent payments (review findings)', () => {
     expect(screen.getByText('Due in 27 days')).toBeTruthy();
   });
 });
+
+describe('Bills: fixed or changes monthly', () => {
+  test('a new bill can change monthly: amount is an estimate and it cannot record itself', async () => {
+    const db = await freshDb();
+    await renderWithData(db, <Commitments />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add commitment' })).toBeTruthy());
+    await fireEvent.press(screen.getByRole('button', { name: 'Add commitment' }));
+    expect(screen.getByRole('button', { name: 'Fixed amount' })).toBeSelected();
+    expect(screen.getByLabelText('Record automatically on the due date')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Changes monthly' }));
+    expect(screen.queryByLabelText('Record automatically on the due date')).toBeNull();
+    await fireEvent.changeText(screen.getByLabelText('Name'), 'TNB');
+    await fireEvent.changeText(screen.getByLabelText('Estimated amount'), '150');
+    await fireEvent.changeText(screen.getByLabelText('Day of month'), '28');
+    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(screen.getByText('TNB')).toBeTruthy());
+    expect(await db.get('SELECT amount, variable, auto_record FROM commitments')).toEqual({ amount: 15000, variable: 1, auto_record: 0 });
+    expect(screen.getByText('~RM 150.00')).toBeTruthy();
+    expect(screen.getByText('Due in 4 days · Varies')).toBeTruthy();
+  });
+
+  test('paying a variable bill starts empty, shows the last amount, and the total follows it', async () => {
+    const db = await freshDb();
+    await bill(db, { name: 'TNB', amount: 15000, day: 24, start: '2026-09-01', variable: 1 });
+    await db.run("INSERT INTO expenses (amount, category_id, date, note, commitment_id, due_date) VALUES (13240, 3, '2026-09-24', 'TNB', 1, '2026-09-24')");
+    await renderWithData(db, <Commitments />);
+    await waitFor(() => expect(screen.getByText('~RM 132.40')).toBeTruthy());
+    expect(screen.getByTestId('commitments-total').props.children).toBe('RM 132.40');
+    await fireEvent.press(screen.getByRole('button', { name: 'Mark paid TNB' }));
+    expect(screen.getByText("Enter this month's TNB amount. Last paid RM 132.40.")).toBeTruthy();
+    expect(screen.getByLabelText('Amount').props.value).toBe('');
+    await fireEvent.changeText(screen.getByLabelText('Amount'), '171.05');
+    await fireEvent.press(screen.getByRole('button', { name: 'Confirm paid' }));
+    await waitFor(() => expect(screen.getByText('~RM 171.05')).toBeTruthy());
+    expect(screen.getByTestId('commitments-total').props.children).toBe('RM 171.05');
+  });
+
+  test('existing bills stay fixed, and a variable bill is never recorded automatically', async () => {
+    const db = await freshDb();
+    await bill(db, { name: 'Astro', amount: 8900, day: 5, start: '2026-08-05', auto: 1 });
+    await bill(db, { name: 'TNB', amount: 15000, day: 5, start: '2026-08-05', auto: 1, variable: 1 });
+    await render(
+      <DataProvider db={db}>
+        <BillsSync />
+        <Commitments />
+      </DataProvider>,
+    );
+    await waitFor(async () => expect((await billSpending(db)).length).toBe(3));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect((await billSpending(db)).map((r) => r.note)).toEqual(['Astro', 'Astro', 'Astro']);
+    expect(screen.getByText('RM 89.00')).toBeTruthy();
+  });
+});
+

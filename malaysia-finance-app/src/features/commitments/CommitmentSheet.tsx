@@ -24,7 +24,8 @@ type Props = {
   existing: Commitment | null;
   onClose: () => void;
   onSave: (input: CommitmentInput) => Promise<void>;
-  onDelete?: () => Promise<void>;
+  /** Resolves false when the person backs out of deleting, which keeps the sheet open. */
+  onDelete?: () => Promise<boolean | void>;
 };
 
 const KINDS: CommitmentKind[] = ['bill', 'loan', 'subscription'];
@@ -48,6 +49,7 @@ export function CommitmentSheet({ visible, existing, onClose, onSave, onDelete }
   const [methodId, setMethodId] = useState<number | null>(existing ? existing.paymentMethodId : (methods[0]?.id ?? null));
   const [reliefId, setReliefId] = useState<string | null>(existing?.reliefId ?? null);
   const [auto, setAuto] = useState(existing?.autoRecord ?? false);
+  const [variable, setVariable] = useState(existing?.variable ?? false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -55,12 +57,11 @@ export function CommitmentSheet({ visible, existing, onClose, onSave, onDelete }
   const day = /^\d{1,2}$/.test(dayText.trim()) ? Number(dayText) : NaN;
   const valid = name.trim() !== '' && amount !== null && amount > 0 && day >= 1 && day <= 31;
 
-  async function run(action: () => Promise<void>) {
+  async function run(action: () => Promise<boolean | void>) {
     setBusy(true);
     setError(null);
     try {
-      await action();
-      onClose();
+      if ((await action()) !== false) onClose();
     } catch {
       setError(t('common.saveFailed'));
     } finally {
@@ -93,7 +94,31 @@ export function CommitmentSheet({ visible, existing, onClose, onSave, onDelete }
             style={field}
           />
         </View>
-        <AmountInput label={t('common.amount')} value={amountText} onChange={(text) => setAmountText(text)} />
+        <View style={{ gap: 8 }}>
+          <AppText variant="smallStrong">{t('commitments.type')}</AppText>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Chip
+              icon="lock-closed-outline"
+              label={t('commitments.type.fixed')}
+              selected={!variable}
+              onPress={() => setVariable(false)}
+            />
+            <Chip
+              icon="pulse-outline"
+              label={t('commitments.type.variable')}
+              selected={variable}
+              onPress={() => setVariable(true)}
+            />
+          </View>
+          <AppText variant="small" tone="muted">
+            {t(variable ? 'commitments.type.variableHint' : 'commitments.type.fixedHint')}
+          </AppText>
+        </View>
+        <AmountInput
+          label={t(variable ? 'commitments.estimate' : 'common.amount')}
+          value={amountText}
+          onChange={(text) => setAmountText(text)}
+        />
         <View style={{ gap: 8 }}>
           <AppText variant="smallStrong">{t('commitments.day')}</AppText>
           <TextInput
@@ -145,15 +170,18 @@ export function CommitmentSheet({ visible, existing, onClose, onSave, onDelete }
           <AppText variant="smallStrong">{t('relief.field')}</AppText>
           <ReliefPicker reliefs={reliefs} value={reliefId} onChange={setReliefId} />
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <View style={{ flex: 1, gap: 2 }}>
-            <AppText variant="bodyStrong">{t('commitments.auto')}</AppText>
-            <AppText variant="small" tone="muted">
-              {t('commitments.autoHint')}
-            </AppText>
+        {/* A bill that changes every month can't be recorded for you: its amount is only known when paid. */}
+        {variable ? null : (
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <AppText variant="bodyStrong">{t('commitments.auto')}</AppText>
+              <AppText variant="small" tone="muted">
+                {t('commitments.autoHint')}
+              </AppText>
+            </View>
+            <Switch accessibilityLabel={t('commitments.auto')} value={auto} onValueChange={setAuto} />
           </View>
-          <Switch accessibilityLabel={t('commitments.auto')} value={auto} onValueChange={setAuto} />
-        </View>
+        )}
         {existing ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <AppText variant="bodyStrong">{t('commitments.active')}</AppText>
@@ -172,7 +200,7 @@ export function CommitmentSheet({ visible, existing, onClose, onSave, onDelete }
             run(() =>
               onSave({
                 name: name.trim(), amount: amount ?? 0, dayOfMonth: day, kind, active,
-                categoryId, paymentMethodId: methodId, reliefId, autoRecord: auto,
+                categoryId, paymentMethodId: methodId, reliefId, autoRecord: auto && !variable, variable,
                 startDate: existing?.startDate ?? today,
               }),
             )

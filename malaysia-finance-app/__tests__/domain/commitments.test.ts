@@ -33,7 +33,7 @@ describe('daysUntil', () => {
 describe('monthlyCommitmentTotal', () => {
   const c = (amount: number, active: boolean): Commitment => ({
     id: 1, name: 'x', amount, dayOfMonth: 1, kind: 'bill', active,
-    categoryId: null, paymentMethodId: null, reliefId: null, autoRecord: false, startDate: null, lastAutoDue: null,
+    categoryId: null, paymentMethodId: null, reliefId: null, autoRecord: false, startDate: null, lastAutoDue: null, variable: false,
   });
   test('sums active commitments only', () => {
     expect(monthlyCommitmentTotal([c(100, true), c(250, true), c(999, false)])).toBe(350);

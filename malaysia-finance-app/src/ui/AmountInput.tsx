@@ -16,9 +16,11 @@ type Props = {
   onChange: (text: string, sen: Sen | null) => void;
   autoFocus?: boolean;
   compact?: boolean;
+  /** A bigger field for wide screens, where the amount leads the form. */
+  large?: boolean;
 };
 
-export function AmountInput({ label, value, onChange, autoFocus, compact = false }: Props) {
+export function AmountInput({ label, value, onChange, autoFocus, compact = false, large = false }: Props) {
   const { c, scheme } = useTheme();
   const [focused, setFocused] = useState(false);
   const invalid = value.trim() !== '' && parseRM(value) === null;
@@ -28,7 +30,7 @@ export function AmountInput({ label, value, onChange, autoFocus, compact = false
       <View
         style={[
           {
-            height: compact ? 56 : 64,
+            height: large ? 88 : compact ? 56 : 64,
             borderRadius: radius.control + 2,
             backgroundColor: c.surface,
             borderWidth: 1.5,
@@ -57,7 +59,7 @@ export function AmountInput({ label, value, onChange, autoFocus, compact = false
           placeholderTextColor={c.control}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          style={[{ flex: 1, minWidth: 0, color: c.text, fontFamily: fontFamily.semibold, fontWeight: '700', fontSize: compact ? 26 : 28, fontVariant: ['tabular-nums'] }, NO_WEB_OUTLINE]}
+          style={[{ flex: 1, minWidth: 0, color: c.text, fontFamily: fontFamily.bold, fontSize: large ? 40 : compact ? 26 : 28, fontVariant: ['tabular-nums'] }, NO_WEB_OUTLINE]}
         />
       </View>
       {invalid ? (

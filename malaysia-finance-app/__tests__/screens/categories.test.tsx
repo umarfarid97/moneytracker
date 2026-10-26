@@ -30,6 +30,33 @@ describe('Categories screen', () => {
     expect(screen.getByLabelText('New category name').props.value).toBe('');
   });
 
+  test('adds a category with a chosen icon', async () => {
+    const db = await freshDb();
+    await renderWithData(db, <Categories />);
+    await waitFor(() => expect(screen.getByLabelText('New category name')).toBeTruthy());
+    await fireEvent.press(screen.getByRole('button', { name: 'Choose an icon' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'paw icon' }));
+    await fireEvent.changeText(screen.getByLabelText('New category name'), 'Kucing');
+    await fireEvent.press(screen.getByRole('button', { name: 'Add category' }));
+    await waitFor(() => expect(screen.getByText('Kucing')).toBeTruthy());
+    const row = await db.get<{ icon: string }>("SELECT icon FROM categories WHERE name = 'Kucing'");
+    expect(row?.icon).toBe('paw-outline');
+  });
+
+  test('changes the icon of an existing category', async () => {
+    const db = await freshDb();
+    await renderWithData(db, <Categories />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Change icon for Makan' })).toBeTruthy());
+    await fireEvent.press(screen.getByRole('button', { name: 'Change icon for Makan' }));
+    expect(screen.getByRole('button', { name: 'fast food icon' }).props.accessibilityState).toEqual({ selected: true });
+    await fireEvent.press(screen.getByRole('button', { name: 'pizza icon' }));
+    await waitFor(async () => {
+      const row = await db.get<{ icon: string }>("SELECT icon FROM categories WHERE name = 'Makan'");
+      expect(row?.icon).toBe('pizza-outline');
+    });
+    expect(screen.queryByRole('button', { name: 'pizza icon' })).toBeNull();
+  });
+
   test('refuses a name that is already used, ignoring case', async () => {
     const db = await freshDb();
     await renderWithData(db, <Categories />);

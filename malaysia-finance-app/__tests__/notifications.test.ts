@@ -16,7 +16,7 @@ const n = jest.mocked(Notifications);
 const now = new Date('2026-10-20T04:00:00Z');
 const c = (id: number, name: string, amount: number, dayOfMonth: number, active = true): Commitment => ({
   id, name, amount, dayOfMonth, kind: 'bill', active,
-  categoryId: null, paymentMethodId: null, reliefId: null, autoRecord: false, startDate: null, lastAutoDue: null,
+  categoryId: null, paymentMethodId: null, reliefId: null, autoRecord: false, startDate: null, lastAutoDue: null, variable: false,
 });
 
 beforeEach(() => {

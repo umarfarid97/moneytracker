@@ -1,10 +1,11 @@
 /**
- * Design direction: a vibrant, iOS-like look for a modern SaaS app.
- * - Cool lavender ground with a soft indigo wash at the top, white cards with tinted shadows.
- * - Indigo-to-violet brand gradient on primary buttons and the FAB; each tab's summary sits on a gradient hero card.
- * - Every category has its own colour and icon, used on chips, list rows and tiles.
- * - SF system font with real weights, bold large titles, tabular figures for money.
- * Dark mode follows iOS: near-black ground, #1c1c1e cards, deeper gradients.
+ * Design direction (since 2026-10-25): modelled on the KWSP i-Akaun app.
+ * - Light grey ground, plain white rounded cards with a soft neutral shadow. No gradients.
+ * - One strong royal blue for actions, links, chevrons, the active tab and headline balances.
+ * - Plain black line icons, iOS-style list rows with thin dividers and blue chevrons.
+ * - Green for money in, red-orange for money out.
+ * - A large round blue + in the middle of the tab bar adds spending.
+ * Dark mode keeps the same structure on iOS greys with a lighter blue.
  */
 import type { Ionicons } from '@expo/vector-icons';
 import { Platform, type ViewStyle } from 'react-native';
@@ -14,25 +15,25 @@ export type Scheme = 'light' | 'dark';
 
 export const palette = {
   light: {
-    ground: '#f4f5fb',
+    ground: '#f4f5f7',
     surface: '#ffffff',
-    raised: '#f7f8fc',
-    border: '#e7e8f1',
-    control: '#dcdfea',
-    track: '#eceef6',
-    text: '#0f1222',
-    muted: '#5d6277',
-    accent: '#4f46e5',
+    raised: '#f6f7f9',
+    border: '#e6e8ec',
+    control: '#d8dce3',
+    track: '#e9ecf1',
+    text: '#111318',
+    muted: '#62677a',
+    accent: '#0d5bd3',
     onAccent: '#ffffff',
-    accentSoft: '#ecebfe',
-    accentInk: '#3730a3',
-    positive: '#15803d',
-    negative: '#dc2626',
+    accentSoft: '#e8f0fc',
+    accentInk: '#0a47a6',
+    positive: '#13a150',
+    negative: '#d9430c',
     warning: '#a14a05',
-    /** Brand gradient for primary buttons and the FAB. */
-    brand: ['#4f46e5', '#7c3aed'],
-    /** Soft wash behind the top of every screen. */
-    wash: ['#e6e4ff', '#f4f5fb'],
+    /** Solid: primary buttons and the + use the plain accent. */
+    brand: ['#0d5bd3', '#0d5bd3'],
+    /** No wash: screens sit on the plain ground. */
+    wash: ['#f4f5f7', '#f4f5f7'],
   },
   dark: {
     ground: '#000000',
@@ -43,15 +44,15 @@ export const palette = {
     track: '#2c2c2e',
     text: '#f5f5f7',
     muted: '#9a9aa1',
-    accent: '#8b8cff',
-    onAccent: '#0b0a2e',
-    accentSoft: '#232150',
-    accentInk: '#c4c5ff',
-    positive: '#5fd283',
-    negative: '#ff7b80',
+    accent: '#5b9bff',
+    onAccent: '#04122b',
+    accentSoft: '#13274a',
+    accentInk: '#a9c8ff',
+    positive: '#4fd27f',
+    negative: '#ff8a5c',
     warning: '#f5b565',
-    brand: ['#8b8cff', '#b794ff'],
-    wash: ['#15133a', '#000000'],
+    brand: ['#5b9bff', '#5b9bff'],
+    wash: ['#000000', '#000000'],
   },
 } as const;
 
@@ -61,32 +62,40 @@ export const radius = { card: 22, control: 14, sm: 10, xs: 6, pill: 999 } as con
 export const space = { xs: 4, s: 8, m: 12, gap: 16, pad: 20, xl: 24, xxl: 32 } as const;
 export const controlHeight = 50;
 
-const SYSTEM_FONT = Platform.select({
-  ios: 'System',
-  android: 'sans-serif',
-  default: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-}) as string;
-/** All weights share the system font; weight comes from fontWeight (see AppText). */
-export const fontFamily = { regular: SYSTEM_FONT, medium: SYSTEM_FONT, semibold: SYSTEM_FONT } as const;
+/**
+ * Outfit, a rounded geometric sans close to the KWSP app's font. Each weight is its own loaded family
+ * (see the root layout), so text sets the family for its weight instead of fontWeight.
+ */
+export const fontFamily = {
+  regular: 'Outfit_400Regular',
+  medium: 'Outfit_500Medium',
+  semibold: 'Outfit_600SemiBold',
+  bold: 'Outfit_700Bold',
+} as const;
 
 export const fontSize = { title: 32, section: 20, kpi: 36, body: 16, small: 14 } as const;
 
-/** Soft, slightly indigo elevation for cards; dark mode relies on the lighter surface instead. */
+/**
+ * Soft neutral elevation for cards; dark mode relies on the lighter surface instead.
+ * Android draws every elevation as a real shadow layer, so it gets a light one to keep scrolling smooth.
+ */
 export function elevation(scheme: Scheme): ViewStyle {
   if (scheme === 'dark') return {};
+  if (Platform.OS === 'android') return { elevation: 2 };
   return {
-    shadowColor: '#3b3a8f',
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
+    shadowColor: '#0b1530',
+    shadowOpacity: 0.07,
+    shadowRadius: 20,
     shadowOffset: { width: 0, height: 6 },
     elevation: 3,
   };
 }
 
-/** Coloured glow under a gradient surface, e.g. a hero card or the FAB. */
+/** Lift under a prominent surface such as the tab bar's + button. `color` tints the shadow slightly. */
 export function glow(color: string, scheme: Scheme): ViewStyle {
   if (scheme === 'dark') return {};
-  return { shadowColor: color, shadowOpacity: 0.32, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 6 };
+  if (Platform.OS === 'android') return { elevation: 4 };
+  return { shadowColor: color, shadowOpacity: 0.28, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 6 };
 }
 
 export type Hero = 'brand' | 'ocean' | 'mint' | 'sunset';
@@ -111,52 +120,54 @@ export function heroGradient(hero: Hero, scheme: Scheme): readonly [string, stri
   return HEROES[scheme][hero];
 }
 
-type IconName = keyof typeof Ionicons.glyphMap;
+export type IconName = keyof typeof Ionicons.glyphMap;
 
-/** Each built-in category's icon and colour; white icons on these colours reach 3:1. */
-const CATEGORY_LOOK: Record<string, { icon: IconName; color: string }> = {
-  Makan: { icon: 'fast-food', color: '#ea580c' },
-  Transport: { icon: 'car-sport', color: '#0284c7' },
-  Bil: { icon: 'receipt', color: '#0d9488' },
-  Rumah: { icon: 'home', color: '#16a34a' },
-  Hiburan: { icon: 'film', color: '#db2777' },
-  Kesihatan: { icon: 'heart', color: '#e11d48' },
-  Pendidikan: { icon: 'school', color: '#d97706' },
-  'Lain-lain': { icon: 'apps', color: '#64748b' },
+/** Each built-in category's line icon. Icons are drawn in plain ink (see IconBadge); the colour is the accent. */
+const CATEGORY_ICON: Record<string, IconName> = {
+  Makan: 'fast-food-outline',
+  Transport: 'car-outline',
+  Bil: 'receipt-outline',
+  Rumah: 'home-outline',
+  Hiburan: 'film-outline',
+  Kesihatan: 'heart-outline',
+  Pendidikan: 'school-outline',
+  'Lain-lain': 'apps-outline',
 };
-const CUSTOM_LOOK = { icon: 'pricetag' as IconName, color: '#7c3aed' };
+const CATEGORY_COLOR = palette.light.accent;
 
-/** Icon and colour for a category; categories the user adds share a violet tag. */
-export function categoryLook(name: string): { icon: IconName; color: string } {
-  return CATEGORY_LOOK[name] ?? CUSTOM_LOOK;
+/** Line icons a user can pick for a category, grouped loosely by theme (food, travel, home, health, ...). */
+export const CATEGORY_ICONS: readonly IconName[] = [
+  'fast-food-outline', 'restaurant-outline', 'cafe-outline', 'pizza-outline', 'beer-outline', 'wine-outline',
+  'ice-cream-outline', 'nutrition-outline', 'fish-outline', 'cart-outline', 'basket-outline', 'bag-handle-outline',
+  'storefront-outline', 'car-outline', 'car-sport-outline', 'bus-outline', 'train-outline', 'subway-outline',
+  'bicycle-outline', 'airplane-outline', 'boat-outline', 'speedometer-outline', 'navigate-outline', 'home-outline',
+  'bed-outline', 'receipt-outline', 'flash-outline', 'water-outline', 'wifi-outline', 'phone-portrait-outline',
+  'tv-outline', 'construct-outline', 'hammer-outline', 'key-outline', 'bulb-outline', 'flame-outline',
+  'heart-outline', 'medkit-outline', 'fitness-outline', 'barbell-outline', 'bandage-outline', 'pulse-outline',
+  'people-outline', 'person-outline', 'happy-outline', 'paw-outline', 'flower-outline', 'leaf-outline',
+  'rose-outline', 'school-outline', 'book-outline', 'library-outline', 'briefcase-outline', 'business-outline',
+  'laptop-outline', 'desktop-outline', 'calculator-outline', 'pencil-outline', 'film-outline', 'musical-notes-outline',
+  'game-controller-outline', 'headset-outline', 'camera-outline', 'ticket-outline', 'football-outline',
+  'basketball-outline', 'golf-outline', 'tennisball-outline', 'wallet-outline', 'card-outline', 'cash-outline',
+  'pricetag-outline', 'pricetags-outline', 'gift-outline', 'diamond-outline', 'trending-up-outline',
+  'stats-chart-outline', 'pie-chart-outline', 'shield-checkmark-outline', 'umbrella-outline', 'shirt-outline',
+  'cut-outline', 'glasses-outline', 'sparkles-outline', 'globe-outline', 'planet-outline', 'star-outline',
+  'moon-outline', 'sunny-outline', 'apps-outline',
+];
+const PICKABLE = new Set<string>(CATEGORY_ICONS);
+
+/**
+ * Icon and colour for a category. An icon the user picked wins; otherwise built-in categories have their own
+ * and the ones the user adds get a tag. (Older rows store names like "utensils", which aren't pickable icons.)
+ */
+export function categoryLook(name: string, icon?: string): { icon: IconName; color: string } {
+  const picked = icon !== undefined && PICKABLE.has(icon) ? (icon as IconName) : undefined;
+  return { icon: picked ?? CATEGORY_ICON[name] ?? 'pricetag-outline', color: CATEGORY_COLOR };
 }
 
-const TINTS: Record<Scheme, Record<string, { bg: string; ink: string }>> = {
-  light: {
-    Makan: { bg: '#ffe8d2', ink: '#6b3305' },
-    Transport: { bg: '#dcf1ff', ink: '#0a3a80' },
-    Bil: { bg: '#d6f3ee', ink: '#0b4a42' },
-    Rumah: { bg: '#e6f1d2', ink: '#34500f' },
-    Hiburan: { bg: '#fde2eb', ink: '#7a1237' },
-    Kesihatan: { bg: '#ffe1dc', ink: '#7a1f14' },
-    Pendidikan: { bg: '#f5ebcd', ink: '#5a4207' },
-    'Lain-lain': { bg: '#eef1f4', ink: '#3a3d40' },
-  },
-  dark: {
-    Makan: { bg: '#3b2410', ink: '#ffd3a8' },
-    Transport: { bg: '#12304f', ink: '#bcdcff' },
-    Bil: { bg: '#0f3a35', ink: '#a9ebe0' },
-    Rumah: { bg: '#26380f', ink: '#cfe8a4' },
-    Hiburan: { bg: '#4a1a2b', ink: '#ffc4d6' },
-    Kesihatan: { bg: '#4a1d17', ink: '#ffc7bf' },
-    Pendidikan: { bg: '#3d3010', ink: '#f0dd9a' },
-    'Lain-lain': { bg: '#2a2f34', ink: '#d3d7db' },
-  },
-};
-
-/** Tint for a category tile; categories the user adds fall back to the neutral tint. */
-export function categoryTint(name: string, scheme: Scheme): { bg: string; ink: string } {
-  return TINTS[scheme][name] ?? TINTS[scheme]['Lain-lain'];
+/** Tint for a category tag. The design keeps tags neutral, so every category shares the same grey. */
+export function categoryTint(_name: string, scheme: Scheme): { bg: string; ink: string } {
+  return scheme === 'dark' ? { bg: '#2a2f34', ink: '#d3d7db' } : { bg: '#eef0f3', ink: '#3a3f4b' };
 }
 
 const STATUS: Record<Scheme, Record<Status, { bg: string; ink: string }>> = {

@@ -8,7 +8,7 @@ const { router } = jest.requireMock('expo-router');
 beforeEach(() => jest.clearAllMocks());
 
 describe('Home', () => {
-  test('shows today spent and a tile per budgeted category with left amount and status', async () => {
+  test('shows today spent and a tile per category with left amount and status', async () => {
     const db = await freshDb();
     await setBudgetRow(db, CAT.Makan, '2026-10', 60000);
     await setBudgetRow(db, CAT.Hiburan, '2026-10', 20000);
@@ -22,7 +22,7 @@ describe('Home', () => {
     expect(screen.getByText('On track')).toBeTruthy();
     expect(screen.getByText('RM 60.00 over')).toBeTruthy();
     expect(screen.getByText('Over budget')).toBeTruthy();
-    expect(screen.queryByText('Transport')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Transport, RM 0.00 spent, No budget' })).toBeTruthy();
   });
 
   test('says how much is left for today', async () => {
@@ -50,6 +50,32 @@ describe('Home', () => {
     await waitFor(() => expect(screen.getByText('Set a budget to see what is left for today')).toBeTruthy());
     await fireEvent.press(screen.getByRole('button', { name: 'Set a budget' }));
     expect(router.push).toHaveBeenCalledWith('/budget');
+  });
+
+  test('without budgets every category still has a tile that says no budget is set', async () => {
+    const db = await freshDb();
+    await addExpenseRow(db, CAT.Makan, 1250, '2026-10-24');
+    await renderWithData(db, <Home />);
+    const makan = await screen.findByRole('button', { name: 'Makan, RM 12.50 spent, No budget' });
+    expect(screen.getAllByText('No budget').length).toBeGreaterThan(1);
+    await fireEvent.press(makan);
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/spending',
+      params: expect.objectContaining({ categoryId: String(CAT.Makan) }),
+    });
+  });
+
+  test('tapping a budget tile opens that category\'s spending', async () => {
+    const db = await freshDb();
+    await setBudgetRow(db, CAT.Makan, '2026-10', 60000);
+    await renderWithData(db, <Home />);
+    await waitFor(() => expect(screen.getByText('RM 600.00 left')).toBeTruthy());
+    await fireEvent.press(screen.getByText('RM 600.00 left'));
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/spending',
+      params: expect.objectContaining({ categoryId: String(CAT.Makan) }),
+    });
+    expect(router.push).not.toHaveBeenCalledWith('/budget');
   });
 
   test('shows RM 0.00 when nothing was spent today', async () => {

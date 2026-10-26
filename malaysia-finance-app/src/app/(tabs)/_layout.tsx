@@ -1,68 +1,119 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Tabs } from 'expo-router';
-import { Platform, View } from 'react-native';
+import { router, Tabs } from 'expo-router';
+import type { BottomTabBarProps } from 'expo-router/tabs';
+import { Pressable, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { t } from '@/i18n/t';
 import type { StringKey } from '@/i18n/en';
-import { fontFamily, radius } from '@/ui/theme';
+import { AppText } from '@/ui/AppText';
+import { PressableScale } from '@/ui/PressableScale';
+import { glow } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-const TABS: { name: string; label: StringKey; icon: IconName; active: IconName }[] = [
-  { name: 'index', label: 'tab.home', icon: 'home-outline', active: 'home' },
-  { name: 'spending', label: 'tab.spending', icon: 'wallet-outline', active: 'wallet' },
-  { name: 'commitments', label: 'tab.commitments', icon: 'calendar-outline', active: 'calendar' },
-  { name: 'tax', label: 'tab.tax', icon: 'document-text-outline', active: 'document-text' },
-  { name: 'more', label: 'tab.more', icon: 'ellipsis-horizontal-circle-outline', active: 'ellipsis-horizontal-circle' },
+const TABS: { name: string; label: StringKey; icon: IconName }[] = [
+  { name: 'index', label: 'tab.home', icon: 'home-outline' },
+  { name: 'spending', label: 'tab.spending', icon: 'wallet-outline' },
+  { name: 'commitments', label: 'tab.commitments', icon: 'calendar-outline' },
+  { name: 'more', label: 'tab.more', icon: 'ellipsis-horizontal-circle-outline' },
 ];
+const ICONS = Object.fromEntries(TABS.map((tab) => [tab.name, tab.icon]));
 
-export default function TabsLayout() {
+const PLUS = 64;
+/** How many tabs sit left of the + (the rest go to its right). */
+const LEFT = 2;
+
+/**
+ * Bottom bar: line icons with labels, the active tab in blue, and a large round blue + in the middle that
+ * adds spending (it opens the Add spending screen; it is not a tab).
+ */
+function TabBar({ state, descriptors, navigateToTab, emitter }: BottomTabBarProps) {
   const { c, scheme } = useTheme();
+  const insets = useSafeAreaInsets();
+
+  const item = (index: number) => {
+    const route = state.routes[index];
+    const focused = index === state.index;
+    const label = descriptors[route.key].options.title ?? route.name;
+    const color = focused ? c.accent : c.text;
+    const onPress = () => {
+      const event = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+      if (!focused && !event.defaultPrevented) navigateToTab(route.key);
+    };
+    return (
+      <Pressable
+        key={route.key}
+        accessibilityRole="tab"
+        accessibilityLabel={label}
+        accessibilityState={{ selected: focused }}
+        onPress={onPress}
+        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4, paddingTop: 10 }}
+      >
+        <Ionicons name={ICONS[route.name] ?? 'ellipse-outline'} size={25} color={color} />
+        <AppText variant="small" color={color} numberOfLines={1} style={{ fontSize: 12, lineHeight: 16 }}>
+          {label}
+        </AppText>
+      </Pressable>
+    );
+  };
+
+  const left = state.routes.slice(0, LEFT).map((_, i) => item(i));
+  const right = state.routes.slice(LEFT).map((_, i) => item(LEFT + i));
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: c.accent,
-        tabBarInactiveTintColor: c.muted,
-        tabBarLabelStyle: { fontFamily: fontFamily.medium, fontWeight: '600', fontSize: 11 },
-        tabBarStyle: {
-          backgroundColor: c.surface,
-          borderTopWidth: 0,
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 24,
-          shadowColor: '#3b3a8f',
-          shadowOpacity: scheme === 'dark' ? 0 : 0.08,
-          shadowRadius: 20,
-          shadowOffset: { width: 0, height: -4 },
-          elevation: 12,
-          paddingTop: 6,
-          // Browser previews have no safe-area inset, so give the labels room.
-          ...(Platform.OS === 'web' ? { height: 70, paddingBottom: 10 } : null),
-        },
-        sceneStyle: { backgroundColor: c.ground },
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'stretch',
+        height: 72 + insets.bottom,
+        paddingBottom: insets.bottom + 6,
+        backgroundColor: c.surface,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        shadowColor: '#0b1530',
+        shadowOpacity: scheme === 'dark' ? 0 : 0.07,
+        shadowRadius: 20,
+        shadowOffset: { width: 0, height: -4 },
+        elevation: 12,
       }}
     >
+      <View style={{ flex: 1, flexDirection: 'row' }}>{left}</View>
+      <View style={{ width: PLUS + 16, alignItems: 'center' }}>
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel={t('expense.add')}
+          onPress={() => router.push('/add-expense')}
+          pressedScale={0.92}
+          style={[
+            {
+              marginTop: -PLUS / 3,
+              width: PLUS,
+              height: PLUS,
+              borderRadius: PLUS / 2,
+              backgroundColor: c.accent,
+              alignItems: 'center',
+              justifyContent: 'center',
+            },
+            glow(c.accent, scheme),
+          ]}
+        >
+          <Ionicons name="add" size={36} color={c.onAccent} />
+        </PressableScale>
+      </View>
+      <View style={{ flex: 1, flexDirection: 'row' }}>{right}</View>
+    </View>
+  );
+}
+
+export default function TabsLayout() {
+  const { c } = useTheme();
+  return (
+    <Tabs
+      tabBar={(props) => <TabBar {...props} />}
+      screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: c.ground } }}
+    >
       {TABS.map((tab) => (
-        <Tabs.Screen
-          key={tab.name}
-          name={tab.name}
-          options={{
-            title: t(tab.label),
-            // The active tab's icon sits in a tinted capsule, like iOS 18's tab bars.
-            tabBarIcon: ({ color, focused }) => (
-              <View
-                style={{
-                  paddingHorizontal: 14,
-                  paddingVertical: 3,
-                  borderRadius: radius.pill,
-                  backgroundColor: focused ? c.accentSoft : 'transparent',
-                }}
-              >
-                <Ionicons name={focused ? tab.active : tab.icon} size={22} color={String(color)} />
-              </View>
-            ),
-          }}
-        />
+        <Tabs.Screen key={tab.name} name={tab.name} options={{ title: t(tab.label) }} />
       ))}
     </Tabs>
   );

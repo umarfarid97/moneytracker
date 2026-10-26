@@ -48,6 +48,13 @@ describe('categoryTint', () => {
 });
 
 describe('categoryLook', () => {
+  test('a picked icon wins over the built-in one; old stored names are ignored', () => {
+    expect(categoryLook('Makan', 'pizza-outline').icon).toBe('pizza-outline');
+    expect(categoryLook('Makan', 'utensils').icon).toBe('fast-food-outline');
+    expect(categoryLook('Kucing', 'dots').icon).toBe('pricetag-outline');
+    expect(categoryLook('Kucing', 'paw-outline').icon).toBe('paw-outline');
+  });
+
   test('white icons stand out (3:1) on every category colour', () => {
     for (const name of [...CATEGORIES, 'Kucing']) expect(contrast('#ffffff', categoryLook(name).color)).toBeGreaterThanOrEqual(3);
   });

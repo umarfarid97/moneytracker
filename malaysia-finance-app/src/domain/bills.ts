@@ -48,6 +48,25 @@ export function billStatus(i: { commitment: Commitment; today: string; paidDueDa
   return { state: 'upcoming', dueDate: next, days: untilNext };
 }
 
+/**
+ * What a bill is expected to cost this month. A variable bill uses what was last paid, since that is
+ * closer than the estimate typed in when it was added; a fixed bill is always its amount.
+ */
+export function billEstimate(c: Commitment, expenses: Expense[]): number {
+  if (!c.variable) return c.amount;
+  return lastPaidFor(c.id, expenses) ?? c.amount;
+}
+
+/** The latest amount paid for a bill (by due date), or null when it was never paid. */
+export function lastPaidFor(commitmentId: number, expenses: Expense[]): number | null {
+  let best: Expense | null = null;
+  for (const e of expenses) {
+    if (e.commitmentId !== commitmentId || e.dueDate === null) continue;
+    if (!best || (e.dueDate as string) > (best.dueDate as string)) best = e;
+  }
+  return best ? best.amount : null;
+}
+
 /** The due dates of one bill that already have their spending. */
 export function paidDueDatesFor(commitmentId: number, expenses: Expense[]): string[] {
   return expenses.filter((e) => e.commitmentId === commitmentId && e.dueDate !== null).map((e) => e.dueDate as string);

@@ -4,7 +4,7 @@ jest.mock('react-native-reanimated', () => {
   const { View } = require('react-native');
   return {
     __esModule: true,
-    default: { View },
+    default: { View, createAnimatedComponent: (component) => component },
     useSharedValue: (value) => ({ value }),
     useAnimatedStyle: (factory) => factory(),
     withTiming: (value) => value,
@@ -49,3 +49,5 @@ jest.mock('@react-native-community/datetimepicker', () => {
     DateTimePickerAndroid: { open: jest.fn() },
   };
 });
+// Delete confirmations answer "Delete" unless a test says otherwise.
+jest.mock('@/ui/confirm', () => ({ confirmDelete: jest.fn(() => Promise.resolve(true)) }));

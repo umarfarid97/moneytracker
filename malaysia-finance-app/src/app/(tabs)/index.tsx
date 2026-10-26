@@ -27,6 +27,7 @@ export default function Home() {
     () => buildHome({ categories, expenses, budgets, today }),
     [categories, expenses, budgets, today],
   );
+  const categoryById = useMemo(() => new Map(categories.map((cat) => [cat.id, cat])), [categories]);
   const tileWidth = (width - space.pad * 2 - space.gap) / 2;
 
   return (
@@ -57,22 +58,27 @@ export default function Home() {
           </View>
         )}
       </HeroCard>
-      {home.hasBudget ? (
+      {home.tiles.length > 0 ? (
         <>
           <AppText variant="section">{t('home.categories')}</AppText>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.gap }}>
             {home.tiles.map((tile) => (
-              <View key={tile.categoryId} style={{ width: tileWidth }}>
+              <View key={tile.categoryId} style={{ width: tileWidth, flexDirection: 'row' }}>
                 <Tile
                   title={tile.name}
                   tintName={tile.name}
-                  status={tile.status}
+                  icon={categoryById.get(tile.categoryId)?.icon}
+                  status={tile.limit === null ? null : tile.status}
                   leftText={
-                    tile.left >= 0
-                      ? t('home.left', { amount: formatRM(tile.left) })
-                      : t('home.over', { amount: formatRM(-tile.left) })
+                    tile.limit === null
+                      ? t('home.spent', { amount: formatRM(tile.spent) })
+                      : tile.left >= 0
+                        ? t('home.left', { amount: formatRM(tile.left) })
+                        : t('home.over', { amount: formatRM(-tile.left) })
                   }
-                  onPress={() => router.push('/budget')}
+                  onPress={() =>
+                    router.push({ pathname: '/spending', params: { categoryId: String(tile.categoryId), at: String(Date.now()) } })
+                  }
                 />
               </View>
             ))}

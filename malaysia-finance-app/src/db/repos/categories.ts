@@ -22,6 +22,10 @@ export async function renameCategory(db: Db, id: number, name: string): Promise<
   await db.run('UPDATE categories SET name = ? WHERE id = ?', [name, id]);
 }
 
+export async function setCategoryIcon(db: Db, id: number, icon: string): Promise<void> {
+  await db.run('UPDATE categories SET icon = ? WHERE id = ?', [icon, id]);
+}
+
 /** Past expenses are kept: they move to the fallback category. Its budgets are removed. */
 export async function deleteCategory(db: Db, id: number): Promise<void> {
   const target = await db.get<{ name: string }>('SELECT name FROM categories WHERE id = ?', [id]);
