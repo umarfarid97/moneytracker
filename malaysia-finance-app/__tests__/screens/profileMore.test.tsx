@@ -43,6 +43,14 @@ describe('More tab', () => {
     expect(screen.queryByText('Language')).toBeNull();
   });
 
+  test('Settings sets the default currency for new spending', async () => {
+    const db = await freshDb();
+    await renderWithData(db, <Settings />);
+    await waitFor(() => expect(screen.getByText('Default currency')).toBeTruthy());
+    await fireEvent.press(screen.getByRole('button', { name: 'USD' }));
+    await waitFor(async () => expect((await db.get<{ c: string }>('SELECT default_currency AS c FROM profile'))!.c).toBe('USD'));
+  });
+
   test('Settings links to app lock, reminders, categories, payment methods and backup', async () => {
     const db = await freshDb();
     await renderWithData(db, <Settings />);

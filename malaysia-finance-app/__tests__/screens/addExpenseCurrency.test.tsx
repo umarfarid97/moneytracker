@@ -16,15 +16,37 @@ beforeEach(() => {
   fetchRates.mockResolvedValue(null);
 });
 
+const pickCurrency = async (code: string) => {
+  await fireEvent.press(screen.getByRole('button', { name: 'Change currency, now RM' }));
+  await fireEvent.press(screen.getByRole('button', { name: code }));
+};
 const type = (label: string, text: string) => fireEvent.changeText(screen.getByLabelText(label), text);
 
 describe('Spending in another currency', () => {
+  test('shows only the RM tag until it is tapped, and no currency row or rate for ringgit', async () => {
+    const db = await freshDb();
+    await renderWithData(db, <AddExpense />);
+    await waitFor(() => expect(screen.getByLabelText('Amount')).toBeTruthy());
+    expect(screen.getByText('RM')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'SGD' })).toBeNull();
+    expect(screen.queryByLabelText('1 SGD = RM')).toBeNull();
+  });
+
+  test('a default currency chosen in Settings is used for new spending', async () => {
+    fetchRates.mockResolvedValue({ perUnit: { SGD: 3.3 }, fetchedAt: Date.now() });
+    const db = await freshDb();
+    await db.run("UPDATE profile SET default_currency = 'SGD'");
+    await renderWithData(db, <AddExpense />);
+    await waitFor(() => expect(screen.getByLabelText('Amount in SGD')).toBeTruthy());
+    await waitFor(() => expect(screen.getByLabelText('1 SGD = RM').props.value).toBe('3.3'));
+  });
+
   test('uses the live rate, shows what it counts as, and stores both amounts', async () => {
     fetchRates.mockResolvedValue({ perUnit: { SGD: 3.3 }, fetchedAt: Date.now() });
     const db = await freshDb();
     await renderWithData(db, <AddExpense />);
     await waitFor(() => expect(screen.getByLabelText('Amount')).toBeTruthy());
-    await fireEvent.press(screen.getByRole('button', { name: 'SGD' }));
+    await pickCurrency('SGD');
     await waitFor(() => expect(screen.getByLabelText('1 SGD = RM').props.value).toBe('3.3'));
     await type('Amount in SGD', '20');
     expect(screen.getByTestId('fx-counts').props.children).toBe('Counts as RM 66.00');
@@ -39,7 +61,7 @@ describe('Spending in another currency', () => {
     const db = await freshDb();
     await renderWithData(db, <AddExpense />);
     await waitFor(() => expect(screen.getByLabelText('Amount')).toBeTruthy());
-    await fireEvent.press(screen.getByRole('button', { name: 'USD' }));
+    await pickCurrency('USD');
     await type('Amount in USD', '10');
     // No rate yet: nothing to save.
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
@@ -55,7 +77,7 @@ describe('Spending in another currency', () => {
     const db = await freshDb();
     await renderWithData(db, <AddExpense />);
     await waitFor(() => expect(screen.getByLabelText('Amount')).toBeTruthy());
-    await fireEvent.press(screen.getByRole('button', { name: 'THB' }));
+    await pickCurrency('THB');
     await waitFor(() => expect(screen.getByLabelText('1 THB = RM').props.value).toBe('0.13'));
     await type('Amount in THB', '1000');
     expect(screen.getByTestId('fx-counts').props.children).toBe('Counts as RM 130.00');

@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { CURRENCIES, HOME_CURRENCY } from '@/domain/fx';
+import { useProfile } from '@/hooks/useProfile';
 import { LANGUAGES, LANGUAGE_NAMES, setLanguage, useLanguage } from '@/i18n/language';
 import { t } from '@/i18n/t';
 import type { StringKey } from '@/i18n/en';
@@ -28,6 +30,10 @@ export default function Settings() {
   const { c } = useTheme();
   const appearance = useAppearance();
   const language = useLanguage();
+  const { data: profile, save } = useProfile();
+  const pickCurrency = (code: string) => {
+    if (code !== profile.defaultCurrency) save({ ...profile, defaultCurrency: code }).catch(() => {});
+  };
   return (
     <Screen>
       <BackButton />
@@ -45,6 +51,15 @@ export default function Settings() {
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {LANGUAGES.map((l) => (
             <Chip key={l} label={LANGUAGE_NAMES[l]} selected={language === l} onPress={() => setLanguage(l)} />
+          ))}
+        </View>
+      </View>
+      <View style={{ gap: 8 }}>
+        <AppText variant="section">{t('settings.defaultCurrency')}</AppText>
+        <AppText variant="small" tone="muted">{t('settings.defaultCurrencyHint')}</AppText>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {[HOME_CURRENCY, ...CURRENCIES.map((x) => x.code)].map((code) => (
+            <Chip key={code} label={code} selected={profile.defaultCurrency === code} onPress={() => pickCurrency(code)} />
           ))}
         </View>
       </View>

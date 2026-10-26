@@ -138,6 +138,10 @@ export const MIGRATIONS: string[] = [
   `
   ALTER TABLE owed_entries ADD COLUMN counter TEXT NOT NULL DEFAULT '';
   `,
+  // 13: the currency new spending starts in (MYR unless changed in Settings), synced with the profile
+  `
+  ALTER TABLE profile ADD COLUMN default_currency TEXT NOT NULL DEFAULT 'MYR';
+  `,
 ];
 
 function projectsMigration(): string {

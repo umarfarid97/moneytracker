@@ -27,9 +27,10 @@ describe('Budget period', () => {
     expect(screen.getByText('1 day left')).toBeTruthy();
     expect(await startDay(db)).toBe(25);
 
+    await fireEvent.press(screen.getByRole('button', { name: 'Edit budgets' }));
     await fireEvent.changeText(screen.getByLabelText('Makan'), '600');
     await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(router.back).toHaveBeenCalled());
+    await waitFor(() => expect(screen.queryByLabelText('Makan')).toBeNull());
     expect(await db.all('SELECT category_id, month, limit_sen FROM budgets')).toEqual([
       { category_id: CAT.Makan, month: '2026-09', limit_sen: 60000 },
     ]);

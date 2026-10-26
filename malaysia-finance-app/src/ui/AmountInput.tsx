@@ -1,5 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Platform, TextInput, View, type TextStyle } from 'react-native';
+import { Platform, Pressable, TextInput, View, type TextStyle } from 'react-native';
 import { parseRM, type Sen } from '@/domain/money';
 import { t } from '@/i18n/t';
 import { AppText } from './AppText';
@@ -21,9 +22,11 @@ type Props = {
   large?: boolean;
   /** Shown in the badge instead of RM, for spending in another currency. */
   currency?: string;
+  /** Makes the currency tag tappable, e.g. to choose another currency. */
+  onCurrencyPress?: () => void;
 };
 
-export function AmountInput({ label, value, onChange, autoFocus, compact = false, large = false, currency = 'RM' }: Props) {
+export function AmountInput({ label, value, onChange, autoFocus, compact = false, large = false, currency = 'RM', onCurrencyPress }: Props) {
   const { c, scheme } = useTheme();
   const [focused, setFocused] = useState(false);
   const invalid = value.trim() !== '' && parseRM(value) === null;
@@ -46,11 +49,24 @@ export function AmountInput({ label, value, onChange, autoFocus, compact = false
           elevation(scheme),
         ]}
       >
-        <View style={{ backgroundColor: c.accentSoft, borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 3 }}>
-          <AppText variant="smallStrong" color={c.accentInk}>
-            {currency}
-          </AppText>
-        </View>
+        {onCurrencyPress ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('fx.change', { code: currency })}
+            hitSlop={8}
+            onPress={onCurrencyPress}
+            style={{ backgroundColor: c.accentSoft, borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 3, flexDirection: 'row', alignItems: 'center', gap: 2 }}
+          >
+            <AppText variant="smallStrong" color={c.accentInk}>{currency}</AppText>
+            <Ionicons name="chevron-down" size={12} color={c.accentInk} />
+          </Pressable>
+        ) : (
+          <View style={{ backgroundColor: c.accentSoft, borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 3 }}>
+            <AppText variant="smallStrong" color={c.accentInk}>
+              {currency}
+            </AppText>
+          </View>
+        )}
         <TextInput
           accessibilityLabel={label}
           autoFocus={autoFocus}

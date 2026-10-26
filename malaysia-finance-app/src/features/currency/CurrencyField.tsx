@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { CURRENCIES, HOME_CURRENCY, rateToInput } from '@/domain/fx';
 import { formatRM, type Sen } from '@/domain/money';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
@@ -7,6 +7,7 @@ import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
 import { Chip } from '@/ui/Chip';
 import { TextField } from '@/features/wealth/TextField';
+import { Sheet } from '@/ui/Sheet';
 
 export type CurrencyChoice = {
   /** MYR, or the code of the currency the spending was paid in. */
@@ -18,6 +19,31 @@ export type CurrencyChoice = {
 };
 
 export const RINGGIT: CurrencyChoice = { code: HOME_CURRENCY, rateText: '', manual: false };
+
+/** A fresh choice of currency: the rate fills in from the live (or saved) one. */
+export function choiceFor(code: string): CurrencyChoice {
+  return code === HOME_CURRENCY ? RINGGIT : { code, rateText: '', manual: false };
+}
+
+type PickerProps = {
+  visible: boolean;
+  value: string;
+  onPick: (code: string) => void;
+  onClose: () => void;
+};
+
+/** Pop-up list of currencies, opened by tapping the currency tag on an amount. */
+export function CurrencyPickerSheet({ visible, value, onPick, onClose }: PickerProps) {
+  return (
+    <Sheet visible={visible} title={t('fx.field')} onClose={onClose}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {[HOME_CURRENCY, ...CURRENCIES.map((c) => c.code)].map((code) => (
+          <Chip key={code} label={code} selected={value === code} onPress={() => { onPick(code); onClose(); }} />
+        ))}
+      </View>
+    </Sheet>
+  );
+}
 
 function ago(ms: number): string {
   const minutes = Math.max(0, Math.round((Date.now() - ms) / 60_000));
@@ -33,7 +59,7 @@ type Props = {
   ringgit: Sen | null;
 };
 
-/** Pick the currency something was paid in; for a foreign one the live rate fills in, and can be overridden. */
+/** For a foreign currency: the rate (live or saved, and can be overridden) and what the amount counts as in ringgit. Nothing for ringgit. */
 export function CurrencyField({ value, onChange, ringgit }: Props) {
   const foreign = value.code !== HOME_CURRENCY;
   const { rates, status, refresh } = useExchangeRates(foreign);
@@ -52,22 +78,10 @@ export function CurrencyField({ value, onChange, ringgit }: Props) {
     : status === 'saved' && rates ? t('fx.saved', { when: ago(rates.fetchedAt) })
     : t('fx.none');
 
+  if (!foreign) return null;
   return (
     <View style={{ gap: 8 }}>
-      <AppText variant="eyebrow" tone="muted">{t('fx.field')}</AppText>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 6, paddingRight: 16 }} keyboardShouldPersistTaps="handled">
-        {[HOME_CURRENCY, ...CURRENCIES.map((c) => c.code)].map((code) => (
-          <Chip
-            compact
-            key={code}
-            label={code}
-            selected={value.code === code}
-            onPress={() => onChange(code === HOME_CURRENCY ? RINGGIT : { code, rateText: '', manual: false })}
-          />
-        ))}
-      </ScrollView>
-      {foreign ? (
-        <View style={{ gap: 8 }}>
+      <View style={{ gap: 8 }}>
           <TextField
             label={t('fx.rate', { code: value.code })}
             value={value.rateText}
@@ -84,8 +98,7 @@ export function CurrencyField({ value, onChange, ringgit }: Props) {
           {ringgit !== null ? (
             <AppText variant="bodyStrong" testID="fx-counts">{t('fx.counts', { amount: formatRM(ringgit) })}</AppText>
           ) : null}
-        </View>
-      ) : null}
+      </View>
     </View>
   );
 }

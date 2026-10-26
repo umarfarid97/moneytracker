@@ -108,3 +108,20 @@ describe('reminder lead time in backup and sync', () => {
     expect((await getProfile(b)).reminderDays).toBe(7);
   });
 });
+
+describe('default currency in backup and sync', () => {
+  it('starts as ringgit, round trips in a backup, and an older backup leaves it alone', async () => {
+    const a = await freshDb();
+    expect((await getProfile(a)).defaultCurrency).toBe('MYR');
+    await saveProfile(a, { ...(await getProfile(a)), defaultCurrency: 'SGD' });
+    const b = await freshDb();
+    await restoreBackup(b, await parseBackup(b, await createBackup(a)));
+    expect((await getProfile(b)).defaultCurrency).toBe('SGD');
+
+    const snap = await exportSnapshot(a);
+    delete snap.profile!.default_currency;
+    const c = await freshDb();
+    await restoreBackup(c, await parseBackup(c, JSON.stringify(snap)));
+    expect((await getProfile(c)).defaultCurrency).toBe('MYR');
+  });
+});

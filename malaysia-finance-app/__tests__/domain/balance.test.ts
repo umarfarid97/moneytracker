@@ -2,7 +2,7 @@ import { balanceLeft } from '@/domain/balance';
 import type { Commitment, Expense, Profile } from '@/domain/types';
 
 const profile: Profile = {
-  grossMonthly: 600000, netMonthlyOverride: 500000, epfRate: 0.11, socsoMonthly: 0, eisMonthly: 0, budgetStartDay: 1, reminderDays: 1,
+  grossMonthly: 600000, netMonthlyOverride: 500000, epfRate: 0.11, socsoMonthly: 0, eisMonthly: 0, budgetStartDay: 1, reminderDays: 1, defaultCurrency: 'MYR',
 };
 const spend = (amount: number, date: string, extra: Partial<Expense> = {}): Expense => ({
   id: 1, amount, categoryId: 1, date, note: '', receiptUri: null, paymentMethodId: null, reliefId: null,

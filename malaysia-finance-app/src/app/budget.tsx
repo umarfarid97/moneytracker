@@ -49,6 +49,8 @@ export default function Budget() {
   const [drafts, setDrafts] = useState<Record<number, string>>(saved);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Amounts are read-only until Edit budgets is tapped.
+  const [editing, setEditing] = useState(false);
   const [dayText, setDayText] = useState(startDay === 1 ? '' : String(startDay));
 
   /** The budget period changes with the start day, so budgets already typed in are left as they were. */
@@ -73,6 +75,12 @@ export default function Budget() {
   const allValid = parsed.every((p) => p.text === '' || p.sen !== null);
   const total = parsed.reduce((sum, p) => sum + (p.sen ?? 0), 0);
 
+  function cancelEdit() {
+    setDrafts(saved);
+    setError(null);
+    setEditing(false);
+  }
+
   async function save() {
     if (!allValid || busy) return;
     setBusy(true);
@@ -86,7 +94,7 @@ export default function Budget() {
           await set({ categoryId: category.id, month, limit: sen });
         }
       }
-      router.back();
+      setEditing(false);
     } catch {
       setError(t('common.saveFailed'));
     } finally {
@@ -183,24 +191,57 @@ export default function Budget() {
           {formatRM(total)}
         </AppText>
       </Card>
-      <Button title={t('budget.copyLast')} variant="secondary" onPress={() => copyFromLast().catch(() => setError(t('common.saveFailed')))} />
-      <Button title={t('budget.seeReport')} variant="secondary" onPress={() => router.push('/reports')} />
-      <View style={{ gap: 16 }}>
-        {parsed.map(({ category }) => (
-          <AmountInput
-            key={category.id}
-            label={category.name}
-            value={drafts[category.id] ?? ''}
-            onChange={(next) => setDrafts((prev) => ({ ...prev, [category.id]: next }))}
-          />
-        ))}
-      </View>
-      {error ? (
-        <AppText variant="small" tone="negative">
-          {error}
-        </AppText>
-      ) : null}
-      <Button title={t('common.save')} onPress={save} disabled={!allValid || busy} />
+      {editing ? (
+        <>
+          <Button title={t('budget.copyLast')} variant="secondary" onPress={() => copyFromLast().catch(() => setError(t('common.saveFailed')))} />
+          <View style={{ gap: 16 }}>
+            {parsed.map(({ category }) => (
+              <AmountInput
+                key={category.id}
+                label={category.name}
+                value={drafts[category.id] ?? ''}
+                onChange={(next) => setDrafts((prev) => ({ ...prev, [category.id]: next }))}
+              />
+            ))}
+          </View>
+          {error ? (
+            <AppText variant="small" tone="negative">
+              {error}
+            </AppText>
+          ) : null}
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flex: 1 }}>
+              <Button title={t('common.cancel')} variant="secondary" onPress={cancelEdit} disabled={busy} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button title={t('common.save')} onPress={save} disabled={!allValid || busy} />
+            </View>
+          </View>
+        </>
+      ) : (
+        <>
+          <Card style={{ gap: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <AppText variant="bodyStrong" style={{ flex: 1 }}>{t('budget.amounts')}</AppText>
+              <Chip compact icon="create-outline" label={t('budget.edit')} onPress={() => setEditing(true)} />
+            </View>
+            {parsed.map(({ category, sen }) => (
+              <View key={category.id} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
+                <AppText variant="body" style={{ flex: 1 }}>{category.name}</AppText>
+                <AppText variant="bodyStrong" tone={sen === null ? 'muted' : undefined} testID={`budget-amount-${category.id}`}>
+                  {sen === null ? t('budget.notSet') : formatRM(sen)}
+                </AppText>
+              </View>
+            ))}
+          </Card>
+          {error ? (
+            <AppText variant="small" tone="negative">
+              {error}
+            </AppText>
+          ) : null}
+          <Button title={t('budget.seeReport')} variant="secondary" onPress={() => router.push('/reports')} />
+        </>
+      )}
     </Screen>
   );
 }

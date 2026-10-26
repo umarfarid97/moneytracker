@@ -95,6 +95,16 @@ describe('Buku 555', () => {
 });
 
 describe('A book', () => {
+  test('the entry types use the simple words Lent and Pay back', async () => {
+    const db = await freshDb();
+    await trip(db);
+    await renderWithData(db, <Project />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add entry' })).toBeTruthy());
+    await press('Add entry');
+    expect(screen.getByRole('button', { name: 'Lent' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Pay back' })).toBeTruthy();
+  });
+
   test('an entry inside a book is recorded under the book and adds a new person to it', async () => {
     const db = await freshDb();
     const id = await trip(db);

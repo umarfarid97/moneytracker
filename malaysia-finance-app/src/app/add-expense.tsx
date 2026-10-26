@@ -22,7 +22,7 @@ import { AmountInput } from '@/ui/AmountInput';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
-import { CurrencyField, RINGGIT, type CurrencyChoice } from '@/features/currency/CurrencyField';
+import { choiceFor, CurrencyField, CurrencyPickerSheet, RINGGIT, type CurrencyChoice } from '@/features/currency/CurrencyField';
 import { ExpenseDetails } from '@/features/spending/ExpenseDetails';
 import { Chip } from '@/ui/Chip';
 import { confirmDelete } from '@/ui/confirm';
@@ -51,7 +51,8 @@ export default function AddExpense() {
   const [amountText, setAmountText] = useState('');
   const [categoryId, setCategoryId] = useState<number>(categories[0]?.id ?? 1);
   const [methodId, setMethodId] = useState<number | null>(editingId === null ? (methods[0]?.id ?? null) : null);
-  const [currency, setCurrency] = useState<CurrencyChoice>(RINGGIT);
+  const [currency, setCurrency] = useState<CurrencyChoice>(() => choiceFor(profile.defaultCurrency));
+  const [pickCurrency, setPickCurrency] = useState(false);
   const [date, setDate] = useState(today);
   const [note, setNote] = useState('');
   const [reliefId, setReliefId] = useState<string | null>(null);
@@ -220,17 +221,18 @@ export default function AddExpense() {
       large={wide}
       label={abroad ? t('fx.amount', { code: currency.code }) : t('common.amount')}
       currency={abroad ? currency.code : undefined}
+      onCurrencyPress={() => setPickCurrency(true)}
       value={amountText}
       onChange={(text) => setAmountText(text)}
       autoFocus={!existing}
     />
   );
 
-  const currencyCard = (
+  const currencyCard = abroad ? (
     <Card style={wide ? undefined : { padding: 14 }}>
       <CurrencyField value={currency} onChange={setCurrency} ringgit={amount} />
     </Card>
-  );
+  ) : null;
 
   const categoryField = (
     <View style={{ gap: wide ? 10 : 4 }}>
@@ -476,6 +478,12 @@ export default function AddExpense() {
           {reliefCard}
         </>
       )}
+      <CurrencyPickerSheet
+        visible={pickCurrency}
+        value={currency.code}
+        onPick={(code) => setCurrency((prev) => (prev.code === code ? prev : choiceFor(code)))}
+        onClose={() => setPickCurrency(false)}
+      />
     </Screen>
   );
 }
