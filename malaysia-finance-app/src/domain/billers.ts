@@ -59,10 +59,6 @@ export const BILLERS: Biller[] = [
   bill('redone', 'redONE', 'mobile', 'r1', '#e31837', WHITE, { aliases: ['red one'] }),
 
   bill('astro', 'Astro', 'tv', 'A', '#0033a0', WHITE, { aliases: ['astro njoi', 'astro tv', 'astro go', 'astro fibre'], category: 'Hiburan' }),
-  bill('netflix', 'Netflix', 'tv', 'N', '#e50914', WHITE, { kind: 'subscription', category: 'Hiburan' }),
-  bill('disney', 'Disney+ Hotstar', 'tv', 'D+', '#113ccf', WHITE, { kind: 'subscription', category: 'Hiburan', aliases: ['disney plus', 'disney', 'hotstar'] }),
-  bill('spotify', 'Spotify', 'tv', 'S', '#1db954', '#111111', { kind: 'subscription', category: 'Hiburan' }),
-  bill('youtube', 'YouTube Premium', 'tv', 'YT', '#ff0000', WHITE, { kind: 'subscription', category: 'Hiburan', aliases: ['youtube'] }),
 
   bill('aia', 'AIA', 'insurance', 'AIA', '#d31145', WHITE, { aliases: ['aia public takaful', 'aia insurance'] }),
   bill('great-eastern', 'Great Eastern', 'insurance', 'GE', '#e30613', WHITE, { aliases: ['great eastern life', 'ge life'] }),

@@ -35,11 +35,11 @@ describe('biller presets', () => {
     ]);
   });
 
-  test('other groups are one tap away and a subscription biller switches the kind and category', async () => {
+  test('the Subscription type has its own quick picks, which set the kind and category', async () => {
     const db = await freshDb();
     await openAdd(db);
-    await fireEvent.press(screen.getByRole('button', { name: 'TV and streaming' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Biller Netflix' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Subscription' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Subscription Netflix' }));
     await fireEvent.changeText(screen.getByLabelText('Amount'), '55');
     await fireEvent.changeText(screen.getByLabelText('Day of month'), '12');
     await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
@@ -47,6 +47,19 @@ describe('biller presets', () => {
     expect(await rows(db)).toEqual([
       expect.objectContaining({ name: 'Netflix', kind: 'subscription', variable: 0, category_id: 5 }),
     ]);
+  });
+
+  test('Subscription quick picks are separate from bill billers and grouped', async () => {
+    const db = await freshDb();
+    await openAdd(db);
+    expect(screen.queryByRole('button', { name: 'Subscription Netflix' })).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Subscription' }));
+    expect(screen.queryByRole('button', { name: 'Biller TNB electricity' })).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Cloud storage' }));
+    expect(screen.getByRole('button', { name: 'Subscription Google One' })).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'AI' }));
+    expect(screen.getByRole('button', { name: 'Subscription Claude' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Subscription ChatGPT' })).toBeTruthy();
   });
 
   test('a bill named after a biller gets its badge in the list', async () => {

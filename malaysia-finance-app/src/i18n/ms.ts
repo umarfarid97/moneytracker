@@ -482,6 +482,13 @@ export const ms: Record<StringKey, string> = {
   'billers.group.tv': 'TV dan penstriman',
   'billers.group.insurance': 'Insurans',
   'billers.group.home': 'Rumah',
+  'subscriptions.pick': 'Pilih langganan',
+  'subscriptions.group.streaming': 'Penstriman',
+  'subscriptions.group.cloud': 'Storan awan',
+  'subscriptions.group.ai': 'AI',
+  'subscriptions.group.apps': 'Aplikasi',
+  'subscriptions.group.life': 'Gaya hidup',
+  'subscriptions.hint': 'Ketik satu untuk isi nama dan kategori. Kemudian tambah jumlah dan hari ia dicaj.',
 
   'loans.type': 'Jenis pinjaman',
   'loans.type.home': 'Pinjaman rumah',
