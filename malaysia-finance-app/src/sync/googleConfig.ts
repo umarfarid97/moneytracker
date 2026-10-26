@@ -4,7 +4,7 @@
  * project for package my.duit.app and the signing key's SHA-1. While this is empty, Drive sync shows as
  * unavailable and everything else works.
  */
-export const GOOGLE_WEB_CLIENT_ID: string = '';
+export const GOOGLE_WEB_CLIENT_ID: string = '253956095950-6jiouhu3p7lhkdu1vrjpp6j48i7bm1q6.apps.googleusercontent.com';
 
 /** Only the app's own hidden folder in the user's Drive: Duit cannot see any other file. */
 export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
