@@ -1,4 +1,5 @@
 import { loansBillers } from './loansBillers';
+import { lockRemindersEn } from './lockReminders';
 import { statementImport } from './statementImport';
 import { reportsEn } from './reports';
 
@@ -535,6 +536,7 @@ export const en = {
   'income.emptyHint': 'Add something that repeats, like rent, and it is recorded for you on its day each month.',
 
   ...loansBillers,
+  ...lockRemindersEn,
   ...statementImport,
   ...reportsEn,
 } as const;

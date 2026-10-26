@@ -11,7 +11,9 @@ import { BillsSync } from '@/features/commitments/BillsSync';
 import { IncomeSync } from '@/features/income/IncomeSync';
 import { RemindersSync } from '@/features/commitments/RemindersSync';
 import { useLanguage } from '@/i18n/language';
+import { AppLockGate } from '@/features/security/AppLockGate';
 import { DataProvider } from '@/hooks/DataProvider';
+import { QuickAddSync } from '@/quickAdd/QuickAddSync';
 import { SyncProvider } from '@/sync/SyncProvider';
 import { useTheme } from '@/ui/useTheme';
 
@@ -34,13 +36,16 @@ export default function RootLayout() {
           <BillsSync />
           <IncomeSync />
           <RemindersSync />
+          <QuickAddSync />
           <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
           <SyncProvider>
-            {/* Screens read strings through t(), so a new language needs a fresh render of the navigator. */}
-            <Stack key={language} screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.ground } }}>
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="add-expense" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
-            </Stack>
+            <AppLockGate>
+              {/* Screens read strings through t(), so a new language needs a fresh render of the navigator. */}
+              <Stack key={language} screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.ground } }}>
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="add-expense" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+              </Stack>
+            </AppLockGate>
           </SyncProvider>
         </DataProvider>
       </SafeAreaProvider>

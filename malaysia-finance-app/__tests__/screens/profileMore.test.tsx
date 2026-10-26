@@ -19,6 +19,8 @@ describe('More tab', () => {
       ['Payment methods', '/payment-methods'],
       ['Tax calculator', '/tax-calculator'],
       ['Loan calculator', '/loan-calculator'],
+      ['App lock', '/security'],
+      ['Reminders & quick add', '/notifications-settings'],
       ['Backup & sync', '/backup'],
     ] as const) {
       await fireEvent.press(screen.getByText(label));

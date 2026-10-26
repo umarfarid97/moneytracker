@@ -121,6 +121,10 @@ export const MIGRATIONS: string[] = [
   wealthMigration(),
   // 8: spending in a foreign currency, money lent to or borrowed from people, extra recurring income
   extrasMigration(),
+  // 9: how many days before a bill or loan is due its reminder fires (0 = on the day), synced with the profile
+  `
+  ALTER TABLE profile ADD COLUMN reminder_days INTEGER NOT NULL DEFAULT 1 CHECK (reminder_days BETWEEN 0 AND 7);
+  `,
 ];
 
 /** New tables that sync: each gets a uid and edit time from the start, and the same triggers as the older ones. */

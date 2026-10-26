@@ -12,7 +12,7 @@ import { IconBadge } from '@/ui/IconBadge';
 import { Screen } from '@/ui/Screen';
 import { useTheme } from '@/ui/useTheme';
 
-type Path = '/wealth' | '/backup' | '/tax' | '/profile' | '/budget' | '/categories' | '/payment-methods' | '/tax-calculator' | '/loan-calculator' | '/reports' | '/net-worth' | '/import-statement' | '/owed' | '/income';
+type Path = '/wealth' | '/backup' | '/tax' | '/profile' | '/budget' | '/categories' | '/payment-methods' | '/tax-calculator' | '/loan-calculator' | '/reports' | '/net-worth' | '/import-statement' | '/owed' | '/income' | '/security' | '/notifications-settings';
 
 const ITEMS: { label: StringKey; path: Path; icon: keyof typeof Ionicons.glyphMap; color: string }[] = [
   { label: 'more.profile', path: '/profile', icon: 'person', color: '#4f46e5' },
@@ -27,6 +27,8 @@ const ITEMS: { label: StringKey; path: Path; icon: keyof typeof Ionicons.glyphMa
   { label: 'tax.title', path: '/tax', icon: 'document-text', color: '#0d5bd3' },
   { label: 'more.taxCalc', path: '/tax-calculator', icon: 'calculator', color: '#db2777' },
   { label: 'more.loan', path: '/loan-calculator', icon: 'home', color: '#7c3aed' },
+  { label: 'more.security', path: '/security', icon: 'lock-closed', color: '#0d5bd3' },
+  { label: 'more.notifications', path: '/notifications-settings', icon: 'notifications', color: '#ea580c' },
   { label: 'more.import', path: '/import-statement', icon: 'document-text', color: '#0d5bd3' },
   { label: 'more.backup', path: '/backup', icon: 'cloud-upload', color: '#0d5bd3' },
 ];

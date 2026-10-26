@@ -1,4 +1,5 @@
 import type { StringKey } from './en';
+import { lockRemindersMs } from './lockReminders';
 import { statementImportMs } from './statementImport';
 import { reportsMs } from './reports';
 
@@ -500,6 +501,7 @@ export const ms: Record<StringKey, string> = {
   'budget.daysLeft': '{count} hari lagi',
   'budget.daysLeft1': '1 hari lagi',
 
+  ...lockRemindersMs,
   'more.owed': 'Siapa berhutang dengan saya',
   'more.income': 'Pendapatan tambahan',
   'fx.field': 'Mata wang',
