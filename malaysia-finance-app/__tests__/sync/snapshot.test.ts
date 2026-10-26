@@ -317,3 +317,23 @@ describe('foreign currency, owed money and extra income', () => {
     expect(await b.all('SELECT name FROM income_entries')).toEqual([{ name: 'Rent' }]);
   });
 });
+
+describe('owed entries by event', () => {
+  it('keeps the event through export and merge', async () => {
+    const a = await freshDb();
+    const b = await freshDb();
+    await a.run(`INSERT INTO owed_entries (person, kind, amount, date, event) VALUES ('Aina', 'lent', 5000, '2026-10-20', 'Penang trip')`);
+    const snap = await exportSnapshot(a);
+    expect(snap.tables.owed_entries[0]).toMatchObject({ event: 'Penang trip' });
+    await sync(b, snap);
+    expect(await b.get('SELECT event FROM owed_entries')).toEqual({ event: 'Penang trip' });
+  });
+
+  it('a backup from before events restores with no event', async () => {
+    const db = await freshDb();
+    const old = JSON.parse(JSON.stringify(await exportSnapshot(await freshDb()))) as Record<string, any>;
+    old.tables.owed_entries = [{ uid: 'old1', updated_at: 5, person: 'Aina', kind: 'lent', amount: 100, date: '2026-10-01', note: '' }];
+    await restoreSnapshot(db, withAllTables(old as any));
+    expect(await db.get('SELECT person, event FROM owed_entries')).toEqual({ person: 'Aina', event: '' });
+  });
+});

@@ -125,7 +125,7 @@ export const MIGRATIONS: string[] = [
   `
   ALTER TABLE profile ADD COLUMN reminder_days INTEGER NOT NULL DEFAULT 1 CHECK (reminder_days BETWEEN 0 AND 7);
   `,
-  // 10: the event (trip, dinner, ...) a lent or split amount belongs to
+  // 10: lent, borrowed and split money grouped by event (a trip, a dinner); '' means no event
   `
   ALTER TABLE owed_entries ADD COLUMN event TEXT NOT NULL DEFAULT '';
   `,

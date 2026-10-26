@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { formatRM, parseRM } from '@/domain/money';
-import { normalizeName, splitByAmounts, splitEqually } from '@/domain/owed';
+import { normalizeName, sameName, splitBill, type SplitMode } from '@/domain/owed';
+import type { Category } from '@/domain/types';
 import { TextField } from '@/features/wealth/TextField';
 import { t } from '@/i18n/t';
 import { AmountInput } from '@/ui/AmountInput';
@@ -9,47 +10,61 @@ import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { Chip } from '@/ui/Chip';
 import { Sheet } from '@/ui/Sheet';
-import type { Category } from '@/domain/types';
+import { EventPicker } from './EventPicker';
 
 export type SplitInput = {
   total: number;
-  others: string[];
+  /** What each other person owes, in sen. */
+  parts: { name: string; amount: number }[];
+  /** Your own part: the total minus what the others owe. */
+  mine: number;
   note: string;
-  /** The occasion this bill belongs to, or empty. */
   event: string;
-  /** What each person owes, by name, when the bill isn't split equally. */
-  amounts?: Record<string, number>;
   /** Category to record my share as spending under, or null to record nothing. */
   categoryId: number | null;
 };
 
 type Props = {
   people: string[];
-  /** Events used before, offered as chips. */
   events: string[];
+  /** Event to start with (when splitting from inside an event). */
+  event?: string;
   categories: Category[];
   onClose: () => void;
   onSave: (input: SplitInput) => Promise<void>;
 };
 
-/** Split a bill you paid with friends: equally, or with a different amount for each person. */
-export function SplitSheet({ people, events, categories, onClose, onSave }: Props) {
+const MODES: SplitMode[] = ['equal', 'amount', 'percent', 'shares'];
+
+/** Number typed for one person: sen for amounts, a plain number for percent and shares. Null when empty or invalid. */
+function valueOf(mode: SplitMode, text: string): number | null {
+  if (text.trim() === '') return null;
+  if (mode === 'amount') return parseRM(text);
+  const n = Number(text);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+/** Split a bill you paid between you and friends: equally, or with a different amount, percent or share for each. */
+export function SplitSheet({ people, events, event: startEvent, categories, onClose, onSave }: Props) {
   const [total, setTotal] = useState('');
+  const [mode, setMode] = useState<SplitMode>('equal');
   const [chosen, setChosen] = useState<string[]>([]);
+  // What was typed for each person, kept per mode so switching back does not lose it.
+  const [typed, setTyped] = useState<Record<string, string>>({});
+  const [myShares, setMyShares] = useState('1');
   const [extra, setExtra] = useState('');
   const [note, setNote] = useState('');
-  const [event, setEvent] = useState('');
-  const [custom, setCustom] = useState(false);
-  const [amounts, setAmounts] = useState<Record<string, string>>({});
+  const [event, setEvent] = useState(startEvent ?? '');
   const [record, setRecord] = useState(false);
   const [categoryId, setCategoryId] = useState<number | null>(categories[0]?.id ?? null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const known = [...people, ...chosen.filter((c) => !people.some((p) => p.toLowerCase() === c.toLowerCase()))];
-  const isChosen = (name: string) => chosen.some((c) => c.toLowerCase() === name.toLowerCase());
+  const known = [...people, ...chosen.filter((c) => !people.some((p) => sameName(p, c)))];
+  const isChosen = (name: string) => chosen.some((c) => sameName(c, name));
   const toggle = (name: string) =>
-    setChosen((prev) => (isChosen(name) ? prev.filter((c) => c.toLowerCase() !== name.toLowerCase()) : [...prev, name]));
+    setChosen((prev) => (isChosen(name) ? prev.filter((c) => !sameName(c, name)) : [...prev, name]));
+  const key = (name: string) => `${mode}|${name.toLowerCase()}`;
 
   function addExtra() {
     const name = normalizeName(extra);
@@ -58,22 +73,26 @@ export function SplitSheet({ people, events, categories, onClose, onSave }: Prop
   }
 
   const sen = parseRM(total);
-  const given = Object.fromEntries(chosen.map((name) => [name, parseRM(amounts[name] ?? '') ?? 0]));
-  const equal = sen !== null ? splitEqually(sen, chosen) : { share: 0, mine: 0 };
-  const byAmount = sen !== null ? splitByAmounts(sen, chosen.map((person) => ({ person, amount: given[person] }))) : null;
-  const mine = custom ? byAmount?.mine ?? 0 : equal.mine;
-  const valid = sen !== null && sen > 0 && chosen.length > 0
-    && (custom ? byAmount !== null && byAmount.shares.length > 0 : equal.share > 0);
-  const unequalOver = custom && sen !== null && byAmount === null;
+  const values = chosen.map((name) => valueOf(mode, typed[key(name)] ?? ''));
+  const sharesMine = valueOf('shares', myShares);
+  const result =
+    sen !== null && sen > 0 && chosen.length > 0 && (mode === 'equal' || values.every((v) => v !== null)) && (mode !== 'shares' || (sharesMine !== null && sharesMine > 0))
+      ? splitBill({
+          total: sen, mode, myShares: sharesMine ?? 1,
+          others: chosen.map((name, i) => ({ name, value: values[i] ?? 0 })),
+        })
+      : null;
+  const valid = result !== null && result.ok;
+  const percentLeft = mode === 'percent' ? 100 - values.reduce<number>((s, v) => s + (v ?? 0), 0) : null;
 
   async function save() {
-    if (!valid || sen === null) return;
+    if (!result || !valid || sen === null) return;
     setBusy(true);
     setError(null);
     try {
       await onSave({
-        total: sen, others: chosen, note: note.trim(), event: normalizeName(event),
-        amounts: custom ? given : undefined, categoryId: record ? categoryId : null,
+        total: sen, parts: result.parts, mine: result.mine, note: note.trim(), event: normalizeName(event),
+        categoryId: record ? categoryId : null,
       });
       onClose();
     } catch {
@@ -88,14 +107,7 @@ export function SplitSheet({ people, events, categories, onClose, onSave }: Prop
       <View style={{ gap: 16 }}>
         <AmountInput label={t('split.total')} value={total} onChange={setTotal} compact autoFocus />
         <TextField label={t('split.note')} value={note} onChange={setNote} maxLength={80} />
-        <TextField label={t('owed.event')} value={event} onChange={setEvent} maxLength={40} />
-        {events.length > 0 ? (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {events.map((name) => (
-              <Chip key={name} compact label={name} selected={normalizeName(event).toLowerCase() === name.toLowerCase()} onPress={() => setEvent(name)} />
-            ))}
-          </View>
-        ) : null}
+        <EventPicker value={event} onChange={setEvent} events={events} />
         <View style={{ gap: 8 }}>
           <AppText variant="eyebrow" tone="muted">{t('split.with')}</AppText>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -112,35 +124,55 @@ export function SplitSheet({ people, events, categories, onClose, onSave }: Prop
             </View>
           </View>
         </View>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Chip label={t('split.equal')} selected={!custom} onPress={() => setCustom(false)} />
-          <Chip label={t('split.custom')} selected={custom} onPress={() => setCustom(true)} />
+
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {MODES.map((m) => (
+            <Chip key={m} compact label={t(`split.mode.${m}`)} selected={mode === m} onPress={() => setMode(m)} />
+          ))}
         </View>
-        {custom && chosen.length > 0 ? (
-          <View style={{ gap: 8 }}>
+
+        {mode !== 'equal' && chosen.length > 0 ? (
+          <View style={{ gap: 10 }}>
             {chosen.map((name) => (
-              <AmountInput
+              <TextField
                 key={name}
-                label={t('split.owes', { name })}
-                value={amounts[name] ?? ''}
-                onChange={(v) => setAmounts((prev) => ({ ...prev, [name]: v }))}
-                compact
+                label={t(`split.value.${mode}`, { name })}
+                value={typed[key(name)] ?? ''}
+                numeric
+                decimals={2}
+                onChange={(text) => setTyped((prev) => ({ ...prev, [key(name)]: text }))}
               />
             ))}
+            {mode === 'shares' ? (
+              <TextField label={t('split.myShares')} value={myShares} numeric decimals={2} onChange={setMyShares} />
+            ) : null}
           </View>
         ) : null}
-        {sen !== null && sen > 0 && chosen.length > 0 ? (
+
+        {result ? (
           <View style={{ gap: 2 }}>
-            {custom ? null : <AppText testID="split-each" variant="bodyStrong">{t('split.each', { amount: formatRM(equal.share) })}</AppText>}
-            {unequalOver ? (
-              <AppText testID="split-over" variant="small" tone="negative">{t('split.over')}</AppText>
+            {mode === 'equal' ? (
+              <AppText testID="split-each" variant="bodyStrong">{t('split.each', { amount: formatRM(result.parts[0]?.amount ?? 0) })}</AppText>
             ) : (
-              <AppText testID="split-mine" variant="small" tone="muted">{t('split.mine', { amount: formatRM(mine) })}</AppText>
+              result.parts.map((p) => (
+                <AppText key={p.name} variant="bodyStrong">{t('split.owes', { name: p.name, amount: formatRM(p.amount) })}</AppText>
+              ))
             )}
+            {result.mine >= 0 ? (
+              <AppText testID="split-mine" variant="small" tone="muted">
+                {mode === 'equal' || mode === 'shares' ? t('split.mine', { amount: formatRM(result.mine) }) : t('split.left', { amount: formatRM(result.mine) })}
+              </AppText>
+            ) : (
+              <AppText testID="split-mine" variant="small" tone="negative">{t('split.over', { amount: formatRM(-result.mine) })}</AppText>
+            )}
+            {percentLeft !== null && percentLeft >= 0 ? (
+              <AppText variant="small" tone="muted">{t('split.percentLeft', { percent: Number(percentLeft.toFixed(2)) })}</AppText>
+            ) : null}
           </View>
         ) : (
           <AppText variant="small" tone="muted">{t('split.needPeople')}</AppText>
         )}
+
         <Chip label={t('split.recordMine')} selected={record} onPress={() => setRecord((r) => !r)} />
         {record ? (
           <View style={{ gap: 8 }}>

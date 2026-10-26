@@ -1,8 +1,8 @@
-import { balances, eventBalances, settleEvent, settleUp, splitByAmounts, splitEntries, splitEqually, totals, type OwedEntry } from '@/domain/owed';
+import { balances, eventSummaries, settleUp, splitBill, splitEntries, splitEqually, totals, type OwedEntry } from '@/domain/owed';
 
 let id = 0;
-const entry = (person: string, kind: OwedEntry['kind'], amount: number, date = '2026-10-01', event = ''): OwedEntry => ({
-  id: ++id, person, kind, amount, date, note: '', event,
+const entry = (person: string, kind: OwedEntry['kind'], amount: number, date = '2026-10-01'): OwedEntry => ({
+  id: ++id, person, kind, amount, date, note: '', event: '',
 });
 
 describe('who owes me', () => {
@@ -54,45 +54,80 @@ describe('who owes me', () => {
   test('splitting with nobody records nothing', () => {
     expect(splitEntries({ total: 500, others: [], date: '2026-10-26', note: '' }).entries).toEqual([]);
   });
+
+  test('settling up inside an event keeps the entry in that event', () => {
+    const [p] = balances([entry('A', 'lent', 3000)]);
+    expect(settleUp(p, '2026-10-26', 'Penang trip')).toMatchObject({ kind: 'repaid', event: 'Penang trip' });
+  });
 });
 
-describe('split with different amounts', () => {
-  test('each person owes their own amount and the rest is mine', () => {
-    const r = splitEntries({ total: 10000, others: ['Aina', 'Ben'], date: '2026-10-26', note: 'Dinner', event: 'Penang trip', amounts: { Aina: 2500, Ben: 4000 } });
+describe('split with different parts', () => {
+  const others = (...values: number[]) => values.map((value, i) => ({ name: ['A', 'B', 'C'][i], value }));
+
+  test('different amounts: you keep what is left', () => {
+    const r = splitBill({ total: 10000, mode: 'amount', others: others(2500, 4000) });
+    expect(r.parts).toEqual([{ name: 'A', amount: 2500 }, { name: 'B', amount: 4000 }]);
     expect(r.mine).toBe(3500);
-    expect(r.entries.map((e) => [e.person, e.amount, e.event])).toEqual([['Aina', 2500, 'Penang trip'], ['Ben', 4000, 'Penang trip']]);
+    expect(r.ok).toBe(true);
   });
 
-  test('amounts above the total are refused, zero amounts are skipped, repeated names add up', () => {
-    expect(splitByAmounts(1000, [{ person: 'A', amount: 600 }, { person: 'B', amount: 500 }])).toBeNull();
-    expect(splitByAmounts(1000, [{ person: 'A', amount: 0 }, { person: 'B', amount: 300 }])).toEqual({ mine: 700, shares: [{ person: 'B', amount: 300 }] });
-    expect(splitByAmounts(1000, [{ person: 'Aina', amount: 200 }, { person: ' aina ', amount: 300 }])?.shares).toEqual([{ person: 'Aina', amount: 500 }]);
+  test('amounts that add up to more than the bill are not allowed', () => {
+    const r = splitBill({ total: 10000, mode: 'amount', others: others(6000, 5000) });
+    expect(r.mine).toBe(-1000);
+    expect(r.ok).toBe(false);
+  });
+
+  test('percentages round to the sen and the total always matches', () => {
+    const r = splitBill({ total: 10001, mode: 'percent', others: others(33.33, 33.33) });
+    expect(r.parts.map((p) => p.amount)).toEqual([3333, 3333]);
+    expect(r.mine + r.parts.reduce((s, p) => s + p.amount, 0)).toBe(10001);
+    expect(r.ok).toBe(true);
+    expect(splitBill({ total: 10000, mode: 'percent', others: others(60, 50) }).ok).toBe(false);
+  });
+
+  test('shares: you hold your own shares, and rounding sen stay with you', () => {
+    const r = splitBill({ total: 10000, mode: 'shares', myShares: 1, others: others(2, 1) });
+    expect(r.parts.map((p) => p.amount)).toEqual([5000, 2500]);
+    expect(r.mine).toBe(2500);
+    const odd = splitBill({ total: 10000, mode: 'shares', myShares: 1, others: others(1, 1) });
+    expect(odd.parts.map((p) => p.amount)).toEqual([3333, 3333]);
+    expect(odd.mine).toBe(3334);
+  });
+
+  test('a person with nothing to pay is not ok', () => {
+    expect(splitBill({ total: 10000, mode: 'amount', others: others(0, 1000) }).ok).toBe(false);
+  });
+
+  test('entries carry the event and the custom amounts', () => {
+    const { entries, mine } = splitEntries({
+      total: 9000, others: ['A', 'B'], mode: 'amount', values: [2000, 3000], date: '2026-10-26', note: 'Hotel', event: 'Penang trip',
+    });
+    expect(entries.map((e) => [e.person, e.amount, e.event])).toEqual([['A', 2000, 'Penang trip'], ['B', 3000, 'Penang trip']]);
+    expect(mine).toBe(4000);
   });
 });
 
-describe('by event', () => {
-  const all = [
-    entry('Aina', 'lent', 5000, '2026-10-01', 'Penang trip'),
-    entry('Ben', 'lent', 3000, '2026-10-01', 'Penang trip'),
-    entry('Aina', 'repaid', 5000, '2026-10-02', 'penang trip'),
-    entry('Aina', 'lent', 1000, '2026-10-03', 'Dinner'),
-    entry('Chen', 'lent', 700),
-  ];
-
-  test('groups by event ignoring case, unsettled first, entries without an event last', () => {
-    const list = eventBalances(all);
-    expect(list.map((e) => [e.event, e.balance])).toEqual([['Penang trip', 3000], ['Dinner', 1000], ['', 700]]);
+describe('events', () => {
+  const ev = (person: string, kind: OwedEntry['kind'], amount: number, event: string, date: string): OwedEntry => ({
+    ...entry(person, kind, amount, date), event,
   });
 
-  test('shows each person within an event', () => {
-    const trip = eventBalances(all).find((e) => e.event === 'Penang trip')!;
-    expect(trip.people).toEqual([{ person: 'Ben', balance: 3000 }, { person: 'Aina', balance: 0 }]);
-  });
-
-  test('settling an event pays back only what is owed for that event', () => {
-    const trip = eventBalances(all).find((e) => e.event === 'Penang trip')!;
-    expect(settleEvent(trip, '2026-10-26')).toEqual([
-      { person: 'Ben', kind: 'repaid', amount: 3000, date: '2026-10-26', note: '', event: 'Penang trip' },
+  test('groups per event with who owes what inside it, newest event first and no-event last', () => {
+    const list = eventSummaries([
+      ev('A', 'lent', 3000, 'Penang trip', '2026-10-10'),
+      ev('B', 'lent', 2000, 'penang trip', '2026-10-11'),
+      ev('A', 'repaid', 1000, 'Penang trip', '2026-10-12'),
+      ev('A', 'lent', 500, 'Hari Raya dinner', '2026-10-20'),
+      ev('A', 'lent', 100, '', '2026-10-25'),
     ]);
+    expect(list.map((e) => e.event)).toEqual(['Hari Raya dinner', 'Penang trip', '']);
+    const trip = list[1];
+    expect(trip.owedToMe).toBe(4000);
+    expect(trip.people.map((p) => [p.person, p.balance])).toEqual([['A', 2000], ['B', 2000]]);
+  });
+
+  test('a person owed in two events has one overall balance', () => {
+    const entries = [ev('A', 'lent', 3000, 'Trip', '2026-10-10'), ev('A', 'lent', 500, 'Dinner', '2026-10-20')];
+    expect(balances(entries)[0].balance).toBe(3500);
   });
 });

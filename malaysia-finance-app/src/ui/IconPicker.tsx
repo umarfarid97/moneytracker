@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, View } from 'react-native';
 import { t } from '@/i18n/t';
 import { Sheet } from './Sheet';
-import { TileGrid } from './TileGrid';
 import { CATEGORY_ICONS, radius, type IconName } from './theme';
 import { useTheme } from './useTheme';
 
@@ -22,11 +21,11 @@ export function IconPicker({ visible, selected, onPick, onClose }: Props) {
   const { c } = useTheme();
   return (
     <Sheet visible={visible} title={t('categories.icon')} onClose={onClose}>
-      <TileGrid columns={6} gap={0}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
         {CATEGORY_ICONS.map((icon) => {
           const on = icon === selected;
           return (
-            <View key={icon} style={{ flex: 1, aspectRatio: 1, padding: 4 }}>
+            <View key={icon} style={{ width: '16.66%', aspectRatio: 1, padding: 4 }}>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t('categories.iconOption', { name: spoken(icon) })}
@@ -47,7 +46,7 @@ export function IconPicker({ visible, selected, onPick, onClose }: Props) {
             </View>
           );
         })}
-      </TileGrid>
+      </View>
     </Sheet>
   );
 }

@@ -14,7 +14,7 @@ export type OwedEntry = {
   amount: Sen;
   date: string;
   note: string;
-  /** The occasion this belongs to ("Penang trip"); empty when it doesn't belong to one. */
+  /** The event this belongs to (a trip, a dinner); '' for none. */
   event: string;
 };
 export type NewOwedEntry = Omit<OwedEntry, 'id'>;
@@ -24,7 +24,8 @@ export const OWED_KINDS: OwedKind[] = ['lent', 'repaid', 'borrowed', 'paidBack']
 export const signOf = (kind: OwedKind): 1 | -1 => (kind === 'lent' || kind === 'paidBack' ? 1 : -1);
 
 export const normalizeName = (name: string): string => name.trim().replace(/\s+/g, ' ');
-const sameName = (a: string, b: string) => normalizeName(a).toLowerCase() === normalizeName(b).toLowerCase();
+export const sameName = (a: string, b: string) => normalizeName(a).toLowerCase() === normalizeName(b).toLowerCase();
+export const NO_EVENT = '';
 
 export type PersonBalance = {
   person: string;
@@ -59,7 +60,7 @@ export function totals(list: PersonBalance[]): { owedToMe: Sen; iOwe: Sen } {
 }
 
 /** The entry that brings a person's balance back to zero, or null if it already is. */
-export function settleUp(p: PersonBalance, date: string): NewOwedEntry | null {
+export function settleUp(p: PersonBalance, date: string, event = NO_EVENT): NewOwedEntry | null {
   if (p.balance === 0) return null;
   return {
     person: p.person,
@@ -67,106 +68,100 @@ export function settleUp(p: PersonBalance, date: string): NewOwedEntry | null {
     amount: Math.abs(p.balance),
     date,
     note: '',
-    event: '',
+    event,
   };
 }
 
-/**
- * Splits a bill you paid equally between you and `others`. Everyone else gets the same whole-sen share and the
- * leftover sen stay with you, so the shares always add up to the total.
- */
-export function splitEqually(total: Sen, others: string[]): { mine: Sen; share: Sen } {
-  const share = Math.floor(total / (others.length + 1));
-  return { share, mine: total - share * others.length };
-}
+export type SplitMode = 'equal' | 'amount' | 'percent' | 'shares';
 
-export type ShareInput = { person: string; amount: Sen };
-
-/**
- * Splits a bill you paid with each person owing their own amount. What is left of the total is your share;
- * null when the amounts add up to more than the total.
- */
-export function splitByAmounts(total: Sen, shares: ShareInput[]): { mine: Sen; shares: ShareInput[] } | null {
-  const merged: ShareInput[] = [];
-  for (const s of shares) {
-    const person = normalizeName(s.person);
-    if (person === '') continue;
-    const same = merged.find((m) => sameName(m.person, person));
-    if (same) same.amount += s.amount;
-    else merged.push({ person, amount: s.amount });
-  }
-  const kept = merged.filter((m) => m.amount > 0);
-  const mine = total - kept.reduce((sum, m) => sum + m.amount, 0);
-  return mine < 0 ? null : { mine, shares: kept };
-}
-
-/** Entries for a bill you paid: each other person owes their share, equal or the amount given in `amounts`. */
-export function splitEntries(i: {
-  total: Sen; others: string[]; date: string; note: string; event?: string;
-  /** Amount per person, keyed by name as in `others`. Without it everyone pays the same. */
-  amounts?: Record<string, Sen>;
-}): { mine: Sen; entries: NewOwedEntry[] } {
-  const event = normalizeName(i.event ?? '');
-  const make = (person: string, amount: Sen): NewOwedEntry => ({ person, kind: 'lent', amount, date: i.date, note: i.note, event });
-  const names = i.others.map(normalizeName).filter((n, idx, all) => n !== '' && all.findIndex((x) => sameName(x, n)) === idx);
-  if (i.amounts) {
-    const split = splitByAmounts(i.total, names.map((person) => ({ person, amount: i.amounts![person] ?? 0 })));
-    return split ? { mine: split.mine, entries: split.shares.map((x) => make(x.person, x.amount)) } : { mine: i.total, entries: [] };
-  }
-  const { share, mine } = splitEqually(i.total, names);
-  return { mine, entries: share > 0 ? names.map((person) => make(person, share)) : [] };
-}
-
-export type EventBalance = {
-  /** Empty for entries that don't belong to an event. */
-  event: string;
-  /** Positive: people still owe you for this event. */
-  balance: Sen;
-  /** Each person's balance within this event, biggest first. */
-  people: { person: string; balance: Sen }[];
-  entries: OwedEntry[];
+export type SplitPart = { name: string; amount: Sen };
+export type SplitResult = {
+  parts: SplitPart[];
+  /** What is left for you: the total minus what the others owe. */
+  mine: Sen;
+  /** Every person owes something and you are not left with a negative share. */
+  ok: boolean;
 };
 
-/** One balance per event (names match ignoring case), unsettled ones first, "no event" last. */
-export function eventBalances(entries: OwedEntry[]): EventBalance[] {
-  const events: EventBalance[] = [];
-  for (const e of entries) {
-    const name = normalizeName(e.event ?? '');
-    let ev = events.find((x) => sameName(x.event, name));
-    if (!ev) {
-      ev = { event: name, balance: 0, people: [], entries: [] };
-      events.push(ev);
-    }
-    const amount = signOf(e.kind) * e.amount;
-    ev.balance += amount;
-    ev.entries.push(e);
-    const p = ev.people.find((x) => sameName(x.person, e.person));
-    if (p) p.balance += amount;
-    else ev.people.push({ person: normalizeName(e.person), balance: amount });
+/**
+ * Splits a bill you paid between you and `others`. `value` is what was typed for each person: sen for
+ * `amount`, a percentage for `percent`, a number of shares for `shares` (you hold `myShares`), and ignored for
+ * `equal`. Your own share is always what is left, so the shares add up to the total to the sen.
+ */
+export function splitBill(i: {
+  total: Sen; mode: SplitMode; others: { name: string; value: number }[]; myShares?: number;
+}): SplitResult {
+  const seen: { name: string; value: number }[] = [];
+  for (const o of i.others) {
+    const name = normalizeName(o.name);
+    if (name !== '' && !seen.some((x) => sameName(x.name, name))) seen.push({ name, value: o.value });
   }
-  for (const ev of events) {
-    ev.people.sort((a, b) => (a.balance === 0) !== (b.balance === 0)
-      ? (a.balance === 0 ? 1 : -1)
-      : Math.abs(b.balance) - Math.abs(a.balance) || a.person.localeCompare(b.person));
-    ev.entries.sort((a, b) => (a.date === b.date ? b.id - a.id : a.date < b.date ? 1 : -1));
-  }
-  return events.sort((a, b) => (a.event === '') !== (b.event === '')
-    ? (a.event === '' ? 1 : -1)
-    : (a.balance === 0) !== (b.balance === 0)
-      ? (a.balance === 0 ? 1 : -1)
-      : Math.abs(b.balance) - Math.abs(a.balance) || a.event.localeCompare(b.event));
+  const shareSum = seen.reduce((s, o) => s + o.value, 0) + (i.myShares ?? 1);
+  const amountOf = (value: number): Sen =>
+    i.mode === 'equal' ? Math.floor(i.total / (seen.length + 1))
+    : i.mode === 'amount' ? Math.round(value)
+    : i.mode === 'percent' ? Math.round((i.total * value) / 100)
+    : shareSum > 0 ? Math.floor((i.total * value) / shareSum) : 0;
+  const parts = seen.map((o) => ({ name: o.name, amount: amountOf(o.value) }));
+  const mine = i.total - parts.reduce((s, p) => s + p.amount, 0);
+  return { parts, mine, ok: i.total > 0 && parts.length > 0 && parts.every((p) => p.amount > 0) && mine >= 0 };
 }
 
-/** Entries that bring every person's balance within one event back to zero. */
-export function settleEvent(ev: EventBalance, date: string): NewOwedEntry[] {
-  return ev.people
-    .filter((p) => p.balance !== 0)
-    .map((p) => ({
-      person: p.person,
-      kind: p.balance > 0 ? ('repaid' as const) : ('paidBack' as const),
-      amount: Math.abs(p.balance),
-      date,
-      note: '',
-      event: ev.event,
-    }));
+/** Entries for a bill you paid: each other person owes their part. */
+export function splitEntries(i: {
+  total: Sen; others: string[]; date: string; note: string; event?: string;
+  mode?: SplitMode; values?: number[]; myShares?: number;
+}): { mine: Sen; entries: NewOwedEntry[] } {
+  const { parts, mine } = splitBill({
+    total: i.total, mode: i.mode ?? 'equal', myShares: i.myShares,
+    others: i.others.map((name, idx) => ({ name, value: i.values?.[idx] ?? 1 })),
+  });
+  return {
+    mine,
+    entries: parts.filter((p) => p.amount > 0).map((p) => ({
+      person: p.name, kind: 'lent' as const, amount: p.amount, date: i.date, note: i.note, event: i.event ?? NO_EVENT,
+    })),
+  };
+}
+
+/** The bill split equally: the same share for everyone else, and the leftover sen stay with you. */
+export function splitEqually(total: Sen, others: string[]): { mine: Sen; share: Sen } {
+  const { parts, mine } = splitBill({ total, mode: 'equal', others: others.map((name) => ({ name, value: 1 })) });
+  return { mine, share: parts[0]?.amount ?? Math.floor(total / (others.length + 1)) };
+}
+
+export type EventSummary = {
+  /** '' for entries that belong to no event. */
+  event: string;
+  people: PersonBalance[];
+  owedToMe: Sen;
+  iOwe: Sen;
+  entries: OwedEntry[];
+  lastDate: string;
+};
+
+/** One summary per event, newest first, with the entries that have no event last. Names match ignoring case. */
+export function eventSummaries(entries: OwedEntry[]): EventSummary[] {
+  const groups: { event: string; entries: OwedEntry[] }[] = [];
+  for (const e of entries) {
+    const name = normalizeName(e.event ?? '');
+    let g = groups.find((x) => sameName(x.event, name));
+    if (!g) {
+      g = { event: name, entries: [] };
+      groups.push(g);
+    }
+    g.entries.push(e);
+  }
+  return groups
+    .map((g) => {
+      const people = balances(g.entries);
+      return {
+        event: g.event, people, ...totals(people), entries: g.entries,
+        lastDate: g.entries.reduce((d, e) => (e.date > d ? e.date : d), ''),
+      };
+    })
+    .sort((a, b) =>
+      (a.event === NO_EVENT) !== (b.event === NO_EVENT)
+        ? (a.event === NO_EVENT ? 1 : -1)
+        : a.lastDate < b.lastDate ? 1 : a.lastDate > b.lastDate ? -1 : a.event.localeCompare(b.event));
 }

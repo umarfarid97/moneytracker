@@ -53,7 +53,7 @@ export function PersonSheet({ person, onClose, onSettle, onAdd, onEdit }: Props)
           >
             <View style={{ flex: 1 }}>
               <AppText variant="bodyStrong">{t(`owed.kind.${e.kind}`)}</AppText>
-              <AppText variant="small" tone="muted">{shortDate(e.date)}{e.event ? ` · ${e.event}` : ''}{e.note ? ` · ${e.note}` : ''}</AppText>
+              <AppText variant="small" tone="muted">{[shortDate(e.date), e.event, e.note].filter(Boolean).join(' · ')}</AppText>
             </View>
             <AppText variant="bodyStrong" tone={signOf(e.kind) > 0 ? 'positive' : 'negative'}>
               {signOf(e.kind) > 0 ? '+' : '-'}{formatRM(e.amount)}
