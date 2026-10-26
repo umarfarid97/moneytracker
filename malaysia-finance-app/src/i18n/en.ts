@@ -1,3 +1,5 @@
+import { loansBillers } from './loansBillers';
+
 /** All user-facing strings live here so Bahasa Malaysia can be added later without touching screens. */
 export const en = {
   'app.name': 'Duit',
@@ -157,6 +159,20 @@ export const en = {
   'note.suggestions': 'Note suggestions',
   'note.suggestion': 'Suggestion: {note}',
   'expense.notePlaceholder': 'What was it for?',
+  'scan.reading': 'Reading the receipt...',
+  'scan.found': 'Read from the receipt: total {amount}, SST {sst}. Check before saving.',
+  'scan.none': 'Could not read this receipt. Type the details in.',
+  'scan.sstLabel': 'SST included',
+  'scan.again': 'Scan receipt',
+  'scan.sstSaved': 'SST on this receipt: {sst}',
+  'be.title': 'e-Filing (Form BE) summary',
+  'be.intro': 'Key these figures into the relief section of your e-Filing return.',
+  'be.enter': 'Enter {amount}',
+  'be.share': 'Share e-Filing summary',
+  'be.shareTitle': 'Duit e-Filing relief summary {year}',
+  'be.addReceipt': 'Add receipt',
+  'be.receiptLinked': 'Receipt linked',
+  'be.keep': 'Keep receipts for 7 years in case LHDN asks for them.',
   'receipt.take': 'Take photo',
   'receipt.choose': 'Choose photo',
   'receipt.remove': 'Remove photo',
@@ -420,6 +436,8 @@ export const en = {
   'more.appearance.light': 'Light',
   'more.appearance.dark': 'Dark',
   'more.appearance.system': 'Match device',
+
+  ...loansBillers,
 } as const;
 
 export type StringKey = keyof typeof en;

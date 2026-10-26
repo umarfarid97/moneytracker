@@ -30,6 +30,7 @@ import {
 import type { Db } from '@/db/types';
 import { missedDueDates } from '@/domain/bills';
 import { byDateDesc as givingNewest, type GivingRecord, type NewGivingRecord } from '@/domain/giving';
+import { isPaidOff, loanBalance, nextPayment } from '@/domain/loanTracker';
 import type { Sen } from '@/domain/money';
 import { byDateDesc as entryNewest, type NewRetirementEntry, type RetirementEntry } from '@/domain/retirement';
 import type { NewSavingsAccount, SavingsAccount } from '@/domain/savings';
@@ -254,7 +255,10 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
         const dates = missedDueDates(c, today);
         if (dates.length === 0) continue;
         for (const due of dates) {
-          if (await payBill(c, due, { amount: c.amount, date: due })) count++;
+          // A loan stops recording once it is paid off, and its last payment is only what is left.
+          if (isPaidOff(c, expensesRef.current)) break;
+          const amount = nextPayment(c, loanBalance(c, expensesRef.current));
+          if (await payBill(c, due, { amount, date: due })) count++;
         }
         // Re-read the bill: it may have been edited (or deleted) while the payments above were saved.
         const latest = commitmentsRef.current.find((x) => x.id === c.id);

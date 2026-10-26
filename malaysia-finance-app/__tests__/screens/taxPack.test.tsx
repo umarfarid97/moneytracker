@@ -4,6 +4,7 @@ import Tax from '@/app/tax';
 import TaxPack from '@/app/tax-pack';
 import { freshDb, renderWithData } from './helpers';
 
+jest.mock('@/receipts', () => ({ pickReceipt: jest.fn(), resolveReceiptUri: (u: string) => u }));
 jest.mock('@/hooks/useToday', () => ({ useToday: () => '2025-12-01' }));
 const { router } = jest.requireMock('expo-router');
 
@@ -15,6 +16,18 @@ async function seed(db: TestDb) {
   await db.run("INSERT INTO expenses (amount, category_id, date, note, receipt_uri, relief_id) VALUES (8500, 6, '2025-07-02', 'Klinik', NULL, 'medical-serious')");
   await db.run("INSERT INTO relief_claims (relief_id, year, amount, receipt_uri, note) VALUES ('epf', 2025, 400000, NULL, 'EPF 2025')");
 }
+
+describe('Tax filing pack (e-Filing)', () => {
+  test('shows the Form BE summary and links a receipt to a claim that has none', async () => {
+    const db = await freshDb();
+    await seed(db);
+    jest.requireMock('@/receipts').pickReceipt.mockResolvedValue('receipts/new.jpg');
+    await renderWithData(db, <TaxPack />);
+    await waitFor(() => expect(screen.getByText('e-Filing (Form BE) summary')).toBeTruthy());
+    await fireEvent.press(screen.getAllByRole('button', { name: 'Add receipt' })[0]);
+    await waitFor(() => expect(screen.queryByText('1 receipt still missing')).toBeNull());
+  });
+});
 
 describe('Tax filing pack', () => {
   test('lists each relief with its items, the receipt status and the total', async () => {

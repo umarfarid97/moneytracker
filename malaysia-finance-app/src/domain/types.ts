@@ -17,6 +17,8 @@ export type Expense = {
   reliefId: string | null;
   /** Part of `amount` that qualifies for the relief; null means all of it. */
   reliefAmount: Sen | null;
+  /** SST (service tax) included in `amount`, as read from the receipt; null when unknown. */
+  sst?: Sen | null;
   /** The bill this spending paid, with the due date it paid (both null for ordinary spending). */
   commitmentId: number | null;
   dueDate: string | null;
@@ -31,6 +33,7 @@ export function withExpenseDefaults(input: NewExpense): Omit<Expense, 'id'> {
     paymentMethodId: null,
     reliefId: null,
     reliefAmount: null,
+    sst: null,
     commitmentId: null,
     dueDate: null,
     ...input,
@@ -39,6 +42,7 @@ export function withExpenseDefaults(input: NewExpense): Omit<Expense, 'id'> {
 
 export type Budget = { categoryId: number; month: string; limit: Sen };
 export type CommitmentKind = 'bill' | 'loan' | 'subscription';
+export type LoanType = 'home' | 'car' | 'ptptn' | 'personal' | 'bnpl';
 
 export type Commitment = {
   id: number;
@@ -59,9 +63,20 @@ export type Commitment = {
   lastAutoDue: string | null;
   /** The amount changes every month (e.g. electricity): `amount` is only an estimate. */
   variable: boolean;
+  /** Loans only (see domain/loanTracker): what kind of loan, null for bills and untracked loans. */
+  loanType: LoanType | null;
+  /** What was still owed on `loanBalanceDate`; payments recorded from that day on bring it down. */
+  loanBalance: Sen | null;
+  loanBalanceDate: string | null;
+  /** The amount first borrowed, for the progress bar. */
+  loanOriginal: Sen | null;
+  /** Yearly interest in percent; null means none is charged on the balance. */
+  loanRatePct: number | null;
 };
 
-type CommitmentExtras = 'categoryId' | 'paymentMethodId' | 'reliefId' | 'autoRecord' | 'startDate' | 'lastAutoDue' | 'variable';
+type CommitmentExtras =
+  | 'categoryId' | 'paymentMethodId' | 'reliefId' | 'autoRecord' | 'startDate' | 'lastAutoDue' | 'variable'
+  | 'loanType' | 'loanBalance' | 'loanBalanceDate' | 'loanOriginal' | 'loanRatePct';
 export type NewCommitment = Omit<Commitment, 'id' | CommitmentExtras> & Partial<Pick<Commitment, CommitmentExtras>>;
 
 export function withCommitmentDefaults(input: NewCommitment): Omit<Commitment, 'id'> {
@@ -73,6 +88,11 @@ export function withCommitmentDefaults(input: NewCommitment): Omit<Commitment, '
     startDate: null,
     lastAutoDue: null,
     variable: false,
+    loanType: null,
+    loanBalance: null,
+    loanBalanceDate: null,
+    loanOriginal: null,
+    loanRatePct: null,
     ...input,
   };
 }
@@ -91,4 +111,6 @@ export type Profile = {
   epfRate: number;
   socsoMonthly: Sen;
   eisMonthly: Sen;
+  /** Day of the month the budget period starts (1-31; a short month uses its last day). 1 is the calendar month. */
+  budgetStartDay: number;
 };

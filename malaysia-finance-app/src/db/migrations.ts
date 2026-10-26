@@ -104,7 +104,20 @@ export const MIGRATIONS: string[] = [
   `,
   // 4: sync and backup (see src/sync): stable ids, edit times and deletions, kept up to date by triggers
   syncMigration(),
-  // 5: EPF / SOCSO / EIS records, zakat and giving, savings and investments (all synced like other entities)
+  // 5: SST (service tax) read from a scanned receipt, in sen; null when not known
+  `
+  ALTER TABLE expenses ADD COLUMN sst INTEGER;
+  `,
+  // 6: loans with a remaining balance, and a budget period that can start on payday
+  `
+  ALTER TABLE commitments ADD COLUMN loan_type TEXT;
+  ALTER TABLE commitments ADD COLUMN loan_balance INTEGER;
+  ALTER TABLE commitments ADD COLUMN loan_balance_date TEXT;
+  ALTER TABLE commitments ADD COLUMN loan_original INTEGER;
+  ALTER TABLE commitments ADD COLUMN loan_rate_pct REAL;
+  ALTER TABLE profile ADD COLUMN budget_start_day INTEGER NOT NULL DEFAULT 1 CHECK (budget_start_day BETWEEN 1 AND 31);
+  `,
+  // 7: EPF / SOCSO / EIS records, zakat and giving, savings and investments (all synced like other entities)
   wealthMigration(),
 ];
 

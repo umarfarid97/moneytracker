@@ -4,6 +4,8 @@ import { addExpenseRow, CAT, freshDb, renderWithData } from './helpers';
 
 jest.mock('@/hooks/useToday', () => ({ useToday: () => '2026-10-24' }));
 jest.mock('@/receipts', () => ({ pickReceipt: jest.fn(), resolveReceiptUri: (u: string) => u }));
+jest.mock('@/receiptScan', () => ({ scanReceipt: jest.fn().mockResolvedValue(null) }));
+const { scanReceipt } = jest.requireMock('@/receiptScan');
 const { pickReceipt } = jest.requireMock('@/receipts');
 const { router, useLocalSearchParams } = jest.requireMock('expo-router');
 const { confirmDelete } = jest.requireMock('@/ui/confirm');
@@ -89,6 +91,34 @@ describe('AddExpense (receipt)', () => {
     await waitFor(() => expect(screen.getByLabelText('Amount')).toBeTruthy());
     await fireEvent.press(screen.getByRole('button', { name: 'Choose photo' }));
     expect(screen.queryByText('Receipt attached')).toBeNull();
+  });
+});
+
+describe('AddExpense (receipt scan)', () => {
+  test('a scanned receipt fills the empty amount, merchant and SST, and keeps typed values', async () => {
+    pickReceipt.mockResolvedValue('receipts/r2.jpg');
+    scanReceipt.mockResolvedValueOnce({ total: 4590, sst: 340, merchant: 'Mr Diy', date: '2026-10-12' });
+    const db = await freshDb();
+    await renderWithData(db, <AddExpense />);
+    await waitFor(() => expect(screen.getByLabelText('Amount')).toBeTruthy());
+    await fireEvent.press(screen.getByRole('button', { name: 'Choose photo' }));
+    await waitFor(() => expect(screen.getByText(/Read from the receipt: total RM 45.90, SST RM 3.40/)).toBeTruthy());
+    expect(screen.getByLabelText('Amount').props.value).toBe('45.90');
+    expect(screen.getByLabelText('Note').props.value).toBe('Mr Diy');
+    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(router.back).toHaveBeenCalled());
+    const row = await db.get<{ amount: number; sst: number; note: string; date: string }>('SELECT amount, sst, note, date FROM expenses');
+    expect(row).toEqual({ amount: 4590, sst: 340, note: 'Mr Diy', date: '2026-10-12' });
+  });
+
+  test('says so when nothing could be read', async () => {
+    pickReceipt.mockResolvedValue('receipts/r3.jpg');
+    scanReceipt.mockResolvedValueOnce(null);
+    const db = await freshDb();
+    await renderWithData(db, <AddExpense />);
+    await waitFor(() => expect(screen.getByLabelText('Amount')).toBeTruthy());
+    await fireEvent.press(screen.getByRole('button', { name: 'Choose photo' }));
+    await waitFor(() => expect(screen.getByText('Could not read this receipt. Type the details in.')).toBeTruthy());
   });
 });
 

@@ -1,3 +1,4 @@
+import { NO_LOAN } from '@/domain/loanTracker';
 import { daysUntil, monthlyCommitmentTotal, nextDueDate, nextReminder } from '@/domain/commitments';
 import type { Commitment } from '@/domain/types';
 
@@ -33,7 +34,7 @@ describe('daysUntil', () => {
 describe('monthlyCommitmentTotal', () => {
   const c = (amount: number, active: boolean): Commitment => ({
     id: 1, name: 'x', amount, dayOfMonth: 1, kind: 'bill', active,
-    categoryId: null, paymentMethodId: null, reliefId: null, autoRecord: false, startDate: null, lastAutoDue: null, variable: false,
+    categoryId: null, paymentMethodId: null, reliefId: null, autoRecord: false, startDate: null, lastAutoDue: null, variable: false, ...NO_LOAN,
   });
   test('sums active commitments only', () => {
     expect(monthlyCommitmentTotal([c(100, true), c(250, true), c(999, false)])).toBe(350);
