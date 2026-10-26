@@ -1,4 +1,5 @@
 import { loansBillers } from './loansBillers';
+import { statementImport } from './statementImport';
 import { reportsEn } from './reports';
 
 /** All user-facing strings live here and ms.ts holds the Bahasa Malaysia version of every key. */
@@ -458,6 +459,7 @@ export const en = {
   'more.language': 'Language',
 
   ...loansBillers,
+  ...statementImport,
   ...reportsEn,
 } as const;
 

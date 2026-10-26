@@ -1,4 +1,5 @@
 import type { StringKey } from './en';
+import { statementImportMs } from './statementImport';
 import { reportsMs } from './reports';
 
 /** Bahasa Malaysia. Every key in en.ts needs a line here, so the compiler flags anything missed. */
@@ -498,6 +499,7 @@ export const ms: Record<StringKey, string> = {
   'budget.startDay.invalid': 'Masukkan hari dari 1 hingga 31',
   'budget.daysLeft': '{count} hari lagi',
   'budget.daysLeft1': '1 hari lagi',
+  ...statementImportMs,
 
   ...reportsMs,
 };
