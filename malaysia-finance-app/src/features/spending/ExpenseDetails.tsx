@@ -2,7 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState, type ReactNode } from 'react';
 import { Image, Pressable, View } from 'react-native';
 import { shortDate } from '@/domain/dates';
-import { formatRM } from '@/domain/money';
+import { HOME_CURRENCY, rateToInput } from '@/domain/fx';
+import { formatRM, senToInput } from '@/domain/money';
 import type { Expense } from '@/domain/types';
 import { t } from '@/i18n/t';
 import { resolveReceiptUri } from '@/receipts';
@@ -86,6 +87,11 @@ export function ExpenseDetails({ expense, categoryName, categoryIcon, methodName
 
       <Card style={{ paddingVertical: 4 }}>
         {row(t('common.date'), `${shortDate(expense.date)} ${year}`)}
+        {expense.currency && expense.currency !== HOME_CURRENCY && expense.foreignAmount != null && expense.fxRate != null
+          ? row(t('fx.original', { code: expense.currency }), t('fx.originalValue', {
+              amount: senToInput(expense.foreignAmount), code: expense.currency, rate: rateToInput(expense.fxRate),
+            }))
+          : null}
         {expense.sst != null ? row(t('scan.sstLabel'), formatRM(expense.sst)) : null}
         {row(t('method.field'), methodName ?? t('methods.noMethod'))}
         {row(t('relief.field'), reliefName ?? t('relief.none'), expense.reliefAmount === null)}

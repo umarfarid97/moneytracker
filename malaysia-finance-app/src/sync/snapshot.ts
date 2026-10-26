@@ -13,7 +13,7 @@ export type Row = Record<string, SqlParam>;
 
 export const ENTITY_TABLES = [
   'categories', 'payment_methods', 'commitments', 'expenses', 'relief_claims',
-  'retirement_entries', 'giving_records', 'savings_accounts',
+  'retirement_entries', 'giving_records', 'savings_accounts', 'owed_entries', 'income_rules', 'income_entries',
 ] as const;
 export type EntityTable = (typeof ENTITY_TABLES)[number];
 type Parent = 'categories' | 'payment_methods' | 'commitments';
@@ -28,6 +28,9 @@ export const REFS: Record<EntityTable, Partial<Record<string, Parent>>> = {
   retirement_entries: {},
   giving_records: {},
   savings_accounts: {},
+  owed_entries: {},
+  income_rules: {},
+  income_entries: {},
 };
 
 /** A deleted row. `mergedInto` is set when a duplicate was folded into another row (see merge.ts). */

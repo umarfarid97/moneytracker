@@ -22,6 +22,10 @@ export type Expense = {
   /** The bill this spending paid, with the due date it paid (both null for ordinary spending). */
   commitmentId: number | null;
   dueDate: string | null;
+  /** Spent abroad: the currency code (null or 'MYR' for ringgit), the amount in that currency's smallest unit, and the ringgit per unit used. `amount` is always the ringgit value. */
+  currency?: string | null;
+  foreignAmount?: Sen | null;
+  fxRate?: number | null;
 };
 
 type ExpenseExtras = 'paymentMethodId' | 'reliefId' | 'reliefAmount' | 'commitmentId' | 'dueDate';

@@ -119,6 +119,8 @@ export const MIGRATIONS: string[] = [
   `,
   // 7: EPF / SOCSO / EIS records, zakat and giving, savings and investments (all synced like other entities)
   wealthMigration(),
+  // 8: spending in a foreign currency, money lent to or borrowed from people, extra recurring income
+  extrasMigration(),
 ];
 
 /** New tables that sync: each gets a uid and edit time from the start, and the same triggers as the older ones. */
@@ -165,6 +167,34 @@ function wealthMigration(): string {
     target INTEGER CHECK (target IS NULL OR target > 0),
     monthly INTEGER CHECK (monthly IS NULL OR monthly >= 0),
     note TEXT NOT NULL DEFAULT ''`),
+  ].join('\n');
+}
+
+function extrasMigration(): string {
+  return [
+    `
+  ALTER TABLE expenses ADD COLUMN currency TEXT NOT NULL DEFAULT 'MYR';
+  ALTER TABLE expenses ADD COLUMN foreign_amount INTEGER;
+  ALTER TABLE expenses ADD COLUMN fx_rate REAL;`,
+    trackedTable('owed_entries', `
+    person TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('lent', 'repaid', 'borrowed', 'paidBack')),
+    amount INTEGER NOT NULL CHECK (amount > 0),
+    date TEXT NOT NULL,
+    note TEXT NOT NULL DEFAULT ''`),
+    `CREATE INDEX idx_owed_person ON owed_entries(person);`,
+    trackedTable('income_rules', `
+    name TEXT NOT NULL,
+    amount INTEGER NOT NULL CHECK (amount >= 0),
+    day_of_month INTEGER NOT NULL CHECK (day_of_month BETWEEN 1 AND 31),
+    active INTEGER NOT NULL DEFAULT 1,
+    start_date TEXT NOT NULL,
+    last_run TEXT`),
+    trackedTable('income_entries', `
+    name TEXT NOT NULL,
+    amount INTEGER NOT NULL CHECK (amount >= 0),
+    date TEXT NOT NULL`),
+    `CREATE INDEX idx_income_date ON income_entries(date);`,
   ].join('\n');
 }
 
