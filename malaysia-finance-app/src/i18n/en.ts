@@ -1,3 +1,5 @@
+import { loansBillers } from './loansBillers';
+
 /** All user-facing strings live here so Bahasa Malaysia can be added later without touching screens. */
 export const en = {
   'app.name': 'Duit',
@@ -305,6 +307,8 @@ export const en = {
   'more.appearance.light': 'Light',
   'more.appearance.dark': 'Dark',
   'more.appearance.system': 'Match device',
+
+  ...loansBillers,
 } as const;
 
 export type StringKey = keyof typeof en;

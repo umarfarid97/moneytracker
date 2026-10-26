@@ -39,7 +39,7 @@ export default function AddExpense() {
   const today = useToday();
   const params = useLocalSearchParams<{ id?: string }>();
   const editingId = params.id ? Number(params.id) : null;
-  const { budgets } = useData();
+  const { budgets, profile } = useData();
   const { data: expenses, add, update, remove } = useExpenses();
   const { data: categories } = useCategories();
   const { data: methods } = usePaymentMethods();
@@ -154,7 +154,7 @@ export default function AddExpense() {
       if (existing) {
         await update({ ...existing, amount, categoryId, paymentMethodId: methodId, date, note: note.trim(), receiptUri, sst: sst !== null && sst < amount ? sst : null, ...tag });
       } else {
-        const alert = budgetAlert({ expenses, budgets, categoryId, date, amount });
+        const alert = budgetAlert({ expenses, budgets, categoryId, date, amount, startDay: profile.budgetStartDay });
         await add({ amount, categoryId, paymentMethodId: methodId, date, note: note.trim(), receiptUri, sst: sst !== null && sst < amount ? sst : null, ...tag });
         if (alert) notifyBudgetAlert(categoryName, alert).catch(() => {});
       }

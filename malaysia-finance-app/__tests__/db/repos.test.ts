@@ -143,9 +143,10 @@ describe('relief claims', () => {
 describe('profile', () => {
   test('has a default row and saves changes', async () => {
     expect(await getProfile(db)).toEqual({
-      grossMonthly: 0, netMonthlyOverride: null, epfRate: 0.11, socsoMonthly: 0, eisMonthly: 0,
+      grossMonthly: 0, netMonthlyOverride: null, epfRate: 0.11, socsoMonthly: 0, eisMonthly: 0, budgetStartDay: 1,
     });
-    await saveProfile(db, { grossMonthly: 500000, netMonthlyOverride: 420000, epfRate: 0.11, socsoMonthly: 1000, eisMonthly: 400 });
+    await saveProfile(db, { grossMonthly: 500000, netMonthlyOverride: 420000, epfRate: 0.11, socsoMonthly: 1000, eisMonthly: 400, budgetStartDay: 28 });
     expect((await getProfile(db)).netMonthlyOverride).toBe(420000);
+    expect((await getProfile(db)).budgetStartDay).toBe(28);
   });
 });
