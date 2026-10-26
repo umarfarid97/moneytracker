@@ -1,8 +1,8 @@
-import { balances, participants, projectSummaries, settleUp, splitBill, splitEntries, splitEqually, totals, type OwedEntry, type OwedProject } from '@/domain/owed';
+import { balances, entryOf, netPositions, participants, settleTransfers, splitTransfers, transferOf, projectSummaries, settleUp, splitBill, splitEntries, splitEqually, totals, type OwedEntry, type OwedProject } from '@/domain/owed';
 
 let id = 0;
 const entry = (person: string, kind: OwedEntry['kind'], amount: number, date = '2026-10-01'): OwedEntry => ({
-  id: ++id, person, kind, amount, date, note: '', projectId: 1,
+  id: ++id, person, kind, amount, date, note: '', projectId: 1, counter: '',
 });
 
 describe('who owes me', () => {
@@ -141,5 +141,74 @@ describe('projects', () => {
     const p = project(2, 'Trip', { members: ['Aina', 'ben'] });
     const names = participants(p, [inProject(2, 'Ben', 'lent', 100, '2026-10-01'), inProject(2, 'Chen', 'lent', 100, '2026-10-01'), inProject(3, 'Zed', 'lent', 100, '2026-10-01')]);
     expect(names).toEqual(['Aina', 'ben', 'Chen']);
+  });
+});
+
+describe('who paid whom', () => {
+  const between = (person: string, kind: OwedEntry['kind'], amount: number, counter: string): OwedEntry => ({ ...entry(person, kind, amount), counter });
+
+  test('every entry reads as money moving from one person to another and back again', () => {
+    for (const kind of ['lent', 'repaid', 'borrowed', 'paidBack'] as const) {
+      for (const counter of ['', 'Ben']) {
+        const e = between('Aina', kind, 500, counter);
+        const t = transferOf(e);
+        expect(entryOf(t)).toMatchObject({ amount: 500 });
+        expect(transferOf({ ...entryOf(t) })).toEqual(t);
+      }
+    }
+    expect(transferOf(between('Aina', 'lent', 500, ''))).toEqual({ from: '', to: 'Aina', type: 'lend', amount: 500 });
+    expect(transferOf(between('Aina', 'borrowed', 500, ''))).toEqual({ from: 'Aina', to: '', type: 'lend', amount: 500 });
+    expect(entryOf({ from: 'Ben', to: 'Aina', type: 'lend', amount: 500 })).toEqual({ person: 'Aina', kind: 'lent', counter: 'Ben', amount: 500 });
+    expect(entryOf({ from: 'Aina', to: '', type: 'payback', amount: 500 })).toEqual({ person: 'Aina', kind: 'repaid', counter: '', amount: 500 });
+  });
+
+  test('net positions add up to zero and agree with the per-person balances', () => {
+    const list = [between('Aina', 'lent', 3000, ''), between('Ben', 'lent', 2000, ''), between('Aina', 'repaid', 1000, ''), between('Ben', 'lent', 900, 'Aina')];
+    const net = netPositions(list);
+    expect(net.reduce((s, p) => s + p.net, 0)).toBe(0);
+    expect(net.find((p) => p.name === '')?.net).toBe(4000);
+    expect(net.find((p) => p.name === 'Aina')?.net).toBe(-2000 + 900);
+  });
+
+  test('settling needs no more payments than people, and leaves everyone at zero', () => {
+    const net = [{ name: 'A', net: 50 }, { name: 'B', net: 30 }, { name: 'C', net: -45 }, { name: 'D', net: -35 }];
+    const pays = settleTransfers(net);
+    expect(pays.length).toBeLessThanOrEqual(3);
+    const after = new Map(net.map((p) => [p.name, p.net]));
+    for (const t of pays) {
+      after.set(t.from, after.get(t.from)! + t.amount);
+      after.set(t.to, after.get(t.to)! - t.amount);
+    }
+    expect([...after.values()]).toEqual([0, 0, 0, 0]);
+    expect(settleTransfers([])).toEqual([]);
+  });
+
+  test('a bill paid by someone else makes the others owe that person', () => {
+    const t = splitTransfers({ paid: [{ name: 'Aina', amount: 9000 }], parts: [{ name: 'Aina', amount: 3000 }, { name: 'Ben', amount: 3000 }], mine: 3000 });
+    expect(t).toEqual([
+      { from: 'Aina', to: '', type: 'lend', amount: 3000 },
+      { from: 'Aina', to: 'Ben', type: 'lend', amount: 3000 },
+    ]);
+  });
+
+  test('a bill I paid makes each person owe me their part, and several payers net out', () => {
+    expect(splitTransfers({ paid: [{ name: '', amount: 10000 }], parts: [{ name: 'Aina', amount: 2500 }, { name: 'Ben', amount: 4000 }], mine: 3500 })).toEqual([
+      { from: '', to: 'Ben', type: 'lend', amount: 4000 },
+      { from: '', to: 'Aina', type: 'lend', amount: 2500 },
+    ]);
+    expect(splitTransfers({ paid: [{ name: '', amount: 3000 }, { name: 'Aina', amount: 6000 }], parts: [{ name: 'Aina', amount: 4500 }], mine: 4500 })).toEqual([
+      { from: 'Aina', to: '', type: 'lend', amount: 1500 },
+    ]);
+  });
+
+  test('entries between others do not count in a book summary\'s totals with me, but do in its net', () => {
+    const project: OwedProject = { id: 1, uid: 'p', name: 'Trip', startDate: null, endDate: null, members: [], owner: '' };
+    const [s] = projectSummaries([project], [between('Ben', 'lent', 900, 'Aina'), between('Aina', 'lent', 500, '')]);
+    expect(s.owedToMe).toBe(500);
+    expect(s.settlements).toEqual([
+      { from: 'Ben', to: '', type: 'payback', amount: 500 },
+      { from: 'Ben', to: 'Aina', type: 'payback', amount: 400 },
+    ]);
+    expect(s.everyone.sort()).toEqual(['Aina', 'Ben']);
   });
 });

@@ -27,24 +27,24 @@ async function trip(db: Awaited<ReturnType<typeof freshDb>>, members = 'Aina\nBe
 }
 
 describe('Buku 555', () => {
-  test('lists projects, starting with the General one, and creating a project opens it', async () => {
+  test('lists books, starting with the General one, and creating a book opens it', async () => {
     const db = await freshDb();
     await renderWithData(db, <Owed />);
     await waitFor(() => expect(screen.getByRole('button', { name: 'General' })).toBeTruthy());
     expect(screen.getByText('Buku 555')).toBeTruthy();
 
-    await press('New project');
-    await type('Project name', 'Penang trip');
+    await press('New book');
+    await type('Book name', 'Penang trip');
     await type('Add a person', 'Aina');
     await press('Add');
-    await press('Create project');
+    await press('Create book');
     await waitFor(() => expect(router.push).toHaveBeenCalled());
     const row = await db.get<{ id: number; members: string }>(`SELECT id, members FROM owed_projects WHERE name = 'Penang trip'`);
     expect(row!.members).toBe('Aina');
     expect(router.push).toHaveBeenCalledWith({ pathname: '/project', params: { id: String(row!.id) } });
   });
 
-  test('a project row shows its people and balance, and the total adds up across projects', async () => {
+  test('a book row shows its people and balance, and the total adds up across projects', async () => {
     const db = await freshDb();
     const id = await trip(db);
     await db.run(`INSERT INTO owed_entries (person, kind, amount, date, project_id) VALUES
@@ -59,7 +59,7 @@ describe('Buku 555', () => {
     expect(screen.getByText('owes you RM 35.00')).toBeTruthy();
   });
 
-  test('settling a person from the overall view settles them in every project', async () => {
+  test('settling a person from the overall view settles them in every book', async () => {
     const db = await freshDb();
     const id = await trip(db);
     await db.run(`INSERT INTO owed_entries (person, kind, amount, date, project_id) VALUES ('Aina', 'lent', 3000, '2026-10-10', ?)`, [id]);
@@ -73,18 +73,18 @@ describe('Buku 555', () => {
     expect(await db.all(`SELECT amount, project_id FROM owed_entries WHERE kind = 'repaid' ORDER BY amount`)).toHaveLength(2);
   });
 
-  test('importing a project a friend shared adds it from my point of view', async () => {
+  test('importing a book a friend shared adds it from my point of view', async () => {
     const db = await freshDb();
     const shared = buildShare(
       { id: 2, uid: 'x', name: 'Langkawi', startDate: null, endDate: null, members: ['Aina', 'Ben'], owner: '' },
-      [{ id: 1, person: 'Aina', kind: 'lent', amount: 4000, date: '2026-10-11', note: 'Hotel', projectId: 2 }],
+      [{ id: 1, person: 'Aina', kind: 'lent', amount: 4000, date: '2026-10-11', note: 'Hotel', projectId: 2, counter: '' }],
       'Umar',
     );
     await renderWithData(db, <Owed />);
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Import shared project' })).toBeTruthy());
-    await press('Import shared project');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Import shared book' })).toBeTruthy());
+    await press('Import shared book');
     await fireEvent.changeText(screen.getByLabelText('Shared text'), shared);
-    await press('Who are you in this project? Aina');
+    await press('Who are you in this book? Aina');
     await press('Import');
     await waitFor(() => expect(router.push).toHaveBeenCalled());
     expect(await db.get(`SELECT e.person AS person, e.kind AS kind, e.amount AS amount, p.name AS project, p.owner AS owner
@@ -94,28 +94,49 @@ describe('Buku 555', () => {
   });
 });
 
-describe('A project', () => {
-  test('lending inside a project records it under the project and adds a new person to it', async () => {
+describe('A book', () => {
+  test('an entry inside a book is recorded under the book and adds a new person to it', async () => {
     const db = await freshDb();
     const id = await trip(db);
     await renderWithData(db, <Project />);
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Lend or borrow' })).toBeTruthy());
-    await press('Lend or borrow');
-    await type('Person', 'Chen');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add entry' })).toBeTruthy());
+    await press('Add entry');
+    await type('Who received it (and owes it back): Or type a new name', 'Chen');
     await type('Amount', '20');
+    expect(screen.getByTestId('owed-preview').props.children).toBe('Chen owes you RM 20.00');
     await press('Save');
     await waitFor(() => expect(screen.getByTestId('project-owed').props.children).toBe('RM 20.00'));
     expect(await db.get('SELECT person, amount, project_id AS p FROM owed_entries')).toEqual({ person: 'Chen', amount: 2000, p: id });
     expect(await db.get('SELECT members FROM owed_projects WHERE id = ?', [id])).toEqual({ members: 'Aina\nBen\nChen' });
   });
 
-  test('settle per person inside the project', async () => {
+  test('an entry can be between two other people, and the summary names who pays whom', async () => {
+    const db = await freshDb();
+    const id = await trip(db);
+    await renderWithData(db, <Project />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add entry' })).toBeTruthy());
+    await press('Add entry');
+    await press('Who paid or gave the money: Aina');
+    await press('Who received it (and owes it back): Ben');
+    await type('Amount', '20');
+    expect(screen.getByTestId('owed-preview').props.children).toBe('Ben owes Aina RM 20.00');
+    await press('Save');
+    await waitFor(() => expect(screen.getByTestId('book-payment')).toBeTruthy());
+    expect(screen.getByTestId('book-payment').props.children).toBe('Ben pays Aina RM 20.00');
+    // Not money between me and anyone, so my own totals stay empty.
+    expect(screen.getByTestId('project-owed').props.children).toBe('RM 0.00');
+    expect(await db.get('SELECT person, kind, counter FROM owed_entries')).toEqual({ person: 'Ben', kind: 'lent', counter: 'Aina' });
+    await press('Mark paid: Ben pays Aina RM 20.00');
+    await waitFor(() => expect(screen.getByTestId('book-settled')).toBeTruthy());
+  });
+
+  test('marking a payment in the summary settles it', async () => {
     const db = await freshDb();
     const id = await trip(db);
     await db.run(`INSERT INTO owed_entries (person, kind, amount, date, project_id) VALUES ('Aina', 'lent', 3000, '2026-10-10', ?), ('Ben', 'lent', 2000, '2026-10-11', ?)`, [id, id]);
     await renderWithData(db, <Project />);
     await waitFor(() => expect(screen.getByTestId('project-owed').props.children).toBe('RM 50.00'));
-    await press('Settle Ben');
+    await press('Mark paid: Ben pays you RM 20.00');
     await waitFor(() => expect(screen.getByTestId('project-owed').props.children).toBe('RM 30.00'));
   });
 
@@ -125,7 +146,7 @@ describe('A project', () => {
     await renderWithData(db, <Project />);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Split a bill' })).toBeTruthy());
     await press('Split a bill');
-    await type('Total bill (you paid)', '100');
+    await type('Total bill', '100');
     await pressTop('Aina');
     await pressTop('Ben');
     await press('Amounts');
@@ -138,18 +159,18 @@ describe('A project', () => {
     await type('Amount for Ben', '40');
     await press('Save split');
     await waitFor(() => expect(screen.getByTestId('project-owed').props.children).toBe('RM 65.00'));
-    expect(await db.all('SELECT person, amount, project_id AS p FROM owed_entries ORDER BY id')).toEqual([
+    expect(await db.all('SELECT person, amount, project_id AS p FROM owed_entries ORDER BY person')).toEqual([
       { person: 'Aina', amount: 2500, p: id }, { person: 'Ben', amount: 4000, p: id },
     ]);
   });
 
-  test('a bill someone else paid is recorded as money I owe them, and my share can be spending', async () => {
+  test('a bill someone else paid records what I and the others owe them, and my share can be spending', async () => {
     const db = await freshDb();
     const id = await trip(db);
     await renderWithData(db, <Project />);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Split a bill' })).toBeTruthy());
     await press('Split a bill');
-    await type('Total bill (you paid)', '90');
+    await type('Total bill', '90');
     await type('What was it for?', 'Hotel');
     await press('Paid by Aina');
     await pressTop('Ben');
@@ -158,10 +179,32 @@ describe('A project', () => {
     await press('Also record my share as spending');
     await press('Save split');
     await waitFor(() => expect(screen.getByTestId('project-iowe').props.children).toEqual(['You owe', ': ', 'RM 30.00']));
-    expect(await db.all('SELECT person, kind, amount, project_id AS p FROM owed_entries')).toEqual([
-      { person: 'Aina', kind: 'borrowed', amount: 3000, p: id },
+    // Aina paid 90 for three, so I owe Aina my 30 and Ben owes Aina his 30.
+    expect(await db.all('SELECT person, kind, amount, counter, project_id AS p FROM owed_entries ORDER BY id')).toEqual([
+      { person: 'Aina', kind: 'borrowed', amount: 3000, counter: '', p: id },
+      { person: 'Ben', kind: 'lent', amount: 3000, counter: 'Aina', p: id },
     ]);
     expect(await db.all('SELECT amount, note FROM expenses')).toEqual([{ amount: 3000, note: 'Hotel' }]);
+  });
+
+  test('a bill several people paid is split by what each put in', async () => {
+    const db = await freshDb();
+    await trip(db, 'Aina');
+    await renderWithData(db, <Project />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Split a bill' })).toBeTruthy());
+    await press('Split a bill');
+    await type('Total bill', '90');
+    await pressTop('Aina');
+    await press('Several people paid');
+    await press('Paid by Aina');
+    await type('Amount paid by Me', '30');
+    await type('Amount paid by Aina', '40');
+    expect(screen.getByText('What was paid does not add up to the total bill.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Save split' })).toBeDisabled();
+    await type('Amount paid by Aina', '60');
+    await press('Save split');
+    // Equal parts of 45: Aina put in 60 (+15) and I put in 30 (-15).
+    await waitFor(() => expect(screen.getByTestId('project-iowe').props.children).toEqual(['You owe', ': ', 'RM 15.00']));
   });
 
   test('percent and shares split the bill by the numbers typed', async () => {
@@ -170,7 +213,7 @@ describe('A project', () => {
     await renderWithData(db, <Project />);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Split a bill' })).toBeTruthy());
     await press('Split a bill');
-    await type('Total bill (you paid)', '100');
+    await type('Total bill', '100');
     await pressTop('Aina');
     await press('Percent');
     await type('Percent for Aina', '30');
@@ -181,20 +224,20 @@ describe('A project', () => {
     expect(screen.getByText('Aina owes you RM 75.00')).toBeTruthy();
   });
 
-  test('editing the project changes its name and people; deleting removes its entries', async () => {
+  test('editing the book changes its name and people; deleting removes its entries', async () => {
     const db = await freshDb();
     const id = await trip(db);
     await db.run(`INSERT INTO owed_entries (person, kind, amount, date, project_id) VALUES ('Aina', 'lent', 3000, '2026-10-10', ?)`, [id]);
     await renderWithData(db, <Project />);
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Edit project' })).toBeTruthy());
-    await press('Edit project');
-    await type('Project name', 'Penang holiday');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Edit book' })).toBeTruthy());
+    await press('Edit book');
+    await type('Book name', 'Penang holiday');
     await press('Remove Ben');
     await press('Save');
     await waitFor(() => expect(screen.getByText('Penang holiday')).toBeTruthy());
     expect(await db.get('SELECT name, members FROM owed_projects WHERE id = ?', [id])).toEqual({ name: 'Penang holiday', members: 'Aina' });
 
-    await press('Edit project');
+    await press('Edit book');
     await press('Delete');
     await waitFor(() => expect(router.back).toHaveBeenCalled());
     expect(await db.all('SELECT 1 FROM owed_entries')).toEqual([]);
@@ -215,6 +258,7 @@ describe('A project', () => {
     await press('Send');
     await waitFor(() => expect(share).toHaveBeenCalled());
     expect((share.mock.calls[0][0] as { message: string }).message).toContain('Aina pays Umar RM 30.00');
+    expect((share.mock.calls[0][0] as { message: string }).message).toContain('Aina: owes RM 30.00');
     expect(await db.get(`SELECT value FROM sync_state WHERE key = 'share_name'`)).toEqual({ value: 'Umar' });
   });
 });

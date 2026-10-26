@@ -1,8 +1,8 @@
 import { shortDate } from './dates';
 import { formatRM } from './money';
 import {
-  balances, normalizeName, participants, sameName,
-  type NewOwedEntry, type NewOwedProject, type OwedEntry, type OwedKind, type OwedProject,
+  entryOf, netPositions, normalizeName, participants, sameName, settleTransfers, transferOf,
+  type NewOwedEntry, type NewOwedProject, type OwedEntry, type OwedKind, type OwedProject, type Transfer,
 } from './owed';
 
 /** Marks where the machine-readable part starts in a shared project, so it can be read back in. */
@@ -16,14 +16,20 @@ type Payload = {
   /** The person who shared it; the entries are from their point of view. */
   owner: string;
   members: string[];
-  entries: { person: string; kind: OwedKind; amount: number; date: string; note: string }[];
+  /** `counter` is who the entry is with besides `person`; missing or '' means the sender. */
+  entries: { person: string; kind: OwedKind; amount: number; date: string; note: string; counter?: string }[];
 };
 
-/** Who pays whom to square everything inside the project, from the sender's point of view. */
+const named = (owner: string, who: string) => (who === '' ? owner : who);
+
+/** The fewest payments that settle the whole book, named from the sender's point of view. */
 export function settlementLines(owner: string, entries: OwedEntry[]): string[] {
-  return balances(entries)
-    .filter((p) => p.balance !== 0)
-    .map((p) => (p.balance > 0 ? `${p.person} pays ${owner} ${formatRM(p.balance)}` : `${owner} pays ${p.person} ${formatRM(-p.balance)}`));
+  return settleTransfers(netPositions(entries)).map((t) => `${named(owner, t.from)} pays ${named(owner, t.to)} ${formatRM(t.amount)}`);
+}
+
+/** What each person is owed (+) or owes (-) across the whole book, named from the sender's point of view. */
+export function netLines(owner: string, entries: OwedEntry[]): string[] {
+  return netPositions(entries).map((p) => `${named(owner, p.name)}: ${p.net > 0 ? 'is owed' : 'owes'} ${formatRM(Math.abs(p.net))}`);
 }
 
 /**
@@ -38,18 +44,20 @@ export function buildShare(project: OwedProject, entries: OwedEntry[], owner: st
   if (who.length > 0) lines.push(`People: ${[owner, ...who].join(', ')}`);
   lines.push('');
   const settle = settlementLines(owner, mine);
-  lines.push(...(settle.length > 0 ? ['To settle up:', ...settle.map((l) => `- ${l}`)] : ['All settled.']));
+  if (settle.length > 0) lines.push('Net:', ...netLines(owner, mine).map((l) => `- ${l}`), '', 'To settle up:', ...settle.map((l) => `- ${l}`));
+  else lines.push('All settled.');
   if (mine.length > 0) {
     lines.push('', 'Entries:');
     for (const e of [...mine].sort((a, b) => (a.date < b.date ? -1 : 1))) {
-      const what = { lent: `${owner} paid for`, repaid: 'paid back', borrowed: `${owner} borrowed from`, paidBack: `${owner} paid back` }[e.kind];
-      lines.push(`- ${shortDate(e.date)}: ${what} ${e.person} ${formatRM(e.amount)}${e.note ? ` (${e.note})` : ''}`);
+      const t = transferOf(e);
+      const what = t.type === 'lend' ? 'paid for' : 'paid back';
+      lines.push(`- ${shortDate(e.date)}: ${named(owner, t.from)} ${what} ${named(owner, t.to)} ${formatRM(e.amount)}${e.note ? ` (${e.note})` : ''}`);
     }
   }
   const payload: Payload = {
     v: 1, name: project.name, startDate: project.startDate, endDate: project.endDate, owner,
     members: who,
-    entries: mine.map((e) => ({ person: e.person, kind: e.kind, amount: e.amount, date: e.date, note: e.note })),
+    entries: mine.map((e) => ({ person: e.person, kind: e.kind, amount: e.amount, date: e.date, note: e.note, counter: e.counter })),
   };
   return `${lines.join('\n')}\n\n${MARKER}\n${JSON.stringify(payload)}`;
 }
@@ -63,7 +71,7 @@ export function parseShare(text: string): Payload | null {
   try {
     const p = JSON.parse(text.slice(at + MARKER.length).trim()) as Payload;
     if (p.v !== 1 || typeof p.name !== 'string' || typeof p.owner !== 'string' || !Array.isArray(p.entries) || !Array.isArray(p.members)) return null;
-    const entriesOk = p.entries.every((e) => typeof e.person === 'string' && KINDS.includes(e.kind) && Number.isSafeInteger(e.amount) && e.amount > 0 && typeof e.date === 'string');
+    const entriesOk = p.entries.every((e) => typeof e.person === 'string' && KINDS.includes(e.kind) && Number.isSafeInteger(e.amount) && e.amount > 0 && typeof e.date === 'string' && (e.counter === undefined || typeof e.counter === 'string'));
     return entriesOk && p.members.every((m) => typeof m === 'string') ? p : null;
   } catch {
     return null;
@@ -73,21 +81,22 @@ export function parseShare(text: string): Payload | null {
 /** Everyone you can be in a shared project: its people other than the sender. */
 export const whoCanIBe = (p: Payload): string[] => p.members.filter((m) => !sameName(m, p.owner));
 
-const FLIP: Record<OwedKind, OwedKind> = { lent: 'borrowed', repaid: 'paidBack', borrowed: 'lent', paidBack: 'repaid' };
-
 /**
- * The shared project as `me` sees it: what the sender recorded with you becomes what you owe or are owed by the
- * sender. Entries between the sender and other people are not yours, so they are left out.
+ * The shared project as `me` sees it. The sender's entries are written from their point of view ('' is the sender);
+ * here the sender gets their name and `me` becomes '', so everything in the book is kept, whoever it is between.
  */
 export function importAs(p: Payload, me: string): { project: NewOwedProject; entries: Omit<NewOwedEntry, 'projectId'>[] } {
   const owner = normalizeName(p.owner) || 'Sender';
+  const mapName = (who: string) => (sameName(who, me) ? '' : who);
   return {
     project: {
       name: p.name, startDate: p.startDate, endDate: p.endDate, owner,
       members: [owner, ...p.members.filter((m) => !sameName(m, me) && !sameName(m, owner))],
     },
-    entries: p.entries
-      .filter((e) => sameName(e.person, me))
-      .map((e) => ({ person: owner, kind: FLIP[e.kind], amount: e.amount, date: e.date, note: e.note })),
+    entries: p.entries.map((e) => {
+      const t = transferOf({ person: e.person, kind: e.kind, amount: e.amount, counter: e.counter ?? '' });
+      const mine: Transfer = { ...t, from: mapName(t.from === '' ? owner : t.from), to: mapName(t.to === '' ? owner : t.to) };
+      return { ...entryOf(mine), date: e.date, note: e.note };
+    }),
   };
 }

@@ -9,6 +9,8 @@ const NO_WEB_OUTLINE = (Platform.OS === 'web' ? { outlineStyle: 'none' } : {}) a
 
 type Props = {
   label: string;
+  /** Read out instead of `label` when the same label appears more than once on a screen. */
+  a11yLabel?: string;
   value: string;
   onChange: (text: string) => void;
   /** Numbers (ages, percentages) bring up the number pad. */
@@ -20,14 +22,14 @@ type Props = {
 };
 
 /** A labelled text box in the same style as the amount field, for names, notes, ages and percentages. */
-export function TextField({ label, value, onChange, numeric = false, placeholder, maxLength, decimals = 3 }: Props) {
+export function TextField({ label, a11yLabel, value, onChange, numeric = false, placeholder, maxLength, decimals = 3 }: Props) {
   const { c } = useTheme();
   const [focused, setFocused] = useState(false);
   return (
     <View style={{ gap: 8 }}>
       <AppText variant="eyebrow" tone="muted">{label}</AppText>
       <TextInput
-        accessibilityLabel={label}
+        accessibilityLabel={a11yLabel ?? label}
         value={value}
         onChangeText={(text) => onChange(numeric ? sanitizeNumber(text, decimals) : text)}
         keyboardType={numeric ? (decimals > 0 ? 'decimal-pad' : 'number-pad') : 'default'}

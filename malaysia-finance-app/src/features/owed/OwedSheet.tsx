@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { isValidDate } from '@/domain/dates';
 import { parseRM, senToInput } from '@/domain/money';
-import { normalizeName, OWED_KINDS, type NewOwedEntry, type OwedEntry, type OwedKind } from '@/domain/owed';
+import { entryOf, normalizeName, sameName, transferOf, type NewOwedEntry, type OwedEntry, type Transfer } from '@/domain/owed';
+import { PartyPicker } from './PartyPicker';
+import { transferText } from './sentences';
 import { TextField } from '@/features/wealth/TextField';
 import { t } from '@/i18n/t';
 import { AmountInput } from '@/ui/AmountInput';
@@ -16,9 +18,6 @@ type Props = {
   existing: OwedEntry | null;
   /** People in the project, offered as chips. */
   people: string[];
-  /** Name to start with (from a person's page). */
-  person?: string;
-  kind?: OwedKind;
   projectId: number;
   today: string;
   onClose: () => void;
@@ -27,9 +26,12 @@ type Props = {
 };
 
 /** Mount with a fresh `key` each time it opens so the fields start from `existing`. */
-export function OwedSheet({ existing, people, person: startPerson, kind: startKind, projectId, today, onClose, onSave, onDelete }: Props) {
-  const [person, setPerson] = useState(existing?.person ?? startPerson ?? '');
-  const [kind, setKind] = useState<OwedKind>(existing?.kind ?? startKind ?? 'lent');
+export function OwedSheet({ existing, people, projectId, today, onClose, onSave, onDelete }: Props) {
+  const start = existing ? transferOf(existing) : null;
+  // '' is you; null until someone is chosen.
+  const [from, setFrom] = useState<string | null>(start ? start.from : '');
+  const [to, setTo] = useState<string | null>(start ? start.to : null);
+  const [type, setType] = useState<Transfer['type']>(start?.type ?? 'lend');
   const [amount, setAmount] = useState(existing ? senToInput(existing.amount) : '');
   const [date, setDate] = useState(existing?.date ?? today);
   const [note, setNote] = useState(existing?.note ?? '');
@@ -37,7 +39,9 @@ export function OwedSheet({ existing, people, person: startPerson, kind: startKi
   const [busy, setBusy] = useState(false);
 
   const sen = parseRM(amount);
-  const valid = normalizeName(person) !== '' && sen !== null && sen > 0 && isValidDate(date);
+  const [a, b] = [from === null ? null : normalizeName(from), to === null ? null : normalizeName(to)];
+  const valid = a !== null && b !== null && !sameName(a, b) && sen !== null && sen > 0 && isValidDate(date);
+  const transfer: Transfer | null = valid ? { from: a, to: b, type, amount: sen } : null;
 
   async function run(action: () => Promise<boolean | void>) {
     setBusy(true);
@@ -54,22 +58,15 @@ export function OwedSheet({ existing, people, person: startPerson, kind: startKi
   return (
     <Sheet visible title={t(existing ? 'owed.edit' : 'owed.add')} onClose={onClose}>
       <View style={{ gap: 16 }}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {OWED_KINDS.map((k) => (
-            <Chip key={k} label={t(`owed.kind.${k}`)} selected={kind === k} onPress={() => setKind(k)} />
-          ))}
-        </View>
-        <TextField label={t('owed.person')} value={person} onChange={setPerson} maxLength={40} />
-        {people.length > 0 ? (
-          <View style={{ gap: 6 }}>
-            <AppText variant="small" tone="muted">{t('owed.personHint')}</AppText>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {people.map((p) => (
-                <Chip key={p} compact label={p} selected={normalizeName(person).toLowerCase() === p.toLowerCase()} onPress={() => setPerson(p)} />
-              ))}
-            </View>
+        <View style={{ gap: 8 }}>
+          <AppText variant="eyebrow" tone="muted">{t('owed.type')}</AppText>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            <Chip label={t('owed.type.lend')} selected={type === 'lend'} onPress={() => setType('lend')} />
+            <Chip label={t('owed.type.payback')} selected={type === 'payback'} onPress={() => setType('payback')} />
           </View>
-        ) : null}
+        </View>
+        <PartyPicker label={t(type === 'lend' ? 'owed.from.lend' : 'owed.from.payback')} value={from} people={people} onChange={setFrom} />
+        <PartyPicker label={t(type === 'lend' ? 'owed.to.lend' : 'owed.to.payback')} value={to} people={people} onChange={setTo} />
         <AmountInput label={t('common.amount')} value={amount} onChange={setAmount} compact autoFocus={!existing} />
         <View style={{ gap: 8 }}>
           <AppText variant="eyebrow" tone="muted">{t('common.date')}</AppText>
@@ -78,11 +75,18 @@ export function OwedSheet({ existing, people, person: startPerson, kind: startKi
           </View>
         </View>
         <TextField label={t('common.note')} value={note} onChange={setNote} maxLength={80} />
+        {transfer ? (
+          <AppText testID="owed-preview" variant="bodyStrong">{transferText(transfer)}</AppText>
+        ) : (
+          <AppText variant="small" tone="muted">{t(a !== null && b !== null && sameName(a, b) ? 'owed.sameParty' : 'owed.previewHint')}</AppText>
+        )}
         {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
         <Button
           title={t('common.save')}
           disabled={!valid || busy}
-          onPress={() => run(() => onSave({ person: normalizeName(person), kind, amount: sen ?? 0, date, note: note.trim(), projectId: existing?.projectId ?? projectId }))}
+          onPress={() => run(async () => {
+            if (transfer) await onSave({ ...entryOf(transfer), date, note: note.trim(), projectId: existing?.projectId ?? projectId });
+          })}
         />
         {existing && onDelete ? (
           <Button title={t('common.delete')} variant="secondary" disabled={busy} onPress={() => run(onDelete)} />

@@ -3,10 +3,10 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { shortDate } from '@/domain/dates';
 import { formatRM } from '@/domain/money';
-import { isDefaultProject, normalizeName, sameName, settleUp, signOf, type OwedEntry, type PersonBalance } from '@/domain/owed';
+import { entryOf, isDefaultProject, normalizeName, sameName, splitTransfers, transferOf, type OwedEntry, type Transfer } from '@/domain/owed';
 import { projectName } from '@/features/owed/projectName';
 import { OwedSheet } from '@/features/owed/OwedSheet';
-import { balanceText } from '@/features/owed/PersonSheet';
+import { payText, transferText, whoName } from '@/features/owed/sentences';
 import { ProjectSheet } from '@/features/owed/ProjectSheet';
 import { ShareSheet } from '@/features/owed/ShareSheet';
 import { SplitSheet, type SplitInput } from '@/features/owed/SplitSheet';
@@ -51,19 +51,19 @@ export default function Project() {
   }
 
   async function saveSplit(input: SplitInput) {
-    if (input.payer === null) {
-      for (const part of input.parts) {
-        await addMember(part.name);
-        await add({ person: part.name, kind: 'lent', amount: part.amount, date: today, note: input.note, projectId });
-      }
-    } else {
-      // Someone else paid: all you record is your own part, as money you owe them.
-      for (const part of input.parts) await addMember(part.name);
-      if (input.mine > 0) await add({ person: input.payer, kind: 'borrowed', amount: input.mine, date: today, note: input.note, projectId });
+    for (const part of input.parts) await addMember(part.name);
+    for (const p of input.paid) await addMember(p.name);
+    // Everyone who paid more than their part is owed by those who paid less; one entry per payment that squares it.
+    for (const tr of splitTransfers({ paid: input.paid, parts: input.parts, mine: input.mine })) {
+      await add({ ...entryOf(tr), date: today, note: input.note, projectId });
     }
     if (input.categoryId !== null && input.mine > 0) {
       await addExpense({ amount: input.mine, categoryId: input.categoryId, date: today, note: input.note || title, receiptUri: null });
     }
+  }
+
+  async function markPaid(tr: Transfer) {
+    await add({ ...entryOf({ ...tr, type: 'payback' }), date: today, note: '', projectId });
   }
 
   async function removeEntry(e: OwedEntry): Promise<boolean> {
@@ -123,33 +123,6 @@ export default function Project() {
       </View>
       <Button title={t('project.share')} variant="secondary" onPress={() => setSheet({ type: 'share', key: Date.now() })} />
 
-      {summary.people.length > 0 ? (
-        <View style={{ gap: 8 }}>
-          <AppText variant="eyebrow" tone="muted">{t('owed.whoOwesWhat')}</AppText>
-          <Card style={{ gap: 12 }}>
-            {summary.people.map((p: PersonBalance) => (
-              <View key={p.person} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <View style={{ flex: 1 }}>
-                  <AppText variant="bodyStrong">{p.person}</AppText>
-                  <AppText variant="small" tone="muted">{balanceText(p.balance)}</AppText>
-                </View>
-                {p.balance !== 0 ? (
-                  <Chip
-                    compact
-                    label={t('owed.settleOne')}
-                    accessibilityLabel={t('owed.settleProject', { name: p.person })}
-                    onPress={async () => {
-                      const entry = settleUp(p, today, projectId);
-                      if (entry) await add(entry);
-                    }}
-                  />
-                ) : null}
-              </View>
-            ))}
-          </Card>
-        </View>
-      ) : null}
-
       {summary.entries.length > 0 ? (
         <View style={{ gap: 8 }}>
           <AppText variant="eyebrow" tone="muted">{t('project.entries')}</AppText>
@@ -158,23 +131,59 @@ export default function Project() {
               <PressableScale
                 key={e.id}
                 accessibilityRole="button"
-                accessibilityLabel={`${e.person} ${t(`owed.kind.${e.kind}`)} ${formatRM(e.amount)}`}
+                accessibilityLabel={transferText(transferOf(e))}
                 onPress={() => setSheet({ type: 'entry', key: Date.now(), entry: e })}
                 pressedScale={0.99}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
               >
                 <View style={{ flex: 1 }}>
-                  <AppText variant="bodyStrong">{e.person}: {t(`owed.kind.${e.kind}`)}</AppText>
+                  <AppText variant="bodyStrong">{transferText(transferOf(e))}</AppText>
                   <AppText variant="small" tone="muted">{[shortDate(e.date), e.note].filter(Boolean).join(' · ')}</AppText>
                 </View>
-                <AppText variant="bodyStrong" tone={signOf(e.kind) > 0 ? 'positive' : 'negative'}>
-                  {signOf(e.kind) > 0 ? '+' : '-'}{formatRM(e.amount)}
-                </AppText>
+                {(() => {
+                  const tr = transferOf(e);
+                  const gain = tr.from === '' ? 1 : tr.to === '' ? -1 : 0;
+                  return (
+                    <AppText variant="bodyStrong" tone={gain > 0 ? 'positive' : gain < 0 ? 'negative' : 'muted'}>
+                      {gain > 0 ? '+' : gain < 0 ? '-' : ''}{formatRM(e.amount)}
+                    </AppText>
+                  );
+                })()}
               </PressableScale>
             ))}
           </Card>
         </View>
       ) : null}
+
+      <View style={{ gap: 8 }}>
+        <AppText variant="eyebrow" tone="muted">{t('book.summary')}</AppText>
+        {summary.net.length === 0 ? (
+          <AppText testID="book-settled" variant="small" tone="muted">{t('book.allSettled')}</AppText>
+        ) : (
+          <>
+            <Card style={{ gap: 12 }}>
+              {summary.net.map((p) => (
+                <View key={p.name || 'me'} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <AppText variant="bodyStrong">{whoName(p.name)}</AppText>
+                    <AppText variant="small" tone="muted">{t(p.net > 0 ? 'book.getsBack' : 'book.needsToPay')}</AppText>
+                  </View>
+                  <AppText variant="bodyStrong" tone={p.net > 0 ? 'positive' : 'negative'}>{p.net > 0 ? '+' : '-'}{formatRM(Math.abs(p.net))}</AppText>
+                </View>
+              ))}
+            </Card>
+            <AppText variant="eyebrow" tone="muted">{t('book.toSettle')}</AppText>
+            <Card style={{ gap: 12 }}>
+              {summary.settlements.map((tr) => (
+                <View key={`${tr.from}|${tr.to}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <AppText testID="book-payment" variant="bodyStrong" style={{ flex: 1 }}>{payText(tr)}</AppText>
+                  <Chip compact label={t('book.markPaid')} accessibilityLabel={`${t('book.markPaid')}: ${payText(tr)}`} onPress={() => markPaid(tr)} />
+                </View>
+              ))}
+            </Card>
+          </>
+        )}
+      </View>
 
       {sheet?.type === 'entry' ? (
         <OwedSheet
