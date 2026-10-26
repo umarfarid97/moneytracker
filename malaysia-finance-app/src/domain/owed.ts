@@ -87,9 +87,31 @@ export type SplitResult = {
 };
 
 /**
- * Splits a bill you paid between you and `others`. `value` is what was typed for each person: sen for
+ * Shares out `total` sen in proportion to `weights`, to the sen: everyone gets the whole sen of their proportion and the
+ * sen left over go one each to those with the biggest fractions (ties go to the earlier one), so the parts always add up
+ * to the total and the same input always gives the same answer.
+ */
+export function allocate(total: Sen, weights: number[]): Sen[] {
+  const sum = weights.reduce((s, w) => s + w, 0);
+  if (weights.length === 0 || !(sum > 0)) return weights.map(() => 0);
+  const exact = weights.map((w) => (total * w) / sum);
+  // A tiny nudge so 2999.9999999999995 counts as 3000.
+  const parts = exact.map((x) => Math.floor(x + 1e-9));
+  let left = total - parts.reduce((s, p) => s + p, 0);
+  const order = exact.map((x, i) => ({ i, frac: x - parts[i] })).sort((a, b) => b.frac - a.frac || a.i - b.i);
+  for (const o of order) {
+    if (left <= 0) break;
+    parts[o.i] += 1;
+    left -= 1;
+  }
+  return parts;
+}
+
+/**
+ * Splits a bill between you and `others`, whoever paid it. `value` is what was typed for each person: sen for
  * `amount`, a percentage for `percent`, a number of shares for `shares` (you hold `myShares`), and ignored for
- * `equal`. Your own share is always what is left, so the shares add up to the total to the sen.
+ * `equal`. Your own share is what is left of the amounts, the percent or the shares; for equal, percent and shares
+ * the odd sen are shared out by `allocate` (you first on a tie), so the parts always add up to the total.
  */
 export function splitBill(i: {
   total: Sen; mode: SplitMode; others: { name: string; value: number }[]; myShares?: number;
@@ -99,14 +121,24 @@ export function splitBill(i: {
     const name = normalizeName(o.name);
     if (name !== '' && !seen.some((x) => sameName(x.name, name))) seen.push({ name, value: o.value });
   }
-  const shareSum = seen.reduce((s, o) => s + o.value, 0) + (i.myShares ?? 1);
-  const amountOf = (value: number): Sen =>
-    i.mode === 'equal' ? Math.floor(i.total / (seen.length + 1))
-    : i.mode === 'amount' ? Math.round(value)
-    : i.mode === 'percent' ? Math.round((i.total * value) / 100)
-    : shareSum > 0 ? Math.floor((i.total * value) / shareSum) : 0;
-  const parts = seen.map((o) => ({ name: o.name, amount: amountOf(o.value) }));
-  const mine = i.total - parts.reduce((s, p) => s + p.amount, 0);
+  let mine: Sen;
+  let amounts: Sen[];
+  if (i.mode === 'amount') {
+    amounts = seen.map((o) => Math.round(o.value));
+    mine = i.total - amounts.reduce((s, a) => s + a, 0);
+  } else {
+    const myWeight = i.mode === 'equal' ? 1 : i.mode === 'percent' ? 100 - seen.reduce((s, o) => s + o.value, 0) : i.myShares ?? 1;
+    if (i.mode === 'percent' && myWeight < 0) {
+      // Over 100%: show by how much instead of sharing anything out.
+      amounts = seen.map((o) => Math.round((i.total * o.value) / 100));
+      mine = i.total - amounts.reduce((s, a) => s + a, 0);
+    } else {
+      const [m, ...rest] = allocate(i.total, [myWeight, ...seen.map((o) => (i.mode === 'equal' ? 1 : o.value))]);
+      mine = m;
+      amounts = rest;
+    }
+  }
+  const parts = seen.map((o, idx) => ({ name: o.name, amount: amounts[idx] }));
   return { parts, mine, ok: i.total > 0 && parts.length > 0 && parts.every((p) => p.amount > 0) && mine >= 0 };
 }
 

@@ -11,6 +11,8 @@ type Props = {
   label: string;
   /** Read out instead of `label` when the same label appears more than once on a screen. */
   a11yLabel?: string;
+  /** Show only the box (the placeholder says what it is); `label` is still read out. */
+  hideLabel?: boolean;
   value: string;
   onChange: (text: string) => void;
   /** Numbers (ages, percentages) bring up the number pad. */
@@ -22,12 +24,12 @@ type Props = {
 };
 
 /** A labelled text box in the same style as the amount field, for names, notes, ages and percentages. */
-export function TextField({ label, a11yLabel, value, onChange, numeric = false, placeholder, maxLength, decimals = 3 }: Props) {
+export function TextField({ label, a11yLabel, hideLabel = false, value, onChange, numeric = false, placeholder, maxLength, decimals = 3 }: Props) {
   const { c } = useTheme();
   const [focused, setFocused] = useState(false);
   return (
     <View style={{ gap: 8 }}>
-      <AppText variant="eyebrow" tone="muted">{label}</AppText>
+      {hideLabel ? null : <AppText variant="eyebrow" tone="muted">{label}</AppText>}
       <TextInput
         accessibilityLabel={a11yLabel ?? label}
         value={value}

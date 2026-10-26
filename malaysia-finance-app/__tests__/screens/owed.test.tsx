@@ -101,7 +101,7 @@ describe('A book', () => {
     await renderWithData(db, <Project />);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Add entry' })).toBeTruthy());
     await press('Add entry');
-    await type('Who received it (and owes it back): Or type a new name', 'Chen');
+    await type('To: New name', 'Chen');
     await type('Amount', '20');
     expect(screen.getByTestId('owed-preview').props.children).toBe('Chen owes you RM 20.00');
     await press('Save');
@@ -116,8 +116,8 @@ describe('A book', () => {
     await renderWithData(db, <Project />);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Add entry' })).toBeTruthy());
     await press('Add entry');
-    await press('Who paid or gave the money: Aina');
-    await press('Who received it (and owes it back): Ben');
+    await press('From: Aina');
+    await press('To: Ben');
     await type('Amount', '20');
     expect(screen.getByTestId('owed-preview').props.children).toBe('Ben owes Aina RM 20.00');
     await press('Save');
@@ -195,13 +195,15 @@ describe('A book', () => {
     await press('Split a bill');
     await type('Total bill', '90');
     await pressTop('Aina');
+    expect(screen.getByRole('button', { name: 'One person paid', selected: true })).toBeTruthy();
     await press('Several people paid');
     await press('Paid by Aina');
     await type('Amount paid by Me', '30');
     await type('Amount paid by Aina', '40');
-    expect(screen.getByText('What was paid does not add up to the total bill.')).toBeTruthy();
+    expect(screen.getByTestId('split-paid-left').props.children).toBe('Still to assign: RM 20.00');
     expect(screen.getByRole('button', { name: 'Save split' })).toBeDisabled();
     await type('Amount paid by Aina', '60');
+    expect(screen.getByTestId('split-paid-left').props.children).toBe('Adds up to the total');
     await press('Save split');
     // Equal parts of 45: Aina put in 60 (+15) and I put in 30 (-15).
     await waitFor(() => expect(screen.getByTestId('project-iowe').props.children).toEqual(['You owe', ': ', 'RM 15.00']));

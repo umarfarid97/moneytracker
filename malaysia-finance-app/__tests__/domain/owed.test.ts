@@ -1,4 +1,4 @@
-import { balances, entryOf, netPositions, participants, settleTransfers, splitTransfers, transferOf, projectSummaries, settleUp, splitBill, splitEntries, splitEqually, totals, type OwedEntry, type OwedProject } from '@/domain/owed';
+import { allocate, balances, entryOf, netPositions, participants, settleTransfers, splitTransfers, transferOf, projectSummaries, settleUp, splitBill, splitEntries, splitEqually, totals, type OwedEntry, type OwedProject } from '@/domain/owed';
 
 let id = 0;
 const entry = (person: string, kind: OwedEntry['kind'], amount: number, date = '2026-10-01'): OwedEntry => ({
@@ -210,5 +210,91 @@ describe('who paid whom', () => {
       { from: 'Ben', to: 'Aina', type: 'payback', amount: 400 },
     ]);
     expect(s.everyone.sort()).toEqual(['Aina', 'Ben']);
+  });
+});
+
+describe('splitting to the sen', () => {
+  const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
+
+  test('allocate gives every sen out, the odd ones to the biggest fractions, the earlier one on a tie', () => {
+    expect(allocate(100, [1, 1, 1])).toEqual([34, 33, 33]);
+    expect(allocate(1001, [1, 1, 1])).toEqual([334, 334, 333]);
+    expect(allocate(100, [1, 2])).toEqual([33, 67]);
+    expect(allocate(0, [1, 1])).toEqual([0, 0]);
+    expect(allocate(5, [])).toEqual([]);
+    expect(allocate(10, [0, 0])).toEqual([0, 0]);
+  });
+
+  test('equal, percent and shares always add up to the total, whatever the odd cents', () => {
+    for (let total = 1; total <= 120; total++) {
+      for (let n = 1; n <= 4; n++) {
+        const others = Array.from({ length: n }, (_, i) => ({ name: `P${i}`, value: 1 }));
+        for (const mode of ['equal', 'shares'] as const) {
+          const r = splitBill({ total, mode, others, myShares: 1 });
+          expect(r.mine + sum(r.parts.map((p) => p.amount))).toBe(total);
+        }
+        const r = splitBill({ total, mode: 'percent', others: others.map((o) => ({ ...o, value: 100 / (n + 1) })) });
+        expect(r.mine + sum(r.parts.map((p) => p.amount))).toBe(total);
+      }
+    }
+  });
+
+  test('odd cents are shared out evenly, you first on a tie', () => {
+    const eq = splitBill({ total: 10001, mode: 'equal', others: [{ name: 'Aina', value: 1 }, { name: 'Ben', value: 1 }] });
+    expect([eq.mine, ...eq.parts.map((p) => p.amount)]).toEqual([3334, 3334, 3333]);
+    const pct = splitBill({ total: 10000, mode: 'percent', others: [{ name: 'Aina', value: 33.33 }, { name: 'Ben', value: 33.33 }] });
+    expect([pct.mine, ...pct.parts.map((p) => p.amount)]).toEqual([3334, 3333, 3333]);
+    const sh = splitBill({ total: 10000, mode: 'shares', myShares: 1, others: [{ name: 'Aina', value: 1 }, { name: 'Ben', value: 2 }] });
+    expect([sh.mine, ...sh.parts.map((p) => p.amount)]).toEqual([2500, 2500, 5000]);
+    const amt = splitBill({ total: 10001, mode: 'amount', others: [{ name: 'Aina', value: 2500 }, { name: 'Ben', value: 4001 }] });
+    expect([amt.mine, ...amt.parts.map((p) => p.amount)]).toEqual([3500, 2500, 4001]);
+  });
+
+  test('percent over 100 shows by how much, and is not ok', () => {
+    const r = splitBill({ total: 10000, mode: 'percent', others: [{ name: 'Aina', value: 60 }, { name: 'Ben', value: 50 }] });
+    expect(r.ok).toBe(false);
+    expect(r.mine).toBe(-1000);
+  });
+
+  /** Every person's net after the transfers is what they paid minus their part, to the sen. */
+  function check(paid: { name: string; amount: number }[], r: ReturnType<typeof splitBill>, total: number) {
+    expect(sum(paid.map((p) => p.amount))).toBe(total);
+    const transfers = splitTransfers({ paid, parts: r.parts, mine: r.mine });
+    const net = new Map<string, number>();
+    const add = (name: string, n: number) => net.set(name, (net.get(name) ?? 0) + n);
+    for (const t of transfers) {
+      add(t.from, t.amount);
+      add(t.to, -t.amount);
+    }
+    const expected = new Map<string, number>();
+    const exp = (name: string, n: number) => expected.set(name, (expected.get(name) ?? 0) + n);
+    for (const p of paid) exp(p.name, p.amount);
+    exp('', -r.mine);
+    for (const p of r.parts) exp(p.name, -p.amount);
+    for (const [name, n] of expected) expect(net.get(name) ?? 0).toBe(n);
+    expect(sum([...net.values()])).toBe(0);
+    // Nobody pays themselves, and there are never more payments than people.
+    expect(transfers.every((t) => t.from !== t.to && t.amount > 0)).toBe(true);
+    expect(transfers.length).toBeLessThanOrEqual(expected.size - 1);
+  }
+
+  test('several people paid: every mode settles to the sen', () => {
+    const total = 10001;
+    const others = (values: number[]) => [{ name: 'Aina', value: values[0] }, { name: 'Ben', value: values[1] }];
+    const paid = [{ name: '', amount: 7001 }, { name: 'Aina', amount: 3000 }];
+    check(paid, splitBill({ total, mode: 'equal', others: others([1, 1]) }), total);
+    check(paid, splitBill({ total, mode: 'amount', others: others([2500, 4001]) }), total);
+    check(paid, splitBill({ total, mode: 'percent', others: others([33.33, 33.33]) }), total);
+    check(paid, splitBill({ total, mode: 'shares', myShares: 2, others: others([1, 3]) }), total);
+    // Three payers, one of whom owes nothing back.
+    const three = [{ name: 'Ben', amount: 5000 }, { name: 'Aina', amount: 3001 }, { name: '', amount: 2000 }];
+    check(three, splitBill({ total, mode: 'equal', others: others([1, 1]) }), total);
+  });
+
+  test('several people paid: who pays whom in a simple case', () => {
+    // 90 split equally three ways (30 each); Aina put in 60 and I put in 30, Ben nothing.
+    const r = splitBill({ total: 9000, mode: 'equal', others: [{ name: 'Aina', value: 1 }, { name: 'Ben', value: 1 }] });
+    const t = splitTransfers({ paid: [{ name: '', amount: 3000 }, { name: 'Aina', amount: 6000 }], parts: r.parts, mine: r.mine });
+    expect(t).toEqual([{ from: 'Aina', to: 'Ben', type: 'lend', amount: 3000 }]);
   });
 });
