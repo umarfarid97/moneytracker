@@ -4,6 +4,7 @@ import { FALLBACK_PAYMENT_METHOD } from '@/db/repos/paymentMethods';
 import { BRANDS } from '@/domain/banks';
 import type { PaymentKind, PaymentMethod } from '@/domain/types';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+import { methodLabel } from '@/i18n/content';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
 import { BackButton } from '@/ui/BackButton';
@@ -133,8 +134,8 @@ export default function PaymentMethods() {
       >
         <MethodBadge name={m.name} kind={m.kind} size={36} />
         <View style={{ flex: 1 }}>
-          <AppText variant="bodyStrong">{m.name}</AppText>
-          {kindLabel !== m.name ? (
+          <AppText variant="bodyStrong">{methodLabel(m.name)}</AppText>
+          {kindLabel !== methodLabel(m.name) ? (
             <AppText variant="small" tone="muted">
               {kindLabel}
             </AppText>

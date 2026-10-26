@@ -646,6 +646,7 @@ export const ms: Record<StringKey, string> = {
   'project.removePerson': 'Buang {name}',
   'project.create': 'Cipta buku',
   'project.edit': 'Edit buku',
+  'project.missing': 'Buku ini sudah tiada.',
   'project.deleteTitle': 'Padam buku ini?',
   'project.deleteMessage': 'Buku dan semua yang direkod di dalamnya dikeluarkan.',
   'project.noPeople': 'Tambah orang ke buku ini untuk mula merekod.',

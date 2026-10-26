@@ -15,7 +15,7 @@ import { useCategories } from '@/hooks/useCategories';
 import { useExpenses } from '@/hooks/useExpenses';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useToday } from '@/hooks/useToday';
-import { noteLabel, reliefLabel } from '@/i18n/content';
+import { methodLabel, noteLabel, reliefLabel } from '@/i18n/content';
 import { t } from '@/i18n/t';
 import { notifyBudgetAlert } from '@/notifications';
 import { AmountInput } from '@/ui/AmountInput';
@@ -254,7 +254,7 @@ export default function AddExpense() {
   );
 
   const methodChips = methods.map((m) => (
-    <Chip compact={!wide} key={m.id} label={m.name} leading={<MethodBadge name={m.name} kind={m.kind} size={wide ? 22 : 20} color={m.id === methodId ? c.onAccent : c.text} />} selected={m.id === methodId} onPress={() => setMethodId(m.id)} />
+    <Chip compact={!wide} key={m.id} label={methodLabel(m.name)} leading={<MethodBadge name={m.name} kind={m.kind} size={wide ? 22 : 20} color={m.id === methodId ? c.onAccent : c.text} />} selected={m.id === methodId} onPress={() => setMethodId(m.id)} />
   ));
   const methodField = (
     <View style={{ gap: wide ? 10 : 4 }}>
@@ -391,7 +391,7 @@ export default function AddExpense() {
         expense={existing}
         categoryName={categoryName}
         categoryIcon={categories.find((cat) => cat.id === categoryId)?.icon}
-        methodName={methods.find((m) => m.id === existing.paymentMethodId)?.name ?? null}
+        methodName={(() => { const n = methods.find((m) => m.id === existing.paymentMethodId)?.name; return n ? methodLabel(n) : null; })()}
         reliefName={existing.reliefId ? (() => { const r = reliefs.find((x) => x.id === existing.reliefId); return r ? reliefLabel(r) : existing.reliefId; })() : null}
         error={error}
         busy={busy}

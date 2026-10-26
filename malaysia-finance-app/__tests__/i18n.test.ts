@@ -48,6 +48,16 @@ describe('dates and built-in names in Malay', () => {
     expect(noteLabel('Nasi lemak')).toBe('Nasi lemak');
   });
 
+  it('translates the built-in payment methods but leaves the user\'s own names', () => {
+    const { methodLabel } = require('@/i18n/content');
+    setLanguage('ms');
+    expect(methodLabel('Cash')).toBe('Tunai');
+    expect(methodLabel('Online transfer')).toBe('Pindahan dalam talian');
+    expect(methodLabel('Maybank')).toBe('Maybank');
+    setLanguage('en');
+    expect(methodLabel('Cash')).toBe('Cash');
+  });
+
   it('has a Malay name for every built-in tax relief', () => {
     const { TAX_YEARS } = require('@/data/tax');
     const { reliefLabel } = require('@/i18n/content');

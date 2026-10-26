@@ -14,6 +14,7 @@ import { useCategories } from '@/hooks/useCategories';
 import { useExpenses } from '@/hooks/useExpenses';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useToday } from '@/hooks/useToday';
+import { methodLabel } from '@/i18n/content';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
@@ -345,7 +346,7 @@ export default function Spending() {
             {methods.map((m) => (
               <Chip
                 key={m.id}
-                label={m.name}
+                label={methodLabel(m.name)}
                 accessibilityLabel={`Filter method ${m.name}`}
                 leading={<MethodBadge name={m.name} kind={m.kind} size={20} color={filters.paymentMethodId === m.id ? c.onAccent : c.text} />}
                 selected={filters.paymentMethodId === m.id}

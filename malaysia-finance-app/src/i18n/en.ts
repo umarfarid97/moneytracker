@@ -592,6 +592,7 @@ export const en = {
   'project.removePerson': 'Remove {name}',
   'project.create': 'Create book',
   'project.edit': 'Edit book',
+  'project.missing': 'This book no longer exists.',
   'project.deleteTitle': 'Delete this book?',
   'project.deleteMessage': 'The book and everything recorded in it is removed.',
   'project.noPeople': 'Add people to this book to start recording.',
