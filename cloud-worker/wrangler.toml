@@ -1,0 +1,16 @@
+name = "duit-cloud"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+[vars]
+# Comma separated. The web app's origin; the Android app sends no Origin header and does not need CORS.
+ALLOWED_ORIGINS = "https://umarfarid97.github.io"
+# Address login codes are sent from. onboarding@resend.dev is Resend's test sender and only delivers to the email of the Resend account; use an address on your own verified domain to let others sign in.
+MAIL_FROM = "Duit <onboarding@resend.dev>"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "duit-cloud"
+# Created in the Cloudflare account; schema from migrations/0001_init.sql is already applied.
+database_id = "26ff5993-5119-4b26-b645-09db333bbfca"
+migrations_dir = "migrations"

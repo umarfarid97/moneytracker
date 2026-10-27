@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import Backup from '@/app/backup';
 import { addExpense, listAllExpenses } from '@/db/repos/expenses';
 import { createBackup } from '@/sync/backup';
@@ -26,15 +26,12 @@ jest.mock('@/sync/receiptFiles', () => ({
   writeReceiptBase64: jest.fn(async () => {}),
 }));
 
-const { googleAuth } = jest.requireMock('@/sync/googleAuth');
-const { syncWithDrive } = jest.requireMock('@/sync/driveSync');
 const files = jest.requireMock('@/sync/backupFile');
 const receipts = jest.requireMock('@/sync/receiptFiles');
 const { confirmDelete } = jest.requireMock('@/ui/confirm');
 
 beforeEach(() => {
   jest.clearAllMocks();
-  googleAuth.available = false;
 });
 
 const show = async (db: Awaited<ReturnType<typeof freshDb>>) => {
@@ -42,10 +39,10 @@ const show = async (db: Awaited<ReturnType<typeof freshDb>>) => {
   await waitFor(() => expect(screen.getByText('Backup file')).toBeTruthy());
 };
 
-test('says Drive sync is not set up yet when the build has no Google client ID', async () => {
+test('says Duit cloud is not set up yet when the build has no server address', async () => {
   await show(await freshDb());
   expect(screen.getByText(/not set up in this version/)).toBeTruthy();
-  expect(screen.queryByText('Connect Google Drive')).toBeNull();
+  expect(screen.queryByText('Set up')).toBeNull();
 });
 
 test('exports a backup file with data and receipt photos', async () => {
@@ -90,32 +87,4 @@ test('leaves data alone when the restore is cancelled or the file is not a backu
   await fireEvent.press(screen.getByText('Restore from backup'));
   await waitFor(() => expect(confirmDelete).toHaveBeenCalled());
   expect((await listAllExpenses(db)).map((e) => e.note)).toEqual(['stays']);
-});
-
-test('connects Google Drive, syncs, and disconnects', async () => {
-  googleAuth.available = true;
-  const db = await freshDb();
-  await show(db);
-  await fireEvent.press(screen.getByText('Connect Google Drive'));
-  await waitFor(() => expect(screen.getByText('Connected as umar@example.com')).toBeTruthy());
-  await waitFor(() => expect(screen.getByText('Last synced just now')).toBeTruthy());
-  expect(syncWithDrive).toHaveBeenCalledWith(db, 'token');
-  expect(await db.get('SELECT value FROM sync_state WHERE key = ?', ['drive.email'])).toEqual({ value: 'umar@example.com' });
-
-  await fireEvent.press(screen.getByText('Sync now'));
-  await waitFor(() => expect(googleAuth.getToken).toHaveBeenLastCalledWith(true));
-
-  await fireEvent.press(screen.getByText('Disconnect'));
-  await waitFor(() => expect(screen.getByText('Connect Google Drive')).toBeTruthy());
-  expect(googleAuth.signOut).toHaveBeenCalled();
-});
-
-test('asks to sign in again when Google has no token', async () => {
-  googleAuth.available = true;
-  googleAuth.getToken.mockResolvedValue(null);
-  const db = await freshDb();
-  await db.run(`INSERT INTO sync_state (key, value) VALUES ('drive.email', 'umar@example.com')`);
-  await show(db);
-  await waitFor(() => expect(screen.getByText(/sign-in has expired/)).toBeTruthy());
-  await act(async () => {});
 });

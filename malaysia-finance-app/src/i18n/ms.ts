@@ -4,6 +4,7 @@ import { lockRemindersMs } from './lockReminders';
 import { statementImportMs } from './statementImport';
 import { reportsMs } from './reports';
 import { cleanupMs } from './cleanup';
+import { cloudMs } from './cloud';
 
 /** Bahasa Malaysia. Every key in en.ts needs a line here, so the compiler flags anything missed. */
 export const ms: Record<StringKey, string> = {
@@ -328,8 +329,8 @@ export const ms: Record<StringKey, string> = {
   'backup.drive.fail.unknown': "Tidak dapat menyambung ke Google. Cuba lagi, atau gunakan fail sandaran buat masa ini.",
   'backup.drive.connectBrowser': 'Log masuk melalui pelayar',
   'backup.drive.connectFailed': 'Tidak dapat menyambung ke Google. Semak internet anda dan cuba lagi.',
-  'backup.problem.signIn': 'Log masuk Google telah tamat tempoh. Ketik Segerak sekarang untuk log masuk semula.',
-  'backup.problem.tooNew': 'Data Drive anda disimpan oleh versi Duit yang lebih baharu. Kemas kini aplikasi pada peranti ini untuk terus menyegerak.',
+  'backup.problem.signIn': 'Log masuk Duit cloud telah tamat tempoh. Buka Duit cloud untuk log masuk semula.',
+  'backup.problem.tooNew': 'Data cloud anda disimpan oleh versi Duit yang lebih baharu. Kemas kini aplikasi pada peranti ini untuk terus menyegerak.',
   'backup.problem.offline': 'Tiada sambungan internet. Duit akan menyegerak apabila anda kembali dalam talian.',
   'backup.problem.failed': 'Segerak tidak selesai. Duit akan mencuba lagi tidak lama lagi.',
   'backup.file': 'Fail sandaran',
@@ -642,6 +643,7 @@ export const ms: Record<StringKey, string> = {
   ...reportsMs,
   ...homeLayoutMs,
   ...cleanupMs,
+  ...cloudMs,
 
   'owed.view.person': 'Ikut orang',
   'owed.people': '{count} orang',
