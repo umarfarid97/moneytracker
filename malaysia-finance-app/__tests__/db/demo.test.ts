@@ -9,6 +9,9 @@ import { addSavingsAccount, listSavingsAccounts } from '@/db/repos/savings';
 import { getProfile, saveProfile } from '@/db/repos/profile';
 import { periodKey } from '@/domain/budgetPeriod';
 import { createBackup, parseBackup, restoreBackup } from '@/sync/backup';
+import { CloudApi } from '@/sync/cloudApi';
+import { syncWithCloud } from '@/sync/cloudSync';
+import { newDataKey } from '@/sync/cryptoBox';
 import { DemoLoadedError, syncWithDrive } from '@/sync/driveSync';
 
 jest.mock('@/sync/receiptFiles', () => ({
@@ -157,6 +160,15 @@ describe('demo data', () => {
     await loadDemoData(db, TODAY);
     const fetchSpy = jest.spyOn(global, 'fetch');
     await expect(syncWithDrive(db, 'token')).rejects.toBeInstanceOf(DemoLoadedError);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+  });
+
+  test('cloud sync refuses to run while demo data is loaded', async () => {
+    const db = await freshDb();
+    await loadDemoData(db, TODAY);
+    const fetchSpy = jest.spyOn(global, 'fetch');
+    await expect(syncWithCloud(db, new CloudApi('https://cloud.test', 't'.repeat(40)), newDataKey())).rejects.toBeInstanceOf(DemoLoadedError);
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
   });

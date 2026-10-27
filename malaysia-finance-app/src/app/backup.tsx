@@ -1,11 +1,11 @@
 import { useState } from 'react';
+import { router } from 'expo-router';
 import { View } from 'react-native';
 import { DemoBanner } from '@/features/demo/DemoBanner';
 import { useData } from '@/hooks/DataProvider';
 import { dateLocale, t } from '@/i18n/t';
 import { backupFileName, BackupTooNewError, createBackup, InvalidBackupError, parseBackup, restoreBackup } from '@/sync/backup';
 import { pickBackupFile, saveBackupFile } from '@/sync/backupFile';
-import { GoogleAuthError } from '@/sync/googleConfig';
 import { lastSyncedText } from '@/sync/lastSynced';
 import { RECEIPT_FILES } from '@/sync/receiptFiles';
 import { useSync } from '@/sync/SyncProvider';
@@ -19,33 +19,12 @@ import { Screen } from '@/ui/Screen';
 
 type Note = { text: string; tone: 'positive' | 'negative' };
 
-/** More > Backup & sync: Google Drive sync, and a backup file to export or restore. */
+/** More > Backup & sync: Duit cloud sync, and a backup file to export or restore. */
 export default function Backup() {
   const { db, reload, demoLoaded } = useData();
   const sync = useSync();
-  const [busy, setBusy] = useState<'connect' | 'export' | 'import' | null>(null);
-  const [driveNote, setDriveNote] = useState<string | null>(null);
+  const [busy, setBusy] = useState<'export' | 'import' | null>(null);
   const [fileNote, setFileNote] = useState<Note | null>(null);
-
-  async function connect(browser = false) {
-    setBusy('connect');
-    setDriveNote(null);
-    try {
-      await (browser && sync.connectWithBrowser ? sync.connectWithBrowser() : sync.connect());
-    } catch (e) {
-      const reason = e instanceof GoogleAuthError ? e.reason : 'unknown';
-      setDriveNote(t(`backup.drive.fail.${reason}`));
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function disconnect() {
-    const ok = await confirmDelete(
-      t('backup.drive.disconnectTitle'), t('backup.drive.disconnectMessage'), t('backup.drive.disconnect'), t('common.cancel'),
-    );
-    if (ok) await sync.disconnect();
-  }
 
   async function exportFile() {
     setBusy('export');
@@ -75,7 +54,7 @@ export default function Backup() {
       await restoreBackup(db, backup);
       await reload();
       setFileNote({ text: t('backup.file.restored'), tone: 'positive' });
-      if (sync.email) void sync.syncNow();
+      if (sync.step === 'ready') void sync.syncNow();
     } catch (e) {
       const text =
         e instanceof InvalidBackupError ? t('backup.file.invalid')
@@ -100,15 +79,15 @@ export default function Backup() {
         </AppText>
       ) : null}
 
-      <AppText variant="section">{t('backup.drive')}</AppText>
+      <AppText variant="section">{t('cloud.title')}</AppText>
       <Card style={{ gap: 14 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <IconBadge icon="cloud-outline" size={36} />
           <View style={{ flex: 1 }}>
             <AppText variant="bodyStrong">
-              {sync.email ? t('backup.drive.connected', { email: sync.email }) : t('backup.drive')}
+              {sync.email ? t('cloud.connected', { email: sync.email }) : t('cloud.title')}
             </AppText>
-            {sync.email ? (
+            {sync.step === 'ready' ? (
               <AppText variant="small" tone="muted">
                 {status}
               </AppText>
@@ -116,36 +95,19 @@ export default function Backup() {
           </View>
         </View>
         <AppText variant="small" tone="muted">
-          {!sync.available ? t('backup.drive.unavailable') : sync.email ? t('backup.drive.auto') : t('backup.drive.intro')}
+          {!sync.available ? t('cloud.unavailable') : sync.step === 'ready' ? t('cloud.auto') : sync.step === 'off' ? t('cloud.intro') : t('cloud.finishSetup')}
         </AppText>
-        {sync.email && sync.problem ? (
+        {sync.step === 'ready' && sync.problem ? (
           <AppText variant="small" tone="warning">
             {t(`backup.problem.${sync.problem}`)}
           </AppText>
         ) : null}
-        {driveNote ? (
-          <AppText variant="small" tone="negative">
-            {driveNote}
-          </AppText>
-        ) : null}
-        {sync.available && !sync.email ? (
+        {sync.available ? (
           <View style={{ gap: 10 }}>
-            <Button title={t('backup.drive.connect')} disabled={busy !== null} onPress={() => void connect()} />
-            {sync.connectWithBrowser ? (
-              <Button title={t('backup.drive.connectBrowser')} variant="secondary" disabled={busy !== null} onPress={() => void connect(true)} />
+            <Button title={sync.step === 'off' ? t('cloud.setup') : t('cloud.manage')} onPress={() => router.push('/cloud')} />
+            {sync.step === 'ready' ? (
+              <Button title={t('backup.drive.syncNow')} variant="secondary" disabled={sync.syncing} onPress={() => void sync.syncNow()} />
             ) : null}
-          </View>
-        ) : null}
-        {sync.email ? (
-          <View style={{ gap: 10 }}>
-            <Button title={t('backup.drive.syncNow')} disabled={sync.syncing} onPress={() => void sync.syncNow()} />
-            {sync.problem === 'signIn' ? (
-              <Button title={t('backup.drive.signInAgain')} variant="secondary" disabled={busy !== null} onPress={() => void connect()} />
-            ) : null}
-            {sync.problem === 'signIn' && sync.connectWithBrowser ? (
-              <Button title={t('backup.drive.connectBrowser')} variant="secondary" disabled={busy !== null} onPress={() => void connect(true)} />
-            ) : null}
-            <Button title={t('backup.drive.disconnect')} variant="secondary" onPress={disconnect} />
           </View>
         ) : null}
       </Card>

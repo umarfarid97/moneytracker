@@ -2,6 +2,7 @@ import { isDemoLoaded } from '@/db/repos/demo';
 import type { Db } from '@/db/types';
 import { DriveAuthError, listFiles, readText, writeJson, type DriveFile } from './drive';
 import { mergeSnapshots } from './merge';
+import { DemoLoadedError, SyncTooNewError } from './syncErrors';
 import {
   downloadReceipt, isStoredReceipt, RECEIPT_FILES, receiptExists, uploadReceipt,
 } from './receiptFiles';
@@ -10,19 +11,7 @@ import { applySnapshot, canonical, exportSnapshot, isSnapshot, schemaVersion, wi
 /** The one data file in the user's hidden Duit folder on Drive. Receipt photos sit beside it. */
 export const SYNC_FILE = 'duit-sync.json';
 
-/** The Drive copy was written by a newer app version; syncing could drop data this version doesn't know. */
-export class SyncTooNewError extends Error {
-  constructor() {
-    super('Drive data is from a newer version of Duit');
-  }
-}
-
-/** Demo data is loaded (More > Demo data); syncing waits until it is cleared so it can never pass as real data. */
-export class DemoLoadedError extends Error {
-  constructor() {
-    super('Demo data is loaded');
-  }
-}
+export { DemoLoadedError, SyncTooNewError };
 
 /**
  * One sync round: download the Drive copy, merge it with this phone's data, write the result here and
