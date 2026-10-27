@@ -1,4 +1,4 @@
-import { allocate, balances, entryOf, netPositions, participants, settleTransfers, splitTransfers, transferOf, projectSummaries, settleUp, splitBill, splitEntries, splitEqually, totals, type OwedEntry, type OwedProject } from '@/domain/owed';
+import { allocate, encodeBill, groupEntries, parseBill, balances, entryOf, netPositions, participants, settleTransfers, splitTransfers, transferOf, projectSummaries, settleUp, splitBill, splitEntries, splitEqually, totals, type OwedEntry, type OwedProject } from '@/domain/owed';
 
 let id = 0;
 const entry = (person: string, kind: OwedEntry['kind'], amount: number, date = '2026-10-01'): OwedEntry => ({
@@ -296,5 +296,35 @@ describe('splitting to the sen', () => {
     const r = splitBill({ total: 9000, mode: 'equal', others: [{ name: 'Aina', value: 1 }, { name: 'Ben', value: 1 }] });
     const t = splitTransfers({ paid: [{ name: '', amount: 3000 }, { name: 'Aina', amount: 6000 }], parts: r.parts, mine: r.mine });
     expect(t).toEqual([{ from: 'Aina', to: 'Ben', type: 'lend', amount: 3000 }]);
+  });
+
+  test('a bill two people paid and four share: the maths and the grouped item', () => {
+    // RM 100 paid by me (65) and Danish (35), split equally among me, Danish, Ayang and Bunga: 25 each.
+    const r = splitBill({ total: 10000, mode: 'equal', others: ['Danish', 'Ayang', 'Bunga'].map((name) => ({ name, value: 1 })) });
+    expect(r.mine).toBe(2500);
+    expect(r.parts.map((p) => p.amount)).toEqual([2500, 2500, 2500]);
+    const paid = [{ name: '', amount: 6500 }, { name: 'Danish', amount: 3500 }];
+    const transfers = splitTransfers({ paid, parts: r.parts, mine: r.mine });
+    // I put in 40 too much, Danish 10; Ayang and Bunga are 25 short each.
+    expect(netPositions(transfers.map((tr, i) => ({ id: i, ...entryOf(tr), date: '2026-10-27', note: '', projectId: 1 })))).toEqual([
+      { name: '', net: 4000 }, { name: 'Danish', net: 1000 }, { name: 'Ayang', net: -2500 }, { name: 'Bunga', net: -2500 },
+    ]);
+
+    const bill = encodeBill({ id: 'b1', total: 10000, paid, parts: r.parts, mine: r.mine, mode: 'equal', typed: ['', '', ''], myShares: '1' });
+    const rows = transfers.map((tr, i): OwedEntry => ({ id: 100 + i, ...entryOf(tr), date: '2026-10-27', note: 'Makan shawarma', projectId: 1, bill }));
+    const plain = entry('Aina', 'lent', 500, '2026-10-26');
+    const items = groupEntries([rows[0], plain, ...rows.slice(1)]);
+    expect(items.map((i) => i.type)).toEqual(['bill', 'entry']);
+    const first = items[0];
+    expect(first.type === 'bill' && first.entries).toHaveLength(rows.length);
+    expect(first.type === 'bill' && first.bill.total).toBe(10000);
+  });
+
+  test('entries without a readable bill stay plain entries', () => {
+    expect(parseBill(undefined)).toBeNull();
+    expect(parseBill('')).toBeNull();
+    expect(parseBill('{not json')).toBeNull();
+    const old = entry('Aina', 'lent', 500);
+    expect(groupEntries([old, { ...old, id: 999, bill: 'garbage' }]).map((i) => i.type)).toEqual(['entry', 'entry']);
   });
 });

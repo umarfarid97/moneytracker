@@ -18,6 +18,8 @@ export type OwedEntry = {
   projectId: number;
   /** The other side of the entry: '' when it is between you and `person`, otherwise someone else in the book. */
   counter: string;
+  /** The split bill this entry came from (see `SplitBill`), as JSON; '' or missing for a plain entry. */
+  bill?: string;
 };
 export type NewOwedEntry = Omit<OwedEntry, 'id'>;
 
@@ -304,4 +306,69 @@ export function splitTransfers(i: {
   for (const p of i.parts) add(p.name, -p.amount);
   // Whoever put in more than their part lent the difference to whoever put in less.
   return settleTransfers(net.filter((p) => p.net !== 0)).map((t) => ({ from: t.to, to: t.from, type: 'lend' as const, amount: t.amount }));
+}
+
+/** The original bill behind a split, kept on each entry it produced so the entries can be shown as one item. */
+export type SplitBill = {
+  /** Same on every entry of the bill. */
+  id: string;
+  total: Sen;
+  /** Who paid how much ('' is you). */
+  paid: { name: string; amount: Sen }[];
+  /** What each other person's part came to. */
+  parts: SplitPart[];
+  /** Your own part. */
+  mine: Sen;
+  mode: SplitMode;
+  /** What was typed for each of `parts`, in the same order, so the bill can be edited. */
+  typed: string[];
+  myShares: string;
+};
+
+export const encodeBill = (b: SplitBill): string => JSON.stringify(b);
+
+/** The bill stored on an entry, or null for a plain entry or text that is not a bill. */
+export function parseBill(raw: string | undefined): SplitBill | null {
+  if (!raw) return null;
+  try {
+    const b = JSON.parse(raw) as SplitBill;
+    const ok = b && typeof b.id === 'string' && b.id !== '' && Number.isSafeInteger(b.total) && Array.isArray(b.paid) && Array.isArray(b.parts)
+      && Number.isSafeInteger(b.mine) && MODES_ALL.includes(b.mode);
+    return ok ? { ...b, typed: Array.isArray(b.typed) ? b.typed : [], myShares: typeof b.myShares === 'string' ? b.myShares : '1' } : null;
+  } catch {
+    return null;
+  }
+}
+const MODES_ALL: SplitMode[] = ['equal', 'amount', 'percent', 'shares'];
+
+/** Everyone in a bill, you included. */
+export const billPeople = (b: SplitBill): number => b.parts.length + 1;
+
+export type EntryItem =
+  | { type: 'entry'; entry: OwedEntry }
+  | { type: 'bill'; bill: SplitBill; note: string; date: string; entries: OwedEntry[] };
+
+/**
+ * Entries as the list shows them: the entries of one split bill become a single item (at the place of its first
+ * entry), everything else stays as it is. Entries whose bill cannot be read show as plain entries.
+ */
+export function groupEntries(entries: OwedEntry[]): EntryItem[] {
+  const items: EntryItem[] = [];
+  const open = new Map<string, Extract<EntryItem, { type: 'bill' }>>();
+  for (const entry of entries) {
+    const bill = parseBill(entry.bill);
+    if (!bill) {
+      items.push({ type: 'entry', entry });
+      continue;
+    }
+    const group = open.get(bill.id);
+    if (group) {
+      group.entries.push(entry);
+    } else {
+      const item: Extract<EntryItem, { type: 'bill' }> = { type: 'bill', bill, note: entry.note, date: entry.date, entries: [entry] };
+      open.set(bill.id, item);
+      items.push(item);
+    }
+  }
+  return items;
 }

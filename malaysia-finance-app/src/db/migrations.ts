@@ -146,6 +146,10 @@ export const MIGRATIONS: string[] = [
   `
   ALTER TABLE profile ADD COLUMN pcb_monthly INTEGER NOT NULL DEFAULT 0 CHECK (pcb_monthly >= 0);
   `,
+  // 15: the original bill behind a split (JSON, the same on each entry it produced); '' for a plain entry
+  `
+  ALTER TABLE owed_entries ADD COLUMN bill TEXT NOT NULL DEFAULT '';
+  `,
 ];
 
 function projectsMigration(): string {
