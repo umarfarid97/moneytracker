@@ -65,8 +65,9 @@ let current: Saved | null = (() => {
 })();
 let lastError: string | null = null;
 
-// Load Google's script up front so the sign-in window can open straight from a tap (browsers block it otherwise).
-if (GOOGLE_WEB_CLIENT_ID !== '') loadGis().catch(() => {});
+// Google's script loads only when sign-in is first needed, never at startup: a third-party script on every visit made
+// iOS Safari show its "reduce advanced privacy protections" banner. If the first sign-in tap has to wait for the
+// download, the browser may block the sign-in window; the existing popupBlocked message then asks the user to tap again.
 
 async function requestToken(prompt: '' | 'consent'): Promise<string | null> {
   const gis = await loadGis();
