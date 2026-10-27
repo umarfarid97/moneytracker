@@ -64,11 +64,14 @@ function cloneData(value: unknown): unknown {
   return out;
 }
 
+const RELOAD_FLAG = 'duit.startupReload';
+
 /**
- * If the app has drawn nothing a few seconds after start, replace the blank page with the error that stopped it, so
- * a failed start can be reported instead of a white screen. Returns a function that runs the check immediately.
+ * If the app shows nothing a few seconds after start, reload the page once (a cold first visit can stall where a
+ * second load works), and if it is still empty show the error that stopped it instead of a blank page. Returns a
+ * function that runs the check immediately.
  */
-export function installStartupFallback(win: Scope, doc: Scope, waitMs = 8000): () => void {
+export function installStartupFallback(win: Scope, doc: Scope, waitMs = 6000): () => void {
   let firstError = '';
   const remember = (message: unknown) => {
     if (!firstError && message) firstError = String((message as Error)?.message ?? message);
@@ -76,9 +79,29 @@ export function installStartupFallback(win: Scope, doc: Scope, waitMs = 8000): (
   win.addEventListener('error', (e: any) => remember(e?.error ?? e?.message));
   win.addEventListener('unhandledrejection', (e: any) => remember(e?.reason));
 
+  const alreadyReloaded = (): boolean => {
+    try {
+      return win.sessionStorage.getItem(RELOAD_FLAG) === '1';
+    } catch {
+      return true; // Cannot remember a reload, so never risk a reload loop.
+    }
+  };
+
   const check = () => {
     const root = doc.getElementById('root');
-    if (!root || root.childElementCount > 0 || doc.getElementById('duit-startup-error')) return;
+    const shown = String(root?.innerText ?? '').trim().length > 0;
+    if (!root || shown) {
+      try { win.sessionStorage.removeItem(RELOAD_FLAG); } catch { /* nothing to clear */ }
+      return;
+    }
+    if (doc.getElementById('duit-startup-error')) return;
+    if (!alreadyReloaded()) {
+      try {
+        win.sessionStorage.setItem(RELOAD_FLAG, '1');
+        win.location.reload();
+        return;
+      } catch { /* fall through to the message */ }
+    }
     const box = doc.createElement('div');
     box.id = 'duit-startup-error';
     box.setAttribute('style',

@@ -14,10 +14,22 @@ const WASM_URL = (): string => Asset.fromModule(require('sql.js/dist/sql-wasm.wa
 const toBase64 = (bytes: Uint8Array) => btoa(Array.from(bytes, (b) => String.fromCharCode(b)).join(''));
 const fromBase64 = (text: string) => Uint8Array.from(atob(text), (c) => c.charCodeAt(0));
 
-export async function openDb(name = 'duit.db'): Promise<Db> {
-  const SQL = await initSqlJs({
-    locateFile: (file: string) => (file.endsWith('.wasm') ? WASM_URL() : file),
+function withTimeout<T>(work: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    work.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (error) => { clearTimeout(timer); reject(error); },
+    );
   });
+}
+
+export async function openDb(name = 'duit.db'): Promise<Db> {
+  const SQL = await withTimeout(
+    initSqlJs({ locateFile: (file: string) => (file.endsWith('.wasm') ? WASM_URL() : file) }),
+    15000,
+    'The database engine did not load. Check your connection and reload the page.',
+  );
   let saved: string | null = null;
   try {
     saved = localStorage.getItem(name);
