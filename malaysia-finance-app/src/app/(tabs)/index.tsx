@@ -12,6 +12,7 @@ import { useCategories } from '@/hooks/useCategories';
 import { useCommitments } from '@/hooks/useCommitments';
 import { useExpenses } from '@/hooks/useExpenses';
 import { useData } from '@/hooks/DataProvider';
+import { useEstimatedPcb } from '@/hooks/useEstimatedPcb';
 import { useProfile } from '@/hooks/useProfile';
 import { useToday } from '@/hooks/useToday';
 import { t } from '@/i18n/t';
@@ -37,9 +38,10 @@ export default function Home() {
     () => buildHome({ categories, expenses, budgets, today, startDay }),
     [categories, expenses, budgets, today, startDay],
   );
+  const estimatedPcb = useEstimatedPcb();
   const balance = useMemo(
-    () => balanceLeft({ profile, expenses, commitments, today, extraIncome: incomeEntries }),
-    [profile, expenses, commitments, today, incomeEntries],
+    () => balanceLeft({ profile, expenses, commitments, today, extraIncome: incomeEntries, estimatedPcb }),
+    [profile, expenses, commitments, today, incomeEntries, estimatedPcb],
   );
   const categoryById = useMemo(() => new Map(categories.map((cat) => [cat.id, cat])), [categories]);
 

@@ -111,8 +111,9 @@ describe('Loan calculator', () => {
     await db.run("INSERT INTO commitments (name, amount, day_of_month, kind, active) VALUES ('Car', 120000, 1, 'loan', 1)");
     await db.run("INSERT INTO commitments (name, amount, day_of_month, kind, active) VALUES ('Astro', 15000, 5, 'bill', 1)");
     await db.run("INSERT INTO commitments (name, amount, day_of_month, kind, active) VALUES ('Old', 99999, 5, 'bill', 0)");
+    // 6000 - 660 EPF - 30 SOCSO - 12 EIS, less the estimated PCB (RM 244.17 a month for YA 2025)
     await renderWithData(db, <Loan />);
-    await waitFor(() => expect(screen.getByLabelText('Monthly take-home pay').props.value).toBe('5298.00'));
+    await waitFor(() => expect(screen.getByLabelText('Monthly take-home pay').props.value).toBe('5053.83'));
     expect(screen.getByLabelText('Monthly commitments').props.value).toBe('1350.00');
   });
 });

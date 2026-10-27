@@ -2,7 +2,8 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { formatRM, parsePercent, parseRM, senToInput } from '@/domain/money';
-import { estimateEis, estimateNetMonthly, estimateSocso } from '@/domain/netpay';
+import { estimateEis, estimateSocso, takeHomeBreakdown, type Deduction } from '@/domain/netpay';
+import { useEstimatedPcb } from '@/hooks/useEstimatedPcb';
 import { useIncome } from '@/hooks/useIncome';
 import { useProfile } from '@/hooks/useProfile';
 import { useToday } from '@/hooks/useToday';
@@ -21,6 +22,15 @@ import { sanitizeNumber } from '@/ui/numeric';
 /** 0.11 -> "11", 0.0925 -> "9.25" (avoids floating point noise like 11.000000000000002). */
 const rateToText = (rate: number) => String(Math.round(rate * 10000) / 100);
 
+function DeductionRow({ label, amount, deduction }: { label: string; amount: number; deduction?: Deduction }) {
+  const kind = deduction ? ` (${t(deduction.estimated ? 'profile.estimated' : 'profile.entered')})` : '';
+  return (
+    <AppText variant="small" tone="muted">
+      {`${label}: - ${formatRM(amount)}${kind}`}
+    </AppText>
+  );
+}
+
 export default function Profile() {
   const { c } = useTheme();
   const { data: profile, save } = useProfile();
@@ -31,6 +41,7 @@ export default function Profile() {
   const [epf, setEpf] = useState(rateToText(profile.epfRate));
   const [socso, setSocso] = useState(profile.socsoMonthly > 0 ? senToInput(profile.socsoMonthly) : '');
   const [eis, setEis] = useState(profile.eisMonthly > 0 ? senToInput(profile.eisMonthly) : '');
+  const [pcb, setPcb] = useState(profile.pcbMonthly > 0 ? senToInput(profile.pcbMonthly) : '');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -41,9 +52,11 @@ export default function Profile() {
   const epfPct = parsePercent(epf, 100);
   const socsoSen = optional(socso);
   const eisSen = optional(eis);
+  const pcbSen = optional(pcb);
   const valid =
-    grossSen !== null && epfPct !== null && socsoSen !== null && eisSen !== null && (net.trim() === '' || netSen !== null);
+    grossSen !== null && epfPct !== null && socsoSen !== null && eisSen !== null && pcbSen !== null && (net.trim() === '' || netSen !== null);
 
+  const estimatedPcb = useEstimatedPcb(grossSen ?? undefined);
   const draft = valid
     ? {
         ...profile,
@@ -52,8 +65,11 @@ export default function Profile() {
         epfRate: epfPct / 100,
         socsoMonthly: socsoSen,
         eisMonthly: eisSen,
+        pcbMonthly: pcbSen,
       }
     : null;
+
+  const breakdown = draft ? takeHomeBreakdown(draft, estimatedPcb) : null;
 
   async function onSave() {
     if (!draft || busy) return;
@@ -87,8 +103,16 @@ export default function Profile() {
       <BackButton />
       <AppText variant="title">{t('profile.title')}</AppText>
       {draft ? (
-        <Card>
-          <AppText variant="bodyStrong">{t('profile.estimate', { amount: formatRM(estimateNetMonthly({ ...profile, ...draft })) })}</AppText>
+        <Card style={{ gap: 6 }}>
+          <AppText variant="bodyStrong">{t(breakdown!.overridden ? 'profile.estimateOverride' : 'profile.estimate', { amount: formatRM(breakdown!.net) })}</AppText>
+          {breakdown!.overridden ? null : (
+            <View style={{ gap: 2 }}>
+              <DeductionRow label={t('profile.line.epf')} amount={breakdown!.epf} />
+              <DeductionRow label={t('profile.line.socso')} amount={breakdown!.socso.amount} deduction={breakdown!.socso} />
+              <DeductionRow label={t('profile.line.eis')} amount={breakdown!.eis.amount} deduction={breakdown!.eis} />
+              <DeductionRow label={t('profile.line.pcb')} amount={breakdown!.pcb.amount} deduction={breakdown!.pcb} />
+            </View>
+          )}
         </Card>
       ) : null}
       <PressableScale accessibilityRole="button" accessibilityLabel={t('profile.extra')} onPress={() => router.push('/income')}>
@@ -122,6 +146,10 @@ export default function Profile() {
       <View style={{ gap: 4 }}>
         <AmountInput label={t('profile.eis')} value={eis} onChange={(text) => setEis(text)} placeholder={senToInput(estimateEis(grossSen ?? 0))} />
         <AppText variant="small" tone="muted">{t('profile.deductionHint')}</AppText>
+      </View>
+      <View style={{ gap: 4 }}>
+        <AmountInput label={t('profile.pcb')} value={pcb} onChange={(text) => setPcb(text)} placeholder={senToInput(estimatedPcb)} />
+        <AppText variant="small" tone="muted">{t('profile.pcbHint')}</AppText>
       </View>
       {error ? (
         <AppText variant="small" tone="negative">

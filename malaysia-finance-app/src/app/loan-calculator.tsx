@@ -7,6 +7,7 @@ import { monthlyCommitmentTotal } from '@/domain/commitments';
 import { formatRM, parseRM, senToInput } from '@/domain/money';
 import { estimateNetMonthly } from '@/domain/netpay';
 import { useCommitments } from '@/hooks/useCommitments';
+import { useEstimatedPcb } from '@/hooks/useEstimatedPcb';
 import { useProfile } from '@/hooks/useProfile';
 import { t } from '@/i18n/t';
 import { AmountInput } from '@/ui/AmountInput';
@@ -26,12 +27,13 @@ export default function LoanCalculator() {
   const { c, scheme } = useTheme();
   const { data: profile } = useProfile();
   const { data: commitments } = useCommitments();
+  const estimatedPcb = useEstimatedPcb();
 
   const [kind, setKind] = useState<LoanKind>('home');
   const [rateText, setRateText] = useState(String(LOAN_DEFAULTS.home.ratePct));
   const [yearsText, setYearsText] = useState(String(LOAN_DEFAULTS.home.maxYears));
   const [netText, setNetText] = useState(() => {
-    const net = estimateNetMonthly(profile);
+    const net = estimateNetMonthly(profile, estimatedPcb);
     return net > 0 ? senToInput(net) : '';
   });
   const [commitText, setCommitText] = useState(() => {
