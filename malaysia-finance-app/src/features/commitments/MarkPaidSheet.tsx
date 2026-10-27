@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { View } from 'react-native';
+import { clampPaymentDate } from '@/domain/bills';
+import { periodKey, periodLabel } from '@/domain/budgetPeriod';
 import { formatRM, parseRM, senToInput } from '@/domain/money';
 import type { Commitment } from '@/domain/types';
 import { t } from '@/i18n/t';
 import { AmountInput } from '@/ui/AmountInput';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
+import { DateField } from '@/ui/DateField';
 import { Sheet } from '@/ui/Sheet';
 
 type Props = {
@@ -15,13 +18,16 @@ type Props = {
   lastPaid?: number | null;
   /** Amount to start with when it is not the bill's usual one (the last payment of a loan is smaller). */
   suggested?: number | null;
+  today: string;
+  startDay: number;
   onClose: () => void;
-  /** Called with the amount actually paid. */
-  onConfirm: (amount: number) => Promise<void>;
+  /** Called with the amount actually paid and the day it was paid (never after today). */
+  onConfirm: (amount: number, date: string) => Promise<void>;
 };
 
 /** Confirms a payment; the amount starts as the bill's usual amount and can be changed. Mount with a fresh `key` per bill. */
-export function MarkPaidSheet({ visible, bill, lastPaid = null, suggested = null, onClose, onConfirm }: Props) {
+export function MarkPaidSheet({ visible, bill, lastPaid = null, suggested = null, today, startDay, onClose, onConfirm }: Props) {
+  const [date, setDate] = useState(today);
   // A bill that changes monthly starts empty: the amount has to come from this month's bill.
   const [amountText, setAmountText] = useState(bill && !bill.variable ? senToInput(suggested ?? bill.amount) : '');
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +40,7 @@ export function MarkPaidSheet({ visible, bill, lastPaid = null, suggested = null
     setBusy(true);
     setError(null);
     try {
-      await onConfirm(amount);
+      await onConfirm(amount, clampPaymentDate(date, today));
       onClose();
     } catch {
       setError(t('common.saveFailed'));
@@ -57,6 +63,19 @@ export function MarkPaidSheet({ visible, bill, lastPaid = null, suggested = null
           </AppText>
         ) : null}
         <AmountInput label={t('common.amount')} value={amountText} onChange={(text) => setAmountText(text)} autoFocus />
+        {(
+          <View style={{ gap: 6 }}>
+            <AppText variant="smallStrong">{t('commitments.payDate')}</AppText>
+            <View style={{ flexDirection: 'row' }}>
+              <DateField label={t('commitments.payDate')} value={date} onChange={(d) => setDate(clampPaymentDate(d, today))} />
+            </View>
+            {periodKey(date, startDay) !== periodKey(today, startDay) ? (
+              <AppText variant="small" tone="muted">
+                {t('commitments.payDateHint', { period: periodLabel(periodKey(date, startDay), startDay) })}
+              </AppText>
+            ) : null}
+          </View>
+        )}
         {error ? (
           <AppText variant="small" tone="negative">
             {error}

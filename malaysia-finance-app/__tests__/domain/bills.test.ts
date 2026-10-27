@@ -1,5 +1,5 @@
 import { NO_LOAN } from '@/domain/loanTracker';
-import { applyBillChange, billEstimate, billStatus, lastPaidFor, missedDueDates, paidDueDatesFor, previousDueDate } from '@/domain/bills';
+import { applyBillChange, billEstimate, billStatus, clampPaymentDate, payMode, lastPaidFor, missedDueDates, paidDueDatesFor, previousDueDate } from '@/domain/bills';
 import type { Commitment, Expense } from '@/domain/types';
 
 const bill = (over: Partial<Commitment> = {}): Commitment => ({
@@ -207,5 +207,66 @@ describe('bill start and end dates', () => {
     const auto = bill({ autoRecord: true, dayOfMonth: 5, startDate: '2026-01-01', startsOn: '2026-09-10', endsOn: '2026-11-30' });
     expect(missedDueDates(auto, '2026-10-24')).toEqual(['2026-10-05']);
     expect(missedDueDates(auto, '2027-03-01')).toEqual(['2026-10-05', '2026-11-05']);
+  });
+});
+
+describe('payMode', () => {
+  const mode = (c: Commitment, today: string, paid: string[] = [], startDay = 1) =>
+    payMode({ commitment: c, status: billStatus({ commitment: c, today, paidDueDates: paid }), today, startDay });
+
+  test('due today and overdue can be marked paid', () => {
+    expect(mode(bill(), '2026-10-05')).toBe('now');
+    expect(mode(bill(), '2026-10-08')).toBe('now');
+  });
+
+  test('due later in the same period can be marked paid', () => {
+    expect(mode(bill({ dayOfMonth: 30 }), '2026-10-24', ['2026-09-30'])).toBe('now');
+  });
+
+  test('due in the next period waits', () => {
+    expect(mode(bill({ dayOfMonth: 5 }), '2026-10-24', ['2026-10-05'])).toBe('none'); // already paid this cycle
+    expect(mode(bill({ dayOfMonth: 5, startDate: '2026-10-25' }), '2026-10-27')).toBe('wait');
+  });
+
+  test('a bill that has not started yet only waits', () => {
+    expect(mode(bill({ startsOn: '2026-11-25', dayOfMonth: 25 }), '2026-10-27')).toBe('wait');
+    // even when it starts later this period
+    expect(mode(bill({ startsOn: '2026-10-28', dayOfMonth: 28 }), '2026-10-24')).toBe('wait');
+  });
+
+  test('a bill two periods away waits', () => {
+    expect(mode(bill({ startsOn: '2026-12-10', dayOfMonth: 10 }), '2026-10-27')).toBe('wait');
+  });
+
+  test('period boundary: the last day of the period vs the first of the next', () => {
+    const c = bill({ dayOfMonth: 1, startDate: '2026-01-01' });
+    // due 1 Nov, today 31 Oct: next period
+    expect(mode(c, '2026-10-31', ['2026-10-01'])).toBe('none');
+    expect(mode(bill({ dayOfMonth: 1, startDate: '2026-10-15' }), '2026-10-31')).toBe('wait');
+    // on the 1st it is due today
+    expect(mode(c, '2026-11-01', ['2026-10-01'])).toBe('now');
+  });
+
+  test('payday periods: a bill due after payday is next period', () => {
+    // period starts on the 25th: today 20 Oct is in the period that started 25 Sep and ends 24 Oct
+    const c = bill({ dayOfMonth: 26, startDate: '2026-10-01' });
+    expect(mode(c, '2026-10-20', ['2026-09-26'], 25)).toBe('wait'); // due 26 Oct = next period
+    expect(mode(bill({ dayOfMonth: 22, startDate: '2026-10-01' }), '2026-10-20', ['2026-09-22'], 25)).toBe('now'); // due 22 Oct = this period
+    // on payday itself the 26th is in the current period
+    expect(mode(c, '2026-10-25', ['2026-09-26'], 25)).toBe('now');
+  });
+
+  test('paused, ended and paid bills offer nothing', () => {
+    expect(mode(bill({ active: false }), '2026-10-24')).toBe('none');
+    expect(mode(bill({ endsOn: '2026-09-30' }), '2026-10-24', ['2026-09-05'])).toBe('none');
+  });
+});
+
+describe('clampPaymentDate', () => {
+  test('keeps today and earlier, replaces later or invalid dates with today', () => {
+    expect(clampPaymentDate('2026-10-24', '2026-10-24')).toBe('2026-10-24');
+    expect(clampPaymentDate('2026-10-01', '2026-10-24')).toBe('2026-10-01');
+    expect(clampPaymentDate('2026-11-05', '2026-10-24')).toBe('2026-10-24');
+    expect(clampPaymentDate('nope', '2026-10-24')).toBe('2026-10-24');
   });
 });

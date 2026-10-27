@@ -3,14 +3,20 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, TextInput, View } from 'react-native';
 import { LATEST_TAX_YEAR } from '@/data/tax';
-import { dayLabel, monthKey, monthLabel, shiftMonth } from '@/domain/dates';
+import { dayLabel, shortDate, monthKey, monthLabel, shiftMonth } from '@/domain/dates';
+import { billEstimate, lastPaidFor } from '@/domain/bills';
+import { loanBalance, nextPayment } from '@/domain/loanTracker';
 import { formatRM } from '@/domain/money';
+import { pendingBills, type PendingBill } from '@/domain/pendingBills';
 import {
   activeFilterCount, EMPTY_FILTERS, filterExpenses, totalsByMethod, type SpendingFilters,
 } from '@/domain/spendingFilter';
 import { groupByDay, monthSpent } from '@/domain/summary';
-import type { Category, Expense, PaymentMethod } from '@/domain/types';
+import type { Category, Commitment, Expense, PaymentMethod } from '@/domain/types';
+import { MarkPaidSheet } from '@/features/commitments/MarkPaidSheet';
 import { useCategories } from '@/hooks/useCategories';
+import { useData } from '@/hooks/DataProvider';
+import { useCommitments } from '@/hooks/useCommitments';
 import { useExpenses } from '@/hooks/useExpenses';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useToday } from '@/hooks/useToday';
@@ -33,9 +39,51 @@ import { useTheme } from '@/ui/useTheme';
 
 type Item =
   | { type: 'header'; key: string; label: string; total: number }
-  | { type: 'row'; key: string; expense: Expense };
+  | { type: 'row'; key: string; expense: Expense }
+  | { type: 'pending'; key: string; bill: PendingBill };
 
 const RELIEFS = LATEST_TAX_YEAR.reliefs;
+
+/** A bill that is due but not paid yet: muted, with a quick Mark paid. It is not spending until it is paid. */
+const PendingRow = memo(function PendingRow({ bill, amount, onPay }: { bill: PendingBill; amount: number; onPay: (b: PendingBill) => void }) {
+  const { c } = useTheme();
+  const { commitment: item } = bill;
+  return (
+    <View
+      testID="pending-row"
+      style={{
+        backgroundColor: c.surface, borderRadius: radius.control + 2, paddingHorizontal: 14, paddingVertical: 12, minHeight: 68,
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, opacity: 0.75,
+        borderWidth: 1, borderStyle: 'dashed', borderColor: c.border,
+      }}
+    >
+      <IconBadge icon="time-outline" color={c.muted} size={42} />
+      <View style={{ flex: 1, gap: 4 }}>
+        <AppText testID="pending-name" variant="bodyStrong" numberOfLines={1}>{item.name}</AppText>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
+          <View style={{ backgroundColor: c.accentSoft, borderRadius: radius.xs, paddingHorizontal: 8, paddingVertical: 2 }}>
+            <AppText variant="small" color={c.accentInk}>{t('spending.pendingBadge')}</AppText>
+          </View>
+          <AppText variant="small" tone={bill.overdue ? 'negative' : 'muted'}>
+            {t(bill.overdue ? 'spending.pendingOverdue' : 'spending.pendingDue', { date: shortDate(bill.dueDate) })}
+          </AppText>
+        </View>
+      </View>
+      <View style={{ alignItems: 'flex-end', gap: 4 }}>
+        <AppText variant="bodyStrong" tone="muted">{`${item.variable ? '~' : ''}${formatRM(amount)}`}</AppText>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${t('commitments.markPaid')} ${item.name}`}
+          hitSlop={8}
+          onPress={() => onPay(bill)}
+          style={{ backgroundColor: c.accentSoft, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 4 }}
+        >
+          <AppText variant="smallStrong" color={c.accentInk}>{t('commitments.markPaid')}</AppText>
+        </Pressable>
+      </View>
+    </View>
+  );
+});
 
 const Row = memo(function Row({
   expense, category, method, onOpen, onDelete,
@@ -121,27 +169,45 @@ export default function Spending() {
     setMonth(thisMonth);
   }, [params.categoryId, params.at]);
   const { data: expenses, remove } = useExpenses();
+  const { payBill, profile } = useData();
+  const { data: commitments } = useCommitments();
+  const [showPending, setShowPending] = useState(true);
+  const [pay, setPay] = useState<{ bill: PendingBill | null; nonce: number }>({ bill: null, nonce: 0 });
   const { data: categories } = useCategories();
   const { data: methods } = usePaymentMethods();
 
+  const filterCount = activeFilterCount(filters);
   const inMonth = useMemo(() => expenses.filter((e) => monthKey(e.date) === month), [expenses, month]);
   const visible = useMemo(
     () => filterExpenses(inMonth, filters, { categories, methods, reliefs: RELIEFS }),
     [inMonth, filters, categories, methods],
   );
+  const pending = useMemo(() => {
+    // Only for the current month, and only when no filter narrows the list beyond search text.
+    if (!showPending || month !== thisMonth || filterCount > 0) return [];
+    const text = filters.text.trim().toLowerCase();
+    return pendingBills({ commitments, expenses, today, startDay: profile.budgetStartDay })
+      .filter((p) => text === '' || p.commitment.name.toLowerCase().includes(text));
+  }, [showPending, month, thisMonth, filterCount, filters.text, commitments, expenses, today, profile.budgetStartDay]);
   const items = useMemo<Item[]>(
-    () =>
-      groupByDay(visible).flatMap((g) => [
+    () => [
+      ...(pending.length > 0
+        ? [
+            { type: 'header' as const, key: 'h-pending', label: t('spending.pending'), total: -1 },
+            ...pending.map((bill) => ({ type: 'pending' as const, key: `p-${bill.commitment.id}`, bill })),
+          ]
+        : []),
+      ...groupByDay(visible).flatMap((g) => [
         { type: 'header' as const, key: `h-${g.date}`, label: dayLabel(g.date, today), total: g.total },
         ...g.items.map((expense) => ({ type: 'row' as const, key: `e-${expense.id}`, expense })),
       ]),
-    [visible, today],
+    ],
+    [visible, today, pending],
   );
   const categoryById = useMemo(() => new Map(categories.map((cat) => [cat.id, cat])), [categories]);
   const filterCategory = filters.categoryId !== null ? categoryById.get(filters.categoryId) : undefined;
   const methodById = useMemo(() => new Map(methods.map((m) => [m.id, m])), [methods]);
   const methodTotals = useMemo(() => totalsByMethod(inMonth, methods, t('methods.noMethod')), [inMonth, methods]);
-  const filterCount = activeFilterCount(filters);
   const narrowed = filterCount > 0 || filters.text.trim() !== '';
 
   const open = useCallback((e: Expense) => {
@@ -159,6 +225,8 @@ export default function Spending() {
   }, [remove, categoryById]);
   const set = (patch: Partial<SpendingFilters>) => setFilters((f) => ({ ...f, ...patch }));
 
+  const billEstimateFor = useCallback((c: Commitment) => billEstimate(c, expenses), [expenses]);
+
   // Stable, so scrolling and typing in search don't re-render rows that haven't changed.
   const renderItem = useCallback(
     ({ item }: { item: Item }) =>
@@ -167,10 +235,18 @@ export default function Spending() {
           <AppText variant="eyebrow" tone="muted">
             {item.label}
           </AppText>
-          <AppText variant="smallStrong" tone="muted">
-            {formatRM(item.total)}
-          </AppText>
+          {item.total >= 0 ? (
+            <AppText variant="smallStrong" tone="muted">
+              {formatRM(item.total)}
+            </AppText>
+          ) : null}
         </View>
+      ) : item.type === 'pending' ? (
+        <PendingRow
+          bill={item.bill}
+          amount={billEstimateFor(item.bill.commitment)}
+          onPay={(b) => setPay((p) => ({ bill: b, nonce: p.nonce + 1 }))}
+        />
       ) : (
         <Row
           expense={item.expense}
@@ -180,7 +256,7 @@ export default function Spending() {
           onDelete={del}
         />
       ),
-    [categoryById, methodById, open, del],
+    [categoryById, methodById, open, del, billEstimateFor],
   );
 
   return (
@@ -313,6 +389,20 @@ export default function Spending() {
         renderItem={renderItem}
       />
 
+      <MarkPaidSheet
+        key={`pay-${pay.nonce}`}
+        visible={pay.bill !== null}
+        bill={pay.bill?.commitment ?? null}
+        lastPaid={pay.bill ? lastPaidFor(pay.bill.commitment.id, expenses) : null}
+        suggested={pay.bill ? nextPayment(pay.bill.commitment, loanBalance(pay.bill.commitment, expenses)) : null}
+        today={today}
+        startDay={profile.budgetStartDay}
+        onClose={() => setPay((p) => ({ ...p, bill: null }))}
+        onConfirm={async (amount, date) => {
+          if (pay.bill) await payBill(pay.bill.commitment, pay.bill.dueDate, { amount, date });
+        }}
+      />
+
       <Sheet visible={filtersOpen} title={t('spending.filters')} onClose={() => setFiltersOpen(false)}>
         <View style={{ gap: 12 }}>
           <AppText variant="smallStrong">{t('common.category')}</AppText>
@@ -356,6 +446,7 @@ export default function Spending() {
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             <Chip label={t('spending.taggedOnly')} selected={filters.taggedOnly} onPress={() => set({ taggedOnly: !filters.taggedOnly })} />
+            <Chip label={t('spending.showPending')} selected={showPending} onPress={() => setShowPending((v) => !v)} />
             <Chip label={t('spending.missingReceipt')} selected={filters.missingReceipt} onPress={() => set({ missingReceipt: !filters.missingReceipt })} />
           </View>
           <Button title={t('spending.clear')} variant="secondary" onPress={() => setFilters((f) => ({ ...EMPTY_FILTERS, text: f.text }))} />

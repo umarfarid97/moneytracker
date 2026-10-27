@@ -37,7 +37,8 @@ import {
 import type { Db } from '@/db/types';
 import { missedRuns, withRuleDefaults, type IncomeEntry, type IncomeRule, type NewIncomeEntry, type NewIncomeRule } from '@/domain/income';
 import type { NewOwedEntry, NewOwedProject, OwedEntry, OwedProject } from '@/domain/owed';
-import { missedDueDates } from '@/domain/bills';
+import { clampPaymentDate, missedDueDates } from '@/domain/bills';
+import { todayKL } from '@/domain/dates';
 import { byDateDesc as givingNewest, type GivingRecord, type NewGivingRecord } from '@/domain/giving';
 import { HOME_LAYOUT_KEY, parseHomeLayout, type HomeLayoutPrefs } from '@/domain/homeLayout';
 import { isPaidOff, loanBalance, nextPayment } from '@/domain/loanTracker';
@@ -345,7 +346,7 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
 
     const payBill: DataContextValue['payBill'] = async (c, dueDate, opts) => {
       const saved = await addBillExpense(db, {
-        amount: opts.amount, categoryId: billCategoryId(c), date: opts.date, note: c.name, receiptUri: null,
+        amount: opts.amount, categoryId: billCategoryId(c), date: clampPaymentDate(opts.date, todayKL()), note: c.name, receiptUri: null,
         paymentMethodId: c.paymentMethodId, reliefId: c.reliefId, reliefAmount: null, commitmentId: c.id, dueDate,
       });
       if (saved) setExpenses((prev) => [saved, ...prev].sort(byNewest));

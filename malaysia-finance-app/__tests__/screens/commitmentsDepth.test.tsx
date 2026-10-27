@@ -92,6 +92,35 @@ describe('Bills: mark paid', () => {
     expect((await billSpending(db))[0].due_date).toBe('2026-10-30');
   });
 
+  test('a bill starting next month shows its start date instead of Mark paid', async () => {
+    const db = await freshDb();
+    await db.run(
+      "INSERT INTO commitments (name, amount, day_of_month, kind, active, auto_record, start_date, starts_on, variable) VALUES ('Gym', 5000, 25, 'bill', 1, 0, '2026-10-01', '2026-11-25', 0)",
+    );
+    await renderWithData(db, <Commitments />);
+    await waitFor(() => expect(screen.getByText('Gym')).toBeTruthy());
+    expect(screen.queryByRole('button', { name: 'Mark paid Gym' })).toBeNull();
+    expect(screen.getByText(/^Starts (\w{3} )?25 Nov$/)).toBeTruthy();
+  });
+
+  test('a bill due in the next period shows its due date instead of Mark paid', async () => {
+    const db = await freshDb();
+    await bill(db, { name: 'Phone', amount: 8000, day: 5, start: '2026-10-25' });
+    await renderWithData(db, <Commitments />);
+    await waitFor(() => expect(screen.getByText('Phone')).toBeTruthy());
+    expect(screen.queryByRole('button', { name: 'Mark paid Phone' })).toBeNull();
+    expect(screen.getByText(/^Due (\w{3} )?5 Nov$/)).toBeTruthy();
+  });
+
+  test('the payment date defaults to today and can be set to an earlier day', async () => {
+    const db = await freshDb();
+    await bill(db, { name: 'Late bill', amount: 2000, day: 20 });
+    await renderWithData(db, <Commitments />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Mark paid Late bill' })).toBeTruthy());
+    await fireEvent.press(screen.getByRole('button', { name: 'Mark paid Late bill' }));
+    expect(screen.getByRole('button', { name: 'Payment date' }).props.accessibilityValue).toEqual({ text: '2026-10-24' });
+  });
+
   test('the amount must be valid before confirming', async () => {
     const db = await freshDb();
     await bill(db, { name: 'Bill', amount: 3000, day: 24 });
