@@ -6,8 +6,7 @@ const fs = require('fs');
 const path = require('path');
 
 const root = path.resolve(__dirname, '../dist');
-const wasm = path.resolve(__dirname, '../node_modules/sql.js/dist/sql-wasm.wasm');
-const types = { '.js': 'text/javascript', '.html': 'text/html', '.css': 'text/css', '.ttf': 'font/ttf', '.png': 'image/png', '.json': 'application/json' };
+const types = { '.js': 'text/javascript', '.html': 'text/html', '.css': 'text/css', '.ttf': 'font/ttf', '.png': 'image/png', '.json': 'application/json', '.wasm': 'application/wasm' };
 
 const server = http.createServer((req, res) => {
   let file = path.join(root, decodeURIComponent(req.url.split('?')[0]));
@@ -29,8 +28,9 @@ server.listen(0, async () => {
       delete Object.hasOwn; delete Array.prototype.at; delete Array.prototype.findLast; delete Array.prototype.findLastIndex;
       if (crypto.randomUUID) delete crypto.randomUUID;
     });
-    // sql.js fetches its wasm from a CDN; serve the local copy so the check works offline.
-    await page.route('**/cdn.jsdelivr.net/**', (r) => r.fulfill({ body: fs.readFileSync(wasm), contentType: 'application/wasm' }));
+    // The page must not load anything from another origin: Safari's privacy protections flag that and show a banner.
+    const origin = `http://localhost:`;
+    page.on('request', (r) => { if (!r.url().startsWith(origin) && !r.url().startsWith('data:') && !r.url().startsWith('blob:')) errors.push(`third-party request: ${r.url()}`); });
     await page.goto(`http://localhost:${server.address().port}/`);
     await page.waitForTimeout(6000);
     text = (await page.innerText('body')).trim();
