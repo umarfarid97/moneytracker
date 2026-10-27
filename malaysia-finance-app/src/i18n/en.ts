@@ -1,4 +1,5 @@
 import { cleanupEn } from './cleanup';
+import { homeLayoutEn } from './homeLayout';
 import { loansBillers } from './loansBillers';
 import { lockRemindersEn } from './lockReminders';
 import { statementImport } from './statementImport';
@@ -694,6 +695,7 @@ export const en = {
   ...lockRemindersEn,
   ...statementImport,
   ...reportsEn,
+  ...homeLayoutEn,
   ...cleanupEn,
 } as const;
 

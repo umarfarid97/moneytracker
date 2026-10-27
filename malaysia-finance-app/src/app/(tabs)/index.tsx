@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 import { periodKey } from '@/domain/budgetPeriod';
 import { balanceLeft } from '@/domain/balance';
 import { buildHome } from '@/domain/summary';
 import { shortDate } from '@/domain/dates';
+import { resolveCategories, resolveWidgets } from '@/domain/homeLayout';
 import { formatRM } from '@/domain/money';
 import { useBudgets } from '@/hooks/useBudgets';
 import { useCategories } from '@/hooks/useCategories';
@@ -13,6 +14,7 @@ import { useCommitments } from '@/hooks/useCommitments';
 import { useExpenses } from '@/hooks/useExpenses';
 import { useData } from '@/hooks/DataProvider';
 import { useEstimatedPcb } from '@/hooks/useEstimatedPcb';
+import { OPTIONAL_WIDGETS } from '@/features/home/widgets';
 import { useProfile } from '@/hooks/useProfile';
 import { useToday } from '@/hooks/useToday';
 import { t } from '@/i18n/t';
@@ -22,6 +24,7 @@ import { GET_STARTED_MAX_SPENDINGS, GetStarted } from '@/features/onboarding/Get
 import { HeroCard, onHero } from '@/ui/HeroCard';
 import { Screen } from '@/ui/Screen';
 import { radius } from '@/ui/theme';
+import { useTheme } from '@/ui/useTheme';
 import { loadHideBalance, saveHideBalance } from '@/ui/appearanceStorage';
 import { Tile } from '@/ui/Tile';
 import { TileGrid } from '@/ui/TileGrid';
@@ -32,7 +35,7 @@ export default function Home() {
   const { data: categories } = useCategories();
   const { data: profile } = useProfile();
   const { data: commitments } = useCommitments();
-  const { incomeEntries } = useData();
+  const { incomeEntries, homeLayout } = useData();
   const startDay = profile.budgetStartDay;
   const { data: budgets } = useBudgets(periodKey(today, startDay));
   const home = useMemo(
@@ -52,10 +55,17 @@ export default function Home() {
   const money = (cents: number) => (hidden ? 'RM ••••' : formatRM(cents));
   const categoryById = useMemo(() => new Map(categories.map((cat) => [cat.id, cat])), [categories]);
 
-  return (
-    <Screen fab>
-      <AppText variant="title">{shortDate(today)}</AppText>
-      <HeroCard style={{ gap: 6 }}>
+  const { c } = useTheme();
+  const visibleTiles = useMemo(() => {
+    const tileById = new Map(home.tiles.map((tile) => [tile.categoryId, tile]));
+    return resolveCategories(homeLayout, categories)
+      .filter((entry) => entry.visible)
+      .map((entry) => tileById.get(entry.category.id))
+      .filter((tile) => tile !== undefined);
+  }, [homeLayout, categories, home.tiles]);
+
+  const todaySection = (
+    <View style={{ gap: 6 }}>
         <AppText variant="eyebrow" color={onHero.soft}>
           {t('home.today')}
         </AppText>
@@ -79,7 +89,10 @@ export default function Home() {
             <Button title={t('home.setBudget')} variant="light" onPress={() => router.push('/budget')} />
           </View>
         )}
-      <View style={{ height: 1, backgroundColor: onHero.chip, marginVertical: 12 }} />
+    </View>
+  );
+  const balanceSection = (
+    <>
       {balance ? (
         <View style={{ gap: 4 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -115,15 +128,22 @@ export default function Home() {
           <Button title={t('home.balanceSetupButton')} variant="light" onPress={() => router.push('/profile')} />
         </View>
       )}
-      </HeroCard>
+    </>
+  );
+  const getStarted = (
+    <>
       {(balance === null || commitments.length === 0 || expenses.length === 0) && expenses.length < GET_STARTED_MAX_SPENDINGS ? (
         <GetStarted hasSalary={balance !== null} hasBill={commitments.length > 0} hasSpending={expenses.length > 0} />
       ) : null}
-      {home.tiles.length > 0 ? (
+    </>
+  );
+  const categorySection = (
+    <>
+      {visibleTiles.length > 0 ? (
         <>
           <AppText variant="section">{t('home.categories')}</AppText>
           <TileGrid>
-            {home.tiles.map((tile) => (
+            {visibleTiles.map((tile) => (
                 <Tile
                   key={tile.categoryId}
                   title={tile.name}
@@ -145,6 +165,52 @@ export default function Home() {
           </TileGrid>
         </>
       ) : null}
+    </>
+  );
+
+  const cards = resolveWidgets(homeLayout).filter((w) => w.visible);
+  const nodes: ReactNode[] = [];
+  cards.forEach((w, i) => {
+    if (w.id === 'balance' && cards[i - 1]?.id === 'today') return; // drawn inside the Today card
+    if (w.id === 'today') {
+      const joined = cards[i + 1]?.id === 'balance';
+      nodes.push(
+        <HeroCard key="today" style={{ gap: 6 }}>
+          {todaySection}
+          {joined ? (
+            <>
+              <View style={{ height: 1, backgroundColor: onHero.chip, marginVertical: 12 }} />
+              {balanceSection}
+            </>
+          ) : null}
+        </HeroCard>,
+      );
+    } else if (w.id === 'balance') {
+      nodes.push(<HeroCard key="balance" style={{ gap: 6 }}>{balanceSection}</HeroCard>);
+    } else if (w.id === 'getStarted') {
+      nodes.push(<Fragment key="getStarted">{getStarted}</Fragment>);
+    } else if (w.id === 'categories') {
+      nodes.push(<Fragment key="categories">{categorySection}</Fragment>);
+    } else {
+      const widget = OPTIONAL_WIDGETS[w.id];
+      if (widget) nodes.push(<Fragment key={w.id}>{widget()}</Fragment>);
+    }
+  });
+
+  return (
+    <Screen fab>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <AppText variant="title">{shortDate(today)}</AppText>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('home.customize')}
+          hitSlop={12}
+          onPress={() => router.push('/customize-home')}
+        >
+          <Ionicons name="options-outline" size={26} color={c.text} />
+        </Pressable>
+      </View>
+      {nodes}
     </Screen>
   );
 }
