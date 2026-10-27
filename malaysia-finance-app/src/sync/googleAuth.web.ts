@@ -1,4 +1,4 @@
-import { DRIVE_SCOPE, GOOGLE_WEB_CLIENT_ID, type GoogleAuth } from './googleConfig';
+import { DRIVE_SCOPE, GOOGLE_WEB_CLIENT_ID, GoogleAuthError, type GoogleAuth } from './googleConfig';
 
 /**
  * Browser: Google Identity Services' token flow. Tokens last an hour; getting a new one opens a small
@@ -41,7 +41,7 @@ function loadGis(): Promise<Gis> {
   return gisLoading;
 }
 
-type Saved = { token: string; expiresAt: number; email?: string };
+type Saved = { token: string; expiresAt: number; email?: string; clientId?: string };
 function readSaved(): Saved | null {
   try {
     const raw = localStorage.getItem(STORE_KEY);
@@ -58,7 +58,15 @@ function save(value: Saved | null) {
     // Storage blocked: the token simply lives until the page closes.
   }
 }
-let current: Saved | null = readSaved();
+// A token from an earlier Google client ID cannot be refreshed by this one: forget it.
+let current: Saved | null = (() => {
+  const saved = readSaved();
+  return saved && saved.clientId === GOOGLE_WEB_CLIENT_ID ? saved : null;
+})();
+let lastError: string | null = null;
+
+// Load Google's script up front so the sign-in window can open straight from a tap (browsers block it otherwise).
+if (GOOGLE_WEB_CLIENT_ID !== '') loadGis().catch(() => {});
 
 async function requestToken(prompt: '' | 'consent'): Promise<string | null> {
   const gis = await loadGis();
@@ -67,8 +75,12 @@ async function requestToken(prompt: '' | 'consent'): Promise<string | null> {
       client_id: GOOGLE_WEB_CLIENT_ID,
       scope: `${DRIVE_SCOPE} email`,
       callback: resolve,
-      error_callback: () => resolve(null),
+      error_callback: (e) => {
+        lastError = String((e as { type?: unknown })?.type ?? '');
+        resolve(null);
+      },
     });
+    lastError = null;
     client.requestAccessToken({ prompt, login_hint: current?.email });
   });
   if (!response?.access_token) return null;
@@ -76,6 +88,7 @@ async function requestToken(prompt: '' | 'consent'): Promise<string | null> {
     token: response.access_token,
     expiresAt: Date.now() + (response.expires_in ?? 3600) * 1000,
     email: current?.email,
+    clientId: GOOGLE_WEB_CLIENT_ID,
   };
   save(current);
   return current.token;
@@ -88,7 +101,10 @@ export const googleAuth: GoogleAuth = {
 
   async signIn() {
     const token = await requestToken('consent');
-    if (!token) return null;
+    if (!token) {
+      if (lastError === 'popup_failed_to_open') throw new GoogleAuthError('popupBlocked');
+      return null;
+    }
     const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${token}` } });
     const email = res.ok ? ((await res.json()) as { email?: string }).email ?? '' : '';
     current = { ...current!, email };

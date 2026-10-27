@@ -309,6 +309,8 @@ export const en = {
   'backup.drive.at': 'Last synced {when}',
   'backup.drive.fail.noPlayServices': "This phone has no Google Play services, so Google's one-tap sign-in can't run here.",
   'backup.drive.fail.notSetUp': "Google's usual sign-in does not work on this phone (it has no real Google Play services), and the browser sign-in is not set up in this version of Duit yet. Your data is safe; use a backup file for now.",
+  'backup.drive.fail.popupBlocked': "Your browser blocked Google's sign-in window. Allow pop-ups for this site and try again.",
+  'backup.drive.signInAgain': 'Sign in again',
   'backup.drive.fail.network': "Could not reach Google. Check your internet and try again.",
   'backup.drive.fail.blocked': "Google did not finish the sign-in. Close the browser page and try again.",
   'backup.drive.fail.unknown': "Could not connect to Google. Try again, or use a backup file for now.",
