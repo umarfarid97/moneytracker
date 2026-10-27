@@ -2,6 +2,8 @@ import { hmacHex, normalizeEmail, randomCode, randomId, randomToken, safeEqual, 
 
 export interface Env {
   DB: D1Database;
+  /** Private R2 bucket holding receipt ciphertext, keyed `<accountId>/<name>`. */
+  RECEIPTS: R2Bucket;
   /** Mixed into email and code hashes. Set with `wrangler secret put PEPPER`. */
   PEPPER: string;
   /** Resend API key. Set with `wrangler secret put RESEND_API_KEY`. */
@@ -15,6 +17,8 @@ export interface Env {
 const MAX_SNAPSHOT = 8 * 1024 * 1024;
 const MAX_RECEIPT = 3 * 1024 * 1024;
 const MAX_RECEIPTS_TOTAL = 150 * 1024 * 1024;
+/** Old receipts still in D1 that one list call moves to R2. */
+const MIGRATE_PER_LIST = 5;
 const CHUNK = 900 * 1024;
 const CODE_TTL = 10 * 60_000;
 const CODE_TRIES = 5;
@@ -114,6 +118,7 @@ async function route(req: Request, env: Env): Promise<Response> {
     if (m === 'PUT') return syncPut(req, env, auth.accountId);
   }
   if (path === '/receipts' && m === 'GET') {
+    await migrateSome(env, auth.accountId, MIGRATE_PER_LIST);
     const { results } = await env.DB.prepare('SELECT name, size FROM receipts WHERE account_id = ? ORDER BY name').bind(auth.accountId).all();
     return json(200, { receipts: results });
   }
@@ -123,6 +128,7 @@ async function route(req: Request, env: Env): Promise<Response> {
     if (!NAME.test(name)) throw new HttpError(400);
     if (m === 'GET') return receiptGet(env, auth.accountId, name);
     if (m === 'PUT') return receiptPut(req, env, auth.accountId, name);
+    if (m === 'DELETE') return receiptDelete(env, auth.accountId, name);
   }
   if (path === '/account' && m === 'DELETE') {
     await deleteAccount(env, auth.accountId);
@@ -309,10 +315,39 @@ async function syncPut(req: Request, env: Env, accountId: string): Promise<Respo
 
 // ---- receipts ---------------------------------------------------------------------------------
 
+const r2Key = (accountId: string, name: string) => `${accountId}/${name}`;
+
+/** Receipts saved before R2 sit in D1 chunks (`in_r2 = 0`); they are copied over on first read or list. */
+async function moveToR2(env: Env, accountId: string, name: string): Promise<Uint8Array | null> {
+  const data = await readChunks(env, accountId, `rcpt:${name}`);
+  if (data.length === 0) return null;
+  await env.RECEIPTS.put(r2Key(accountId, name), data);
+  // Only forget the D1 copy once R2 has the object.
+  await env.DB.batch([
+    env.DB.prepare('UPDATE receipts SET in_r2 = 1 WHERE account_id = ? AND name = ?').bind(accountId, name),
+    env.DB.prepare('DELETE FROM blob_chunks WHERE account_id = ? AND upload_id = ?').bind(accountId, `rcpt:${name}`),
+  ]);
+  return data;
+}
+
+async function migrateSome(env: Env, accountId: string, limit: number) {
+  const { results } = await env.DB.prepare('SELECT name FROM receipts WHERE account_id = ? AND in_r2 = 0 LIMIT ?')
+    .bind(accountId, limit).all<{ name: string }>();
+  for (const r of results) await moveToR2(env, accountId, r.name);
+}
+
 async function receiptGet(env: Env, accountId: string, name: string): Promise<Response> {
-  const row = await env.DB.prepare('SELECT size FROM receipts WHERE account_id = ? AND name = ?').bind(accountId, name).first();
+  const row = await env.DB.prepare('SELECT in_r2 FROM receipts WHERE account_id = ? AND name = ?').bind(accountId, name).first<{ in_r2: number }>();
   if (!row) throw new HttpError(404);
-  return new Response(await readChunks(env, accountId, `rcpt:${name}`), { headers: { 'content-type': 'application/octet-stream' } });
+  const headers = { 'content-type': 'application/octet-stream' };
+  if (row.in_r2) {
+    const obj = await env.RECEIPTS.get(r2Key(accountId, name));
+    if (!obj) throw new HttpError(404);
+    return new Response(obj.body, { headers });
+  }
+  const data = await moveToR2(env, accountId, name);
+  if (!data) throw new HttpError(404);
+  return new Response(data, { headers });
 }
 
 async function receiptPut(req: Request, env: Env, accountId: string, name: string): Promise<Response> {
@@ -322,23 +357,31 @@ async function receiptPut(req: Request, env: Env, accountId: string, name: strin
   const total = await env.DB.prepare('SELECT COALESCE(SUM(size), 0) AS n FROM receipts WHERE account_id = ? AND name <> ?')
     .bind(accountId, name).first<{ n: number }>();
   if ((total?.n ?? 0) + data.length > MAX_RECEIPTS_TOTAL) throw new HttpError(413, { error: 'quota' });
-  const uploadId = `rcpt:${name}`;
-  const stmts = [env.DB.prepare('DELETE FROM blob_chunks WHERE account_id = ? AND upload_id = ?').bind(accountId, uploadId)];
-  for (let i = 0, idx = 0; i < data.length; i += CHUNK, idx++) {
-    stmts.push(
-      env.DB.prepare('INSERT INTO blob_chunks (account_id, upload_id, idx, data) VALUES (?, ?, ?, ?)')
-        .bind(accountId, uploadId, idx, data.slice(i, i + CHUNK)),
-    );
-  }
-  stmts.push(
-    env.DB.prepare('INSERT OR REPLACE INTO receipts (account_id, name, size, updated_at) VALUES (?, ?, ?, ?)')
+  await env.RECEIPTS.put(r2Key(accountId, name), data);
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM blob_chunks WHERE account_id = ? AND upload_id = ?').bind(accountId, `rcpt:${name}`),
+    env.DB.prepare('INSERT OR REPLACE INTO receipts (account_id, name, size, updated_at, in_r2) VALUES (?, ?, ?, ?, 1)')
       .bind(accountId, name, data.length, Date.now()),
-  );
-  await env.DB.batch(stmts);
+  ]);
+  return new Response(null, { status: 204 });
+}
+
+async function receiptDelete(env: Env, accountId: string, name: string): Promise<Response> {
+  await env.RECEIPTS.delete(r2Key(accountId, name));
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM blob_chunks WHERE account_id = ? AND upload_id = ?').bind(accountId, `rcpt:${name}`),
+    env.DB.prepare('DELETE FROM receipts WHERE account_id = ? AND name = ?').bind(accountId, name),
+  ]);
   return new Response(null, { status: 204 });
 }
 
 async function deleteAccount(env: Env, accountId: string) {
+  let cursor: string | undefined;
+  do {
+    const page = await env.RECEIPTS.list({ prefix: `${accountId}/`, cursor });
+    if (page.objects.length) await env.RECEIPTS.delete(page.objects.map((o) => o.key));
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
   await env.DB.batch([
     env.DB.prepare('DELETE FROM blob_chunks WHERE account_id = ?').bind(accountId),
     env.DB.prepare('DELETE FROM receipts WHERE account_id = ?').bind(accountId),

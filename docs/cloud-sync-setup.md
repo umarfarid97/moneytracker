@@ -1,12 +1,12 @@
 # Duit cloud sync: what you set up
 
-Duit's sync server is a small Cloudflare Worker with a D1 database (folder `cloud-worker/`). It stores one **encrypted** copy of your data per account and sends the sign-in code by email. It never sees your spending. You do these steps once; each takes a few minutes.
+Duit's sync server is a small Cloudflare Worker with a D1 database and an R2 bucket for receipt photos (folder `cloud-worker/`). It stores one **encrypted** copy of your data per account and sends the sign-in code by email. It never sees your spending. You do these steps once; each takes a few minutes.
 
 ## What it costs
 
 | Item | Cost |
 | --- | --- |
-| Cloudflare Workers + D1 | RM 0 (free plan; no card needed) |
+| Cloudflare Workers + D1 + R2 | RM 0 within the free tier (R2 needs a card on file to enable) |
 | Resend (sends the login emails) | RM 0 (free plan, about 3,000 emails a month; check their pricing page) |
 | A domain name for the sender address | about RM 50 a year. Resend only sends from a domain you own. |
 
@@ -64,7 +64,7 @@ You can also do it yourself: set `CLOUD_API_URL` in that file and rebuild.
 
 Use this if you do not want to run commands on your computer. Actions tab > **Deploy cloud server** > Run workflow. It needs three repository secrets (Settings > Secrets and variables > Actions > New repository secret):
 
-- `CLOUDFLARE_API_TOKEN`: Cloudflare dashboard > My Profile > API Tokens > Create Token > the *Edit Cloudflare Workers* template.
+- `CLOUDFLARE_API_TOKEN`: Cloudflare dashboard > My Profile > API Tokens > Create Token > the *Edit Cloudflare Workers* template, then **add one more permission row**: Account > *Workers R2 Storage* > *Edit*. Without it the deploy fails when creating the receipts bucket. R2 must also be enabled on the account (Cloudflare dashboard > Storage & databases > R2; it asks for a card but the free tier is not charged).
 - `CLOUDFLARE_ACCOUNT_ID`: shown on the right of the Cloudflare dashboard home.
 - `RESEND_API_KEY`: your Resend key (`re_...`).
 
@@ -79,6 +79,7 @@ More > Backup & sync > **Duit cloud**: enter your email, type the 6 digit code, 
 ## Limits and good to know
 
 - Free plan: 100,000 requests a day for the whole server. Each open app checks about every 3 minutes, so a few users fit easily.
-- D1 free storage is 5 GB. Receipts are capped at 3 MB each and 150 MB per account.
+- D1 free storage is 5 GB (snapshots only). Receipt photos live in a private R2 bucket, `duit-receipts`: free 10 GB storage, 1 million writes and 10 million reads a month, and no download fees. Receipts are capped at 3 MB each and 150 MB per account.
+- Receipts saved before R2 are moved over automatically the first time they are opened or listed; nothing needs doing by hand.
 - Login codes: 5 per email per hour, 5 wrong tries per code.
 - Deleting your account in the app wipes everything stored for it.
