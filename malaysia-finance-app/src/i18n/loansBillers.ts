@@ -37,8 +37,10 @@ export const loansBillers = {
   'loans.totalOwed': 'Still owed on loans',
 
   'budget.period': 'Budget period',
-  'budget.startDay': 'Budget month starts on',
-  'budget.startDayHint': 'Paid at the end of the month? Start the budget on payday. It then runs to the day before your next payday.',
+  'budget.startDay': 'Salary day / budget month starts on',
+  'budget.startDayHint': 'This is also the salary day in your profile. Your budget, balance left and bills still to pay all run from this day to the day before the next one.',
+  'profile.salaryDay': 'Salary paid on day',
+  'profile.salaryDayHint': 'Same as the budget start day. Your take-home counts as received on this day, and the Home balance runs from here to the day before the next one.',
   'budget.startDay.day': 'Day (1 to 31)',
   'budget.startDay.last': 'Last day',
   'budget.startDay.set': 'Set',
