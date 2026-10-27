@@ -150,6 +150,13 @@ export const MIGRATIONS: string[] = [
   `
   ALTER TABLE owed_entries ADD COLUMN bill TEXT NOT NULL DEFAULT '';
   `,
+  // 16: settings kept on this phone only (the Home layout); not part of backups or sync
+  `
+  CREATE TABLE app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+  `,
 ];
 
 function projectsMigration(): string {
