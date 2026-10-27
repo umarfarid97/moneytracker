@@ -12,7 +12,7 @@ import { Card } from '@/ui/Card';
 import { HeroCard, onHero } from '@/ui/HeroCard';
 import { IconBadge } from '@/ui/IconBadge';
 import { ReceiptPreview } from '@/ui/ReceiptPreview';
-import { ReceiptMissing, useReceipt } from '@/ui/useReceipt';
+import { ReceiptFile, ReceiptMissing, useReceipt } from '@/ui/useReceipt';
 import { Screen } from '@/ui/Screen';
 import { categoryLook, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
@@ -102,7 +102,9 @@ export function ExpenseDetails({ expense, categoryName, categoryIcon, methodName
       <Card style={{ gap: 12, flexGrow: expense.receiptUri ? 1 : 0 }}>
         <AppText variant="eyebrow" tone="muted">{t('expense.receipt')}</AppText>
         {expense.receiptUri ? (
-          receipt.uri ? (
+          receipt.uri && !receipt.isImage ? (
+            <ReceiptFile stored={expense.receiptUri} />
+          ) : receipt.uri ? (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t('receipt.view')}

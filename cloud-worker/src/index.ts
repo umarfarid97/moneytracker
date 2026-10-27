@@ -15,7 +15,8 @@ export interface Env {
 }
 
 const MAX_SNAPSHOT = 8 * 1024 * 1024;
-const MAX_RECEIPT = 3 * 1024 * 1024;
+// Room for a 10 MB receipt file (the app's limit) plus encryption overhead.
+const MAX_RECEIPT = 10 * 1024 * 1024 + 1024;
 const MAX_RECEIPTS_TOTAL = 150 * 1024 * 1024;
 /** Old receipts still in D1 that one list call moves to R2. */
 const MIGRATE_PER_LIST = 5;

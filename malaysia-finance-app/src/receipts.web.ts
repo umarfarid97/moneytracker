@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
+import {
+  checkReceiptFile, documentFileName, extensionOf, IMAGE_EXTENSIONS, isImageReceipt, MAX_RECEIPT_BYTES, RECEIPT_ACCEPT,
+  ReceiptError, receiptMime,
+} from './receiptKind';
 
-export type ReceiptSource = 'camera' | 'library';
+export type ReceiptSource = 'camera' | 'library' | 'file';
 
 /** Longest side kept for a stored receipt, so photos from a phone camera stay small in the browser's storage. */
 const MAX_SIDE = 1280;
@@ -8,18 +12,16 @@ const JPEG_QUALITY = 0.7;
 const DB_NAME = 'duit-receipts';
 const STORE = 'receipts';
 
-const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'heic', 'webp']);
-
 /** Extension of a picked picture; anything unrecognised is stored as jpg. */
 export function receiptExtension(uri: string): string {
-  const match = /\.([a-zA-Z0-9]+)(?:\?.*)?$/.exec(uri);
-  const ext = match?.[1].toLowerCase();
-  return ext && IMAGE_EXTENSIONS.has(ext) ? ext : 'jpg';
+  const ext = extensionOf(uri);
+  return IMAGE_EXTENSIONS.has(ext) ? ext : 'jpg';
 }
 
 // The browser has no file system, so receipt pictures live in IndexedDB (the database itself sits in localStorage,
 // which is too small for photos) and are shown through object URLs created from the saved blobs.
 const urls = new Map<string, string>();
+const sizes = new Map<string, number>();
 const listeners = new Set<() => void>();
 let version = 0;
 let loaded: Promise<void> | null = null;
@@ -73,7 +75,10 @@ export function loadReceipts(): Promise<void> {
           req.onerror = () => reject(req.error);
         });
         db.close();
-        for (const [key, blob] of entries) if (!urls.has(key)) urls.set(key, URL.createObjectURL(blob));
+        for (const [key, blob] of entries) if (!urls.has(key)) {
+          urls.set(key, URL.createObjectURL(blob));
+          sizes.set(key, blob.size);
+        }
       } catch {
         // No IndexedDB (private mode): receipts attached this visit still show; saved ones just don't.
       }
@@ -117,13 +122,28 @@ async function prepare(file: Blob): Promise<Blob> {
   }
 }
 
-/** Saves a picture in the browser and returns the key to store with the claim or expense. */
+/**
+ * Saves a receipt in the browser and returns the key to store with the claim or expense. Pictures are shrunk;
+ * documents (PDF and the like) are kept as they are under their own name. Throws ReceiptError when the file is
+ * too big or not a type receipts allow.
+ */
 export async function storeReceipt(source: Blob, now: number = Date.now()): Promise<string> {
-  const blob = await prepare(source);
-  const ext = receiptExtension(`.${blob.type.replace('image/', '')}`);
-  const key = `receipts/receipt-${now}.${ext}`;
+  const name = (source as File).name ?? '';
+  const isDocument = name !== '' && !isImageReceipt(name) && !source.type.startsWith('image/');
+  let blob: Blob;
+  let key: string;
+  if (isDocument) {
+    checkReceiptFile(name, source.size);
+    key = `receipts/${documentFileName(name, now)}`;
+    blob = new Blob([source], { type: receiptMime(key) });
+  } else {
+    blob = await prepare(source);
+    if (blob.size > MAX_RECEIPT_BYTES) throw new ReceiptError('tooLarge');
+    key = `receipts/receipt-${now}.${receiptExtension(`.${blob.type.replace('image/', '')}`)}`;
+  }
   await withStore('readwrite', (s) => s.put(blob, key));
   urls.set(key, URL.createObjectURL(blob));
+  sizes.set(key, blob.size);
   bump();
   return key;
 }
@@ -147,12 +167,15 @@ export async function readReceiptBlob(key: string): Promise<Blob | null> {
   }
 }
 
-/** Saves a picture exactly as given (it came from a backup or another device, already shrunk). */
-export async function saveReceiptBlob(key: string, blob: Blob): Promise<void> {
+/** Saves a receipt exactly as given (it came from a backup or another device, already shrunk). */
+export async function saveReceiptBlob(key: string, given: Blob): Promise<void> {
   await loadReceipts();
+  // A download may arrive untyped; the type is what lets the browser show a PDF instead of saving it as a blob.
+  const blob = given.type === receiptMime(key) ? given : new Blob([given], { type: receiptMime(key) });
   await withStore('readwrite', (s) => s.put(blob, key));
   const old = urls.get(key);
   urls.set(key, URL.createObjectURL(blob));
+  sizes.set(key, blob.size);
   if (old) URL.revokeObjectURL(old);
   bump();
 }
@@ -164,12 +187,32 @@ export function resolveReceiptUri(stored: string): string {
   return urls.get(stored) ?? '';
 }
 
+/** Size in bytes of a receipt saved in this browser, or null. */
+export const receiptSize = (stored: string): number | null => sizes.get(stored) ?? null;
+
+/** Shows a receipt in a new tab when the browser can display it (PDF, text), otherwise saves it. Call straight from a tap. */
+export async function openReceipt(stored: string, _dialogTitle: string): Promise<void> {
+  const url = resolveReceiptUri(stored);
+  if (!url) return;
+  const mime = receiptMime(stored);
+  if (mime === 'application/pdf' || mime === 'text/plain') {
+    window.open(url, '_blank', 'noopener');
+    return;
+  }
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = stored.split('/').pop() ?? 'receipt';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
 /** Opens the browser's file chooser (camera on phones for 'camera'). Must run straight from a tap, before any await. */
 function chooseFile(source: ReceiptSource): Promise<File | null> {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/*';
+    input.accept = source === 'file' ? RECEIPT_ACCEPT : 'image/*';
     if (source === 'camera') input.setAttribute('capture', 'environment');
     input.style.position = 'fixed';
     input.style.left = '-9999px';
@@ -188,6 +231,6 @@ function chooseFile(source: ReceiptSource): Promise<File | null> {
 export async function pickReceipt(source: ReceiptSource, now: number = Date.now()): Promise<string | null> {
   const file = await chooseFile(source);
   if (!file) return null;
-  if (file.type && !file.type.startsWith('image/')) throw new Error('Not a picture');
+  if (source !== 'file' && file.type && !file.type.startsWith('image/')) throw new ReceiptError('unsupported');
   return storeReceipt(file, now);
 }

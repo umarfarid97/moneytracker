@@ -1,3 +1,4 @@
+import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { pickReceipt, receiptExtension, resolveReceiptUri, storeReceipt } from '@/receipts';
 
@@ -38,7 +39,11 @@ jest.mock('expo-image-picker', () => ({
   requestCameraPermissionsAsync: jest.fn(),
 }));
 
+jest.mock('expo-document-picker', () => ({ getDocumentAsync: jest.fn() }));
+jest.mock('expo-sharing', () => ({ shareAsync: jest.fn() }));
+
 const picker = jest.mocked(ImagePicker);
+const docs = jest.mocked(DocumentPicker);
 
 beforeEach(() => {
   copies.length = 0;
@@ -106,5 +111,19 @@ describe('pickReceipt', () => {
   test('a storage failure returns null instead of crashing', async () => {
     picker.launchImageLibraryAsync.mockRejectedValue(new Error('picker failed'));
     expect(await pickReceipt('library', 5)).toBeNull();
+  });
+
+  test('file: stores a PDF under its own name', async () => {
+    docs.getDocumentAsync.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///cache/x', name: 'Unifi bill.pdf', size: 1000 }] } as never);
+    expect(await pickReceipt('file', 9)).toBe('receipts/receipt-9-Unifi_bill.pdf');
+    expect(copies[0].to).toBe('file:///docs/receipts/receipt-9-Unifi_bill.pdf');
+  });
+
+  test('file: a file that is too big or of another type is refused, not copied', async () => {
+    docs.getDocumentAsync.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///cache/x', name: 'a.pdf', size: 11 * 1024 * 1024 }] } as never);
+    await expect(pickReceipt('file', 9)).rejects.toMatchObject({ code: 'tooLarge' });
+    docs.getDocumentAsync.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///cache/x', name: 'a.apk', size: 10 }] } as never);
+    await expect(pickReceipt('file', 9)).rejects.toMatchObject({ code: 'unsupported' });
+    expect(copies).toEqual([]);
   });
 });

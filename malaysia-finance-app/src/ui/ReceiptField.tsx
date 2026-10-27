@@ -2,13 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
 import { pickReceipt, type ReceiptSource } from '@/receipts';
+import { formatBytes, MAX_RECEIPT_BYTES, ReceiptError } from '@/receiptKind';
 import { t } from '@/i18n/t';
 import { AppText } from './AppText';
 import { Button } from './Button';
 import { ReceiptPreview } from './ReceiptPreview';
 import { radius } from './theme';
 import { useTheme } from './useTheme';
-import { ReceiptMissing, useReceipt } from './useReceipt';
+import { ReceiptFile, ReceiptMissing, useReceipt } from './useReceipt';
 
 type Props = {
   /** Stored picture uri, or null when none. */
@@ -34,21 +35,26 @@ export function ReceiptField({ uri, onChange, compact = false, fill = false }: P
     try {
       const picked = await pickReceipt(source);
       if (picked) onChange(picked);
-    } catch {
-      setError(t('receipt.failed'));
+    } catch (e) {
+      if (e instanceof ReceiptError) {
+        setError(e.code === 'tooLarge' ? t('receipt.tooLarge', { max: formatBytes(MAX_RECEIPT_BYTES) }) : t('receipt.unsupported'));
+      } else setError(t('receipt.failed'));
     } finally {
       setBusy(false);
     }
   }
 
   const buttons = (
-    <View style={{ flexDirection: 'row', gap: 8 }}>
-      <View style={{ flex: 1 }}>
-        <Button title={t('receipt.take')} variant="secondary" compact={compact} disabled={busy} onPress={() => pick('camera')} />
+    <View style={{ gap: 8 }}>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <View style={{ flex: 1 }}>
+          <Button title={t('receipt.take')} variant="secondary" compact={compact} disabled={busy} onPress={() => pick('camera')} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Button title={t('receipt.choose')} variant="secondary" compact={compact} disabled={busy} onPress={() => pick('library')} />
+        </View>
       </View>
-      <View style={{ flex: 1 }}>
-        <Button title={t('receipt.choose')} variant="secondary" compact={compact} disabled={busy} onPress={() => pick('library')} />
-      </View>
+      <Button title={t('receipt.file')} variant="secondary" compact={compact} disabled={busy} onPress={() => pick('file')} />
     </View>
   );
   const errorText = error ? (
@@ -64,7 +70,11 @@ export function ReceiptField({ uri, onChange, compact = false, fill = false }: P
         <AppText variant="eyebrow" tone="muted">{t('expense.receipt')}</AppText>
         {uri ? (
           <>
-            {receipt.uri ? (
+            {receipt.uri && !receipt.isImage ? (
+              <View style={{ flexGrow: 1, minHeight: compact ? 72 : 96, flexDirection: 'row' }}>
+                <ReceiptFile stored={uri} compact={compact} />
+              </View>
+            ) : receipt.uri ? (
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t('receipt.view')}
@@ -87,7 +97,7 @@ export function ReceiptField({ uri, onChange, compact = false, fill = false }: P
               <View style={{ flex: 1 }}>
                 <AppText variant="bodyStrong">{t('receipt.attached')}</AppText>
                 <AppText variant="small" tone="muted">
-                  {receipt.missing ? t('receipt.elsewhereHint') : t('receipt.tapToView')}
+                  {receipt.missing ? t('receipt.elsewhereHint') : receipt.isImage ? t('receipt.tapToView') : t('receipt.tapToOpen')}
                 </AppText>
               </View>
               <Button title={t('receipt.remove')} variant="secondary" compact={compact} onPress={() => onChange(null)} />
@@ -120,7 +130,12 @@ export function ReceiptField({ uri, onChange, compact = false, fill = false }: P
       <AppText variant="eyebrow" tone="muted">{t('expense.receipt')}</AppText>
       {uri ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          {/* Tap the photo, or its label, to see it full screen. */}
+          {receipt.uri && !receipt.isImage ? (
+            <View style={{ flex: 1, flexDirection: 'row' }}>
+              <ReceiptFile stored={uri} compact />
+            </View>
+          ) : (
+          /* Tap the photo, or its label, to see it full screen. */
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t('receipt.view')}
@@ -146,6 +161,7 @@ export function ReceiptField({ uri, onChange, compact = false, fill = false }: P
               </AppText>
             </View>
           </Pressable>
+          )}
           <Button title={t('receipt.remove')} variant="secondary" compact={compact} onPress={() => onChange(null)} />
         </View>
       ) : (

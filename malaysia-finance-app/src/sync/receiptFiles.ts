@@ -1,4 +1,5 @@
 import { Directory, File, Paths } from 'expo-file-system';
+import { receiptMime } from '../receiptKind';
 import { createFile, downloadUrl, DriveAuthError, mediaUrl } from './drive';
 
 /** Phones keep receipt photos as files, so they go into backups and Drive sync. */
@@ -12,8 +13,7 @@ function ensureDir() {
   const dir = new Directory(Paths.document, 'receipts');
   if (!dir.exists) dir.create({ idempotent: true, intermediates: true });
 }
-const MIME: Record<string, string> = { png: 'image/png', heic: 'image/heic', webp: 'image/webp' };
-const mimeOf = (stored: string) => MIME[stored.split('.').pop()?.toLowerCase() ?? ''] ?? 'image/jpeg';
+const mimeOf = receiptMime;
 
 /** Nothing to load first: phone receipts are plain files. */
 export const prepareReceipts = async (): Promise<void> => {};
