@@ -648,6 +648,7 @@ export const en = {
   'project.people.none': 'No people yet',
   'project.owedBy': 'owes you',
   'project.entries': 'Entries',
+  'project.payments': 'Payments ({count})',
   'bill.untitled': 'Split bill',
   'bill.paidBy': 'Paid by {who}',
   'bill.splitEqual': 'Split equally among {count} · {amount} each',

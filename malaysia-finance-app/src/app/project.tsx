@@ -1,9 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { View } from 'react-native';
-import { shortDate } from '@/domain/dates';
+import { dayLabel, shortDate } from '@/domain/dates';
 import { formatRM } from '@/domain/money';
-import { billPeople, encodeBill, entryOf, groupEntries, isDefaultProject, normalizeName, sameName, splitTransfers, transferOf, type EntryItem, type OwedEntry, type Transfer } from '@/domain/owed';
+import { billPeople, encodeBill, entryOf, groupEntries, isDefaultProject, sectionEntries, normalizeName, sameName, splitTransfers, transferOf, type EntryItem, type OwedEntry, type Transfer } from '@/domain/owed';
 import { projectName } from '@/features/owed/projectName';
 import { BillCard } from '@/features/owed/BillCard';
 import { OwedSheet } from '@/features/owed/OwedSheet';
@@ -25,6 +26,7 @@ import { confirmDelete } from '@/ui/confirm';
 import { HeroCard, onHero } from '@/ui/HeroCard';
 import { PressableScale } from '@/ui/PressableScale';
 import { Screen } from '@/ui/Screen';
+import { useTheme } from '@/ui/useTheme';
 
 type Sheet =
   | { type: 'entry'; key: number; entry: OwedEntry | null }
@@ -38,7 +40,9 @@ export default function Project() {
   const { projects, people, projectOps, add, update, remove } = useOwed();
   const { add: addExpense } = useExpenses();
   const { data: categories } = useCategories();
+  const { c } = useTheme();
   const [sheet, setSheet] = useState<Sheet | null>(null);
+  const [showPayments, setShowPayments] = useState(false);
   const summary = projects.find((p) => p.project.id === Number(id));
 
   if (!summary) {
@@ -100,30 +104,32 @@ export default function Project() {
     return false;
   }
 
-  const entryRow = (e: OwedEntry) => (
-    <PressableScale
-      key={e.id}
-      accessibilityRole="button"
-      accessibilityLabel={transferText(transferOf(e))}
-      onPress={() => setSheet({ type: 'entry', key: Date.now(), entry: e })}
-      pressedScale={0.99}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
-    >
-      <View style={{ flex: 1 }}>
-        <AppText variant="bodyStrong">{transferText(transferOf(e))}</AppText>
-        <AppText variant="small" tone="muted">{[shortDate(e.date), e.note].filter(Boolean).join(' · ')}</AppText>
-      </View>
-      {(() => {
-        const tr = transferOf(e);
-        const gain = tr.from === '' ? 1 : tr.to === '' ? -1 : 0;
-        return (
-          <AppText variant="bodyStrong" tone={gain > 0 ? 'positive' : gain < 0 ? 'negative' : 'muted'}>
-            {gain > 0 ? '+' : gain < 0 ? '-' : ''}{formatRM(e.amount)}
-          </AppText>
-        );
-      })()}
-    </PressableScale>
-  );
+  /** An IOU: green when it is owed to you, red when you owe, plain between other people. Payments are quieter: muted, no sign. */
+  const entryRow = (e: OwedEntry, payment = false) => {
+    const tr = transferOf(e);
+    const gain = tr.from === '' ? 1 : tr.to === '' ? -1 : 0;
+    return (
+      <PressableScale
+        key={e.id}
+        accessibilityRole="button"
+        accessibilityLabel={transferText(tr)}
+        onPress={() => setSheet({ type: 'entry', key: Date.now(), entry: e })}
+        pressedScale={0.99}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
+      >
+        <Ionicons name={payment ? 'swap-horizontal-outline' : 'person-outline'} size={payment ? 18 : 22} color={payment ? c.muted : c.text} />
+        <View style={{ flex: 1 }}>
+          <AppText variant={payment ? 'small' : 'bodyStrong'} tone={payment ? 'muted' : undefined}>{transferText(tr)}</AppText>
+          {e.note ? <AppText variant="small" tone="muted" numberOfLines={1}>{e.note}</AppText> : null}
+        </View>
+        <AppText variant={payment ? 'small' : 'bodyStrong'} tone={payment ? 'muted' : gain > 0 ? 'positive' : gain < 0 ? 'negative' : undefined}>
+          {formatRM(e.amount)}
+        </AppText>
+      </PressableScale>
+    );
+  };
+
+  const sections = sectionEntries(groupEntries(summary.entries));
 
   const dates = project.startDate
     ? `${shortDate(project.startDate)}${project.endDate && project.endDate !== project.startDate ? ` - ${shortDate(project.endDate)}` : ''}`
@@ -169,19 +175,41 @@ export default function Project() {
       </View>
       <Button title={t('project.share')} variant="secondary" onPress={() => setSheet({ type: 'share', key: Date.now() })} />
 
-      {summary.entries.length > 0 ? (
+      {sections.days.length > 0 ? (
         <View style={{ gap: 8 }}>
           <AppText variant="eyebrow" tone="muted">{t('project.entries')}</AppText>
           <Card style={{ gap: 14 }}>
-            {groupEntries(summary.entries).map((item) => item.type === 'bill' ? (
-              <BillCard
-                key={item.bill.id}
-                item={item}
-                onEdit={() => setSheet({ type: 'split', key: Date.now(), bill: item })}
-                onDelete={() => removeBill(item)}
-              />
-            ) : entryRow(item.entry))}
+            {sections.days.map((day) => (
+              <View key={day.date} testID="entries-day" style={{ gap: 12 }}>
+                <AppText variant="small" tone="muted">{dayLabel(day.date, today)}</AppText>
+                {day.items.map((item) => item.type === 'bill' ? (
+                  <BillCard
+                    key={item.bill.id}
+                    item={item}
+                    onEdit={() => setSheet({ type: 'split', key: Date.now(), bill: item })}
+                    onDelete={() => removeBill(item)}
+                  />
+                ) : entryRow(item.entry))}
+              </View>
+            ))}
           </Card>
+        </View>
+      ) : null}
+
+      {sections.payments.length > 0 ? (
+        <View style={{ gap: 8 }}>
+          <PressableScale
+            accessibilityRole="button"
+            accessibilityLabel={t('project.payments', { count: sections.payments.length })}
+            accessibilityState={{ expanded: showPayments }}
+            onPress={() => setShowPayments((o) => !o)}
+            pressedScale={0.99}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+          >
+            <AppText variant="eyebrow" tone="muted">{t('project.payments', { count: sections.payments.length })}</AppText>
+            <Ionicons name={showPayments ? 'chevron-up' : 'chevron-down'} size={14} color={c.muted} />
+          </PressableScale>
+          {showPayments ? <Card style={{ gap: 12 }}>{sections.payments.map((e) => entryRow(e, true))}</Card> : null}
         </View>
       ) : null}
 

@@ -239,11 +239,14 @@ describe('A book', () => {
     await waitFor(() => expect(screen.getAllByTestId('split-bill')).toHaveLength(1));
     expect(screen.getByText('Makan shawarma')).toBeTruthy();
     expect(screen.getByText('RM 100.00')).toBeTruthy();
-    expect(screen.getByText(/Paid by You RM 65.00 \+ Danish RM 35.00/)).toBeTruthy();
-    expect(screen.getByText('Split equally among 4 · RM 25.00 each')).toBeTruthy();
-    // The owes rows are tucked under the bill until it is opened.
+    expect(screen.getByText('Paid by You + Danish · 4 people')).toBeTruthy();
+    expect(screen.getByText('Today')).toBeTruthy();
+    // The split and owes rows are tucked under the bill until it is opened.
+    expect(screen.queryByText('Split equally among 4 · RM 25.00 each')).toBeNull();
     expect(screen.queryByText('Ayang owes you RM 25.00')).toBeNull();
     await press('Makan shawarma, RM 100.00');
+    expect(screen.getByText('Split equally among 4 · RM 25.00 each')).toBeTruthy();
+    expect(screen.getByText('You RM 65.00 + Danish RM 35.00')).toBeTruthy();
     expect(screen.getByText('Ayang owes you RM 25.00')).toBeTruthy();
     expect(screen.getByText('Bunga owes you RM 15.00')).toBeTruthy();
     expect(screen.getByText('Bunga owes Danish RM 10.00')).toBeTruthy();

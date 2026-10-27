@@ -372,3 +372,28 @@ export function groupEntries(entries: OwedEntry[]): EntryItem[] {
   }
   return items;
 }
+
+export type EntrySections = {
+  /** Bills and IOUs, grouped by day, newest day first. */
+  days: { date: string; items: EntryItem[] }[];
+  /** Settle-up payments, newest first. */
+  payments: OwedEntry[];
+};
+
+const itemDate = (i: EntryItem): string => (i.type === 'bill' ? i.date : i.entry.date);
+const itemId = (i: EntryItem): number => (i.type === 'bill' ? Math.max(...i.entries.map((e) => e.id)) : i.entry.id);
+
+/** Splits the list into what was spent or lent (by day) and the payments that settled it up, newest first. */
+export function sectionEntries(items: EntryItem[]): EntrySections {
+  const newest = (a: EntryItem, b: EntryItem) => itemDate(b).localeCompare(itemDate(a)) || itemId(b) - itemId(a);
+  const isPayment = (i: EntryItem) => i.type === 'entry' && transferOf(i.entry).type === 'payback';
+  const payments = items.filter(isPayment).sort(newest).map((i) => (i as Extract<EntryItem, { type: 'entry' }>).entry);
+  const days: EntrySections['days'] = [];
+  for (const item of items.filter((i) => !isPayment(i)).sort(newest)) {
+    const date = itemDate(item);
+    const last = days[days.length - 1];
+    if (last && last.date === date) last.items.push(item);
+    else days.push({ date, items: [item] });
+  }
+  return { days, payments };
+}

@@ -703,6 +703,7 @@ export const ms: Record<StringKey, string> = {
   'project.people.none': 'Belum ada orang',
   'project.owedBy': 'berhutang kepada anda',
   'project.entries': 'Catatan',
+  'project.payments': 'Pembayaran ({count})',
   'bill.untitled': 'Bil dikongsi',
   'bill.paidBy': 'Dibayar oleh {who}',
   'bill.splitEqual': 'Dikongsi sama rata antara {count} orang · {amount} seorang',
