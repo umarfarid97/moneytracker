@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { View } from 'react-native';
+import { DemoBanner } from '@/features/demo/DemoBanner';
 import { useData } from '@/hooks/DataProvider';
 import { dateLocale, t } from '@/i18n/t';
 import { backupFileName, BackupTooNewError, createBackup, InvalidBackupError, parseBackup, restoreBackup } from '@/sync/backup';
@@ -20,7 +21,7 @@ type Note = { text: string; tone: 'positive' | 'negative' };
 
 /** More > Backup & sync: Google Drive sync, and a backup file to export or restore. */
 export default function Backup() {
-  const { db, reload } = useData();
+  const { db, reload, demoLoaded } = useData();
   const sync = useSync();
   const [busy, setBusy] = useState<'connect' | 'export' | 'import' | null>(null);
   const [driveNote, setDriveNote] = useState<string | null>(null);
@@ -92,6 +93,12 @@ export default function Backup() {
     <Screen>
       <BackButton />
       <AppText variant="title">{t('backup.title')}</AppText>
+      <DemoBanner />
+      {demoLoaded ? (
+        <AppText variant="small" tone="warning">
+          {t('backup.demo')}
+        </AppText>
+      ) : null}
 
       <AppText variant="section">{t('backup.drive')}</AppText>
       <Card style={{ gap: 14 }}>

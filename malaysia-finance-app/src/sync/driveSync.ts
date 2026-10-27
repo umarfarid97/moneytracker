@@ -1,3 +1,4 @@
+import { isDemoLoaded } from '@/db/repos/demo';
 import type { Db } from '@/db/types';
 import { DriveAuthError, listFiles, readText, writeJson, type DriveFile } from './drive';
 import { mergeSnapshots } from './merge';
@@ -16,11 +17,19 @@ export class SyncTooNewError extends Error {
   }
 }
 
+/** Demo data is loaded (More > Demo data); syncing waits until it is cleared so it can never pass as real data. */
+export class DemoLoadedError extends Error {
+  constructor() {
+    super('Demo data is loaded');
+  }
+}
+
 /**
  * One sync round: download the Drive copy, merge it with this phone's data, write the result here and
  * upload it if Drive was behind, then exchange receipt photos. Returns whether this phone's data changed.
  */
 export async function syncWithDrive(db: Db, token: string): Promise<{ changedLocal: boolean }> {
+  if (await isDemoLoaded(db)) throw new DemoLoadedError();
   const files = await listFiles(token);
   const dataFile = files.find((f) => f.name === SYNC_FILE);
   let remote: Snapshot | null = null;

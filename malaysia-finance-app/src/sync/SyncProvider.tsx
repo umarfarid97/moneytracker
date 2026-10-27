@@ -4,11 +4,11 @@ import {
 import { AppState } from 'react-native';
 import { useData } from '@/hooks/DataProvider';
 import { DriveAuthError } from './drive';
-import { syncWithDrive, SyncTooNewError } from './driveSync';
+import { DemoLoadedError, syncWithDrive, SyncTooNewError } from './driveSync';
 import { googleAuth } from './googleAuth';
 
 /** Why the last sync failed: sign in again, update the app, no internet, or something else. */
-export type SyncProblem = 'signIn' | 'tooNew' | 'offline' | 'failed';
+export type SyncProblem = 'signIn' | 'tooNew' | 'offline' | 'demo' | 'failed';
 
 export type SyncValue = {
   /** Drive sync is set up in this build (a Google client ID is present). */
@@ -127,6 +127,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         setProblem(
           e instanceof DriveAuthError ? 'signIn'
             : e instanceof SyncTooNewError ? 'tooNew'
+              : e instanceof DemoLoadedError ? 'demo'
               : e instanceof TypeError ? 'offline'
                 : 'failed',
         );

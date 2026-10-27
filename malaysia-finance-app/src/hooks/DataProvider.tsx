@@ -17,6 +17,7 @@ import {
   addPaymentMethod, deletePaymentMethod, listPaymentMethods, renamePaymentMethod,
 } from '@/db/repos/paymentMethods';
 import { getSetting, setSetting } from '@/db/repos/appSettings';
+import { isDemoLoaded } from '@/db/repos/demo';
 import { getProfile, saveProfile } from '@/db/repos/profile';
 import {
   addReliefClaim, deleteReliefClaim, listAllReliefClaims, updateReliefClaim,
@@ -143,6 +144,8 @@ export type DataContextValue = {
   homeLayout: HomeLayoutPrefs;
   /** Takes the new layout, or a function from the latest one, so quick successive changes never overwrite each other. */
   saveHomeLayout: (update: HomeLayoutPrefs | ((prev: HomeLayoutPrefs) => HomeLayoutPrefs)) => Promise<void>;
+  /** Demo data (More > Demo data) is loaded: shown as a banner, and Drive sync waits until it is cleared. */
+  demoLoaded: boolean;
   /** Year of assessment picked on the tax screens (null = the current year). */
   taxYearChoice: number | null;
   setTaxYearChoice: (year: number | null) => void;
@@ -163,24 +166,24 @@ type Loaded = {
   commitments: Commitment[]; reliefClaims: ReliefClaim[]; profile: Profile; paymentMethods: PaymentMethod[];
   retirementEntries: RetirementEntry[]; givingRecords: GivingRecord[]; savingsAccounts: SavingsAccount[];
   owedEntries: OwedEntry[]; owedProjects: OwedProject[]; incomeRules: IncomeRule[]; incomeEntries: IncomeEntry[];
-  homeLayout: HomeLayoutPrefs;
+  homeLayout: HomeLayoutPrefs; demoLoaded: boolean;
 };
 
 async function loadAll(db: Db): Promise<Loaded> {
   const [
     categories, expenses, budgets, commitments, reliefClaims, profile, paymentMethods,
-    retirementEntries, givingRecords, savingsAccounts, owedEntries, owedProjects, incomeRules, incomeEntries, homeLayoutRaw,
+    retirementEntries, givingRecords, savingsAccounts, owedEntries, owedProjects, incomeRules, incomeEntries, homeLayoutRaw, demoLoaded,
   ] = await Promise.all([
     listCategories(db), listAllExpenses(db), listAllBudgets(db),
     listCommitments(db), listAllReliefClaims(db), getProfile(db), listPaymentMethods(db),
     listRetirementEntries(db), listGivingRecords(db), listSavingsAccounts(db),
     listOwedEntries(db), listOwedProjects(db), listIncomeRules(db), listIncomeEntries(db),
-    getSetting(db, HOME_LAYOUT_KEY),
+    getSetting(db, HOME_LAYOUT_KEY), isDemoLoaded(db),
   ]);
   return {
     categories, expenses, budgets, commitments, reliefClaims, profile, paymentMethods,
     retirementEntries, givingRecords, savingsAccounts, owedEntries, owedProjects, incomeRules, incomeEntries,
-    homeLayout: parseHomeLayout(homeLayoutRaw),
+    homeLayout: parseHomeLayout(homeLayoutRaw), demoLoaded,
   };
 }
 
@@ -210,6 +213,7 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
   const [incomeRules, setIncomeRules, incomeRulesRef] = useSyncedState<IncomeRule[]>([]);
   const [incomeEntries, setIncomeEntries, incomeEntriesRef] = useSyncedState<IncomeEntry[]>([]);
   const [homeLayout, setHomeLayout, homeLayoutRef] = useSyncedState<HomeLayoutPrefs>(parseHomeLayout(null));
+  const [demoLoaded, setDemoLoaded] = useState(false);
 
   const apply = useCallback((data: Loaded) => {
     setCategories(data.categories); setExpenses(data.expenses); setBudgets(data.budgets);
@@ -219,9 +223,10 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
     setSavingsAccounts(data.savingsAccounts);
     setOwedEntries(data.owedEntries); setOwedProjects(data.owedProjects); setIncomeRules(data.incomeRules); setIncomeEntries(data.incomeEntries);
     setHomeLayout(data.homeLayout);
+    setDemoLoaded(data.demoLoaded);
   }, [
     setCategories, setExpenses, setBudgets, setCommitments, setReliefClaims, setProfile, setPaymentMethods,
-    setRetirementEntries, setGivingRecords, setSavingsAccounts, setOwedEntries, setOwedProjects, setIncomeRules, setIncomeEntries, setHomeLayout,
+    setRetirementEntries, setGivingRecords, setSavingsAccounts, setOwedEntries, setOwedProjects, setIncomeRules, setIncomeEntries, setHomeLayout, setDemoLoaded,
   ]);
 
   useEffect(() => {
@@ -380,7 +385,7 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
           throw e;
         }
       },
-      db, categories, expenses, budgets, commitments, reliefClaims, profile, taxYearChoice, setTaxYearChoice,
+      db, categories, expenses, budgets, commitments, reliefClaims, profile, taxYearChoice, setTaxYearChoice, demoLoaded,
       paymentMethods, payBill, runAutoRecord,
       async reload() {
         apply(await loadAll(db));
@@ -457,7 +462,7 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
       },
     };
   }, [db, loaded, profile, categories, expenses, budgets, commitments, reliefClaims, paymentMethods,
-    retirementEntries, givingRecords, savingsAccounts, owedEntries, owedProjects, incomeRules, incomeEntries, homeLayout, taxYearChoice, apply]);
+    retirementEntries, givingRecords, savingsAccounts, owedEntries, owedProjects, incomeRules, incomeEntries, homeLayout, demoLoaded, taxYearChoice, apply]);
 
   if (failure) throw failure;
   if (!value) return null;

@@ -1,3 +1,4 @@
+import { forgetDemoData } from '@/db/repos/demo';
 import type { Db } from '@/db/types';
 import { isStoredReceipt, readReceiptBase64, writeReceiptBase64 } from './receiptFiles';
 import { exportSnapshot, isSnapshot, restoreSnapshot, schemaVersion, withAllTables, type Snapshot } from './snapshot';
@@ -48,6 +49,8 @@ export async function restoreBackup(db: Db, backup: Backup): Promise<void> {
   }
   const { receipts: _receipts, ...snapshot } = backup;
   await restoreSnapshot(db, snapshot);
+  // The restore replaced everything, demo rows included.
+  await forgetDemoData(db);
 }
 
 export const backupFileName = (now: Date = new Date()) => {
