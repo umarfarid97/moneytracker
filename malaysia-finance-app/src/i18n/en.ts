@@ -1,4 +1,5 @@
 import { cleanupEn } from './cleanup';
+import { cloudEn } from './cloud';
 import { homeLayoutEn } from './homeLayout';
 import { loansBillers } from './loansBillers';
 import { lockRemindersEn } from './lockReminders';
@@ -345,8 +346,8 @@ export const en = {
   'backup.drive.fail.unknown': "Could not connect to Google. Try again, or use a backup file for now.",
   'backup.drive.connectBrowser': 'Sign in with browser',
   'backup.drive.connectFailed': 'Could not connect to Google. Check your internet and try again.',
-  'backup.problem.signIn': 'Google sign-in has expired. Tap Sync now to sign in again.',
-  'backup.problem.tooNew': 'Your Drive data was saved by a newer version of Duit. Update the app on this device to keep syncing.',
+  'backup.problem.signIn': 'Your Duit cloud sign-in has expired. Open Duit cloud to sign in again.',
+  'backup.problem.tooNew': 'Your cloud data was saved by a newer version of Duit. Update the app on this device to keep syncing.',
   'backup.problem.offline': 'No internet connection. Duit will sync when you are back online.',
   'backup.problem.failed': 'Sync did not finish. Duit will try again soon.',
   'backup.file': 'Backup file',
@@ -697,6 +698,7 @@ export const en = {
   ...reportsEn,
   ...homeLayoutEn,
   ...cleanupEn,
+  ...cloudEn,
 } as const;
 
 export type StringKey = keyof typeof en;
