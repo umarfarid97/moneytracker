@@ -23,6 +23,12 @@ server.listen(0, async () => {
     const browser = await chromium.launch();
     const page = await browser.newPage();
     page.on('pageerror', (e) => errors.push(e.message));
+    // Simulate Safari before 15.4, which lacks these built-ins; a missing one used to leave a blank page on iPhones.
+    await page.addInitScript(() => {
+      delete window.requestIdleCallback; delete window.cancelIdleCallback; delete window.structuredClone;
+      delete Object.hasOwn; delete Array.prototype.at; delete Array.prototype.findLast; delete Array.prototype.findLastIndex;
+      if (crypto.randomUUID) delete crypto.randomUUID;
+    });
     // sql.js fetches its wasm from a CDN; serve the local copy so the check works offline.
     await page.route('**/cdn.jsdelivr.net/**', (r) => r.fulfill({ body: fs.readFileSync(wasm), contentType: 'application/wasm' }));
     await page.goto(`http://localhost:${server.address().port}/`);
