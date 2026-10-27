@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import Budget from '@/app/budget';
 import BudgetEdit from '@/app/budget-edit';
+import Profile from '@/app/profile';
 import { CAT, freshDb, renderWithData } from './helpers';
 
 jest.mock('@/hooks/useToday', () => ({ useToday: () => '2026-10-24' }));
@@ -26,6 +27,16 @@ describe('Budget period', () => {
     await fireEvent.press(screen.getByLabelText('Budget starts on day 25'));
     await waitFor(() => expect(screen.getByText('25 Sep - 24 Oct')).toBeTruthy());
     expect(screen.getByText('1 day left')).toBeTruthy();
+    expect(await startDay(db)).toBe(25);
+  });
+
+  test('the salary day on the profile is the budget start day', async () => {
+    const db = await freshDb();
+    await renderWithData(db, <Profile />);
+    await waitFor(() => expect(screen.getByLabelText('Budget starts on day 25')).toBeTruthy());
+    await fireEvent.press(screen.getByLabelText('Budget starts on day 25'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(screen.getByText('Saved')).toBeTruthy());
     expect(await startDay(db)).toBe(25);
   });
 

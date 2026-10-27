@@ -13,6 +13,7 @@ import { AppText } from '@/ui/AppText';
 import { BackButton } from '@/ui/BackButton';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { PaydayPicker } from '@/ui/PaydayPicker';
 import { PressableScale } from '@/ui/PressableScale';
 import { Screen } from '@/ui/Screen';
 import { controlHeight, fontFamily, radius } from '@/ui/theme';
@@ -42,6 +43,7 @@ export default function Profile() {
   const [socso, setSocso] = useState(profile.socsoMonthly > 0 ? senToInput(profile.socsoMonthly) : '');
   const [eis, setEis] = useState(profile.eisMonthly > 0 ? senToInput(profile.eisMonthly) : '');
   const [pcb, setPcb] = useState(profile.pcbMonthly > 0 ? senToInput(profile.pcbMonthly) : '');
+  const [startDay, setStartDay] = useState(profile.budgetStartDay);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -66,6 +68,7 @@ export default function Profile() {
         socsoMonthly: socsoSen,
         eisMonthly: eisSen,
         pcbMonthly: pcbSen,
+        budgetStartDay: startDay,
       }
     : null;
 
@@ -150,6 +153,11 @@ export default function Profile() {
       <View style={{ gap: 4 }}>
         <AmountInput label={t('profile.pcb')} value={pcb} onChange={(text) => setPcb(text)} placeholder={senToInput(estimatedPcb)} />
         <AppText variant="small" tone="muted">{t('profile.pcbHint')}</AppText>
+      </View>
+      <View style={{ gap: 8 }}>
+        <AppText variant="smallStrong">{t('profile.salaryDay')}</AppText>
+        <PaydayPicker value={startDay} onChange={setStartDay} />
+        <AppText variant="small" tone="muted">{t('profile.salaryDayHint')}</AppText>
       </View>
       {error ? (
         <AppText variant="small" tone="negative">
