@@ -119,8 +119,6 @@ export type Profile = {
   budgetStartDay: number;
   /** Days before a bill or loan is due that its reminder fires (0-7); 0 is the morning of the due date. */
   reminderDays: number;
-  /** Currency new spending starts in (MYR or a code from domain/fx); saved spending keeps its own. */
-  defaultCurrency: string;
   /** Monthly income tax (PCB) from the payslip; 0 when not entered, then it is estimated from the tax calculation. */
   pcbMonthly: Sen;
 };

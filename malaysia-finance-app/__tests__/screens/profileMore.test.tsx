@@ -43,12 +43,12 @@ describe('More tab', () => {
     expect(screen.queryByText('Language')).toBeNull();
   });
 
-  test('Settings sets the default currency for new spending', async () => {
+  test('Settings has no currency choice: the app is ringgit only', async () => {
     const db = await freshDb();
     await renderWithData(db, <Settings />);
-    await waitFor(() => expect(screen.getByText('Default currency')).toBeTruthy());
-    await fireEvent.press(screen.getByRole('button', { name: 'USD' }));
-    await waitFor(async () => expect((await db.get<{ c: string }>('SELECT default_currency AS c FROM profile'))!.c).toBe('USD'));
+    await waitFor(() => expect(screen.getByText('App lock')).toBeTruthy());
+    expect(screen.queryByText('Default currency')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'USD' })).toBeNull();
   });
 
   test('Settings links to app lock, reminders, categories, payment methods and backup', async () => {
@@ -67,17 +67,22 @@ describe('More tab', () => {
     }
   });
 
-  test('Settings lets you pick the appearance and language', async () => {
+  test('Settings shows appearance and language as rows with the current value, and picks from a sheet', async () => {
     const db = await freshDb();
     await renderWithData(db, <Settings />);
     await waitFor(() => expect(screen.getByText('Appearance')).toBeTruthy());
-    expect(screen.getByRole('button', { name: 'Light', selected: true })).toBeTruthy();
-    await fireEvent.press(screen.getByText('Dark'));
-    expect(screen.getByRole('button', { name: 'Dark', selected: true })).toBeTruthy();
-    await fireEvent.press(screen.getByText('Light'));
-    await fireEvent.press(screen.getByText('Bahasa Malaysia'));
+    expect(screen.getByText('Light')).toBeTruthy();
+    expect(screen.getByText('English')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Appearance'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Dark' }));
+    expect(screen.getByText('Dark')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Appearance'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Light' }));
+    await fireEvent.press(screen.getByText('Language'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Bahasa Malaysia' }));
     expect(screen.getByText('Tetapan')).toBeTruthy();
-    await fireEvent.press(screen.getByText('English'));
+    await fireEvent.press(screen.getByText('Bahasa'));
+    await fireEvent.press(screen.getByRole('button', { name: 'English' }));
   });
 });
 
