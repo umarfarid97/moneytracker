@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 import {
-  applyBillChange, billEstimate, billStatus, lastPaidFor, paidDueDatesFor, type BillState, type BillStatus,
+  applyBillChange, billEstimate, billStatus, lastPaidFor, paidDueDatesFor, payMode, type BillState, type BillStatus,
 } from '@/domain/bills';
 import { billerFor } from '@/domain/billers';
 import { subscriptionFor } from '@/domain/subscriptions';
@@ -83,7 +83,8 @@ type PaySheet = { open: boolean; bill: Commitment | null; dueDate: string; nonce
 export default function Commitments() {
   const { c, scheme } = useTheme();
   const today = useToday();
-  const { payBill } = useData();
+  const { payBill, profile } = useData();
+  const startDay = profile.budgetStartDay;
   const { data, add, update, remove } = useCommitments();
   const { data: expenses, remove: removeExpense } = useExpenses();
   const [justPaid, setJustPaid] = useState<{ id: number; name: string } | null>(null);
@@ -134,7 +135,7 @@ export default function Commitments() {
   const closePay = () => setPay((p) => ({ ...p, open: false }));
 
   const renderRow = ({ item, status, loan }: (typeof rows)[number]): ReactNode => {
-            const payable = status.state === 'due' || status.state === 'overdue' || status.state === 'upcoming';
+            const mode = payMode({ commitment: item, status, today, startDay });
             const late = status.state === 'overdue';
             return (
               <View
@@ -190,7 +191,7 @@ export default function Commitments() {
                   <AppText variant="bodyStrong">
                     {item.variable ? `~${formatRM(billEstimate(item, expenses))}` : formatRM(item.amount)}
                   </AppText>
-                  {payable && item.id > 0 ? (
+                  {mode === 'now' && item.id > 0 ? (
                     <PressableScale
                       accessibilityRole="button"
                       accessibilityLabel={`${t('commitments.markPaid')} ${item.name}`}
@@ -202,6 +203,10 @@ export default function Commitments() {
                         {t('commitments.markPaid')}
                       </AppText>
                     </PressableScale>
+                  ) : mode === 'wait' ? (
+                    <AppText variant="small" tone="muted">
+                      {t(item.startsOn !== null && item.startsOn > today ? 'commitments.startsOn' : 'commitments.dueOn', { date: shortDate(status.dueDate) })}
+                    </AppText>
                   ) : (
                     <AppText variant="small" tone="muted">
                       {t(`commitments.kind.${item.kind}`)}
@@ -312,10 +317,12 @@ export default function Commitments() {
         bill={pay.bill}
         lastPaid={pay.bill ? lastPaidFor(pay.bill.id, expenses) : null}
         suggested={pay.bill ? nextPayment(pay.bill, loanBalance(pay.bill, expenses)) : null}
+        today={today}
+        startDay={startDay}
         onClose={closePay}
-        onConfirm={async (amount) => {
+        onConfirm={async (amount, date) => {
           if (!pay.bill) return;
-          const saved = await payBill(pay.bill, pay.dueDate, { amount, date: today });
+          const saved = await payBill(pay.bill, pay.dueDate, { amount, date });
           if (saved) setJustPaid({ id: saved.id, name: pay.bill.name });
         }}
       />

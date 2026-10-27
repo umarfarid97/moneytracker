@@ -1,4 +1,5 @@
 import { daysUntil, nextScheduledDue } from './commitments';
+import { periodKey } from './budgetPeriod';
 import { addDays, daysInMonth, monthKey } from './dates';
 import type { Commitment, Expense } from './types';
 
@@ -108,4 +109,25 @@ export function applyBillChange(old: Commitment | null, next: Commitment, today:
   if (resumed || dayChanged) return { ...next, startDate: today, lastAutoDue: null };
   if (!old.autoRecord && next.autoRecord) return { ...next, lastAutoDue: previousDueDate(next.dayOfMonth, today) };
   return next;
+}
+
+/**
+ * What the bill list offers for a bill's next payment:
+ * - `now`: due today, overdue, or due later in the current budget period: Mark paid.
+ * - `wait`: not started yet, or due in a later budget period: a muted date, no button.
+ * - `none`: nothing to pay (paused, ended or already paid).
+ */
+export type PayMode = 'now' | 'wait' | 'none';
+
+export function payMode(i: { commitment: Commitment; status: BillStatus; today: string; startDay: number }): PayMode {
+  const { commitment: c, status, today, startDay } = i;
+  if (status.state === 'due' || status.state === 'overdue') return 'now';
+  if (status.state !== 'upcoming') return 'none';
+  if (c.startsOn !== null && c.startsOn > today) return 'wait';
+  return periodKey(status.dueDate, startDay) <= periodKey(today, startDay) ? 'now' : 'wait';
+}
+
+/** A payment is never dated in the future: later dates (and malformed ones) become today. */
+export function clampPaymentDate(date: string, today: string): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) && date <= today ? date : today;
 }

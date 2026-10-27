@@ -1,5 +1,9 @@
 /** Strings for bill start and end dates and the "bills still to pay" breakdown (merged into `en` and `ms`). */
 export const billDatesEn = {
+  'commitments.startsOn': 'Starts {date}',
+  'commitments.dueOn': 'Due {date}',
+  'commitments.payDate': 'Payment date',
+  'commitments.payDateHint': 'Counts in {period} spending.',
   'commitments.ended': 'Ended',
   'bill.starts': 'Starts {date}',
   'bill.ends': 'Ends {date}',
@@ -24,6 +28,10 @@ export const billDatesEn = {
 } as const;
 
 export const billDatesMs: Record<keyof typeof billDatesEn, string> = {
+  'commitments.startsOn': 'Bermula {date}',
+  'commitments.dueOn': 'Perlu dibayar {date}',
+  'commitments.payDate': 'Tarikh bayaran',
+  'commitments.payDateHint': 'Dikira dalam perbelanjaan {period}.',
   'commitments.ended': 'Tamat',
   'bill.starts': 'Bermula {date}',
   'bill.ends': 'Tamat {date}',
