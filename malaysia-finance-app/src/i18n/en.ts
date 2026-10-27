@@ -167,6 +167,7 @@ export const en = {
   'tax.upTo': 'Up to {amount}',
   'tax.claimedOf': '{claimed} of {limit}',
   'tax.limit': 'Limit {amount} a year',
+  'tax.editClaim': 'Edit claim',
   'tax.addClaim': 'Add claim',
   'tax.claims': 'Your claims',
   'tax.noClaims': 'No claims yet',
