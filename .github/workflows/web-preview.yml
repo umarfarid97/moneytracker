@@ -38,6 +38,7 @@ jobs:
           CI: '1'
         run: |
           npx expo export --platform web
+          node scripts/preload-fonts.js
           cp dist/index.html dist/404.html
           touch dist/.nojekyll
       - uses: actions/configure-pages@v5
