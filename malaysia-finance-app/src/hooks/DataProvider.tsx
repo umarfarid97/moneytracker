@@ -40,7 +40,7 @@ import type { NewOwedEntry, NewOwedProject, OwedEntry, OwedProject } from '@/dom
 import { clampPaymentDate, missedDueDates } from '@/domain/bills';
 import { todayKL } from '@/domain/dates';
 import { byDateDesc as givingNewest, type GivingRecord, type NewGivingRecord } from '@/domain/giving';
-import { HOME_LAYOUT_KEY, parseHomeLayout, type HomeLayoutPrefs } from '@/domain/homeLayout';
+import { HOME_LAYOUT_AT_KEY, HOME_LAYOUT_KEY, parseHomeLayout, type HomeLayoutPrefs } from '@/domain/homeLayout';
 import { isPaidOff, loanBalance, nextPayment } from '@/domain/loanTracker';
 import type { Sen } from '@/domain/money';
 import { byDateDesc as entryNewest, type NewRetirementEntry, type RetirementEntry } from '@/domain/retirement';
@@ -381,6 +381,7 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
         setHomeLayout(prefs);
         try {
           await setSetting(db, HOME_LAYOUT_KEY, JSON.stringify(prefs));
+          await setSetting(db, HOME_LAYOUT_AT_KEY, String(Date.now()));
         } catch (e) {
           setHomeLayout(before);
           throw e;

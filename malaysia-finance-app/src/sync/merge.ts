@@ -123,6 +123,20 @@ export function mergeSnapshots(local: Snapshot, remote: Snapshot): Snapshot {
       ? remote.profile
       : local.profile;
 
+  // The Home layout is one piece: the newer copy wins (a tie goes to remote), and categories it names that
+  // were folded into another or deleted are followed or dropped.
+  const layoutSource =
+    !local.homeLayout || (remote.homeLayout && remote.homeLayout.updatedAt >= local.homeLayout.updatedAt)
+      ? remote.homeLayout
+      : local.homeLayout;
+  const homeLayout = layoutSource
+    ? {
+        ...layoutSource,
+        categoryOrder: [...new Set(layoutSource.categoryOrder.flatMap((u) => resolve('categories', u) ?? []))],
+        categoryHidden: [...new Set(layoutSource.categoryHidden.flatMap((u) => resolve('categories', u) ?? []))],
+      }
+    : null;
+
   const tables = { budgets: [...finalBudgets.values()] } as Snapshot['tables'];
   for (const t of ENTITY_TABLES) tables[t] = [...rows[t].values()];
   return {
@@ -132,6 +146,7 @@ export function mergeSnapshots(local: Snapshot, remote: Snapshot): Snapshot {
     exportedAt: Math.max(local.exportedAt, remote.exportedAt),
     tables,
     profile,
+    homeLayout,
     deleted: [...tombs.values()],
   };
 }

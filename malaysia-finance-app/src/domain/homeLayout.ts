@@ -23,6 +23,8 @@ export const HOME_WIDGETS = [
 export type WidgetId = (typeof HOME_WIDGETS)[number]['id'];
 
 export const HOME_LAYOUT_KEY = 'homeLayout';
+/** When the layout was last changed (ms), so sync can tell which phone's copy is newer. */
+export const HOME_LAYOUT_AT_KEY = 'homeLayoutAt';
 
 /**
  * What the person changed. Anything not mentioned keeps its default, so a card or category added by a later
