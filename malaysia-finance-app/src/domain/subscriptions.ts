@@ -2,8 +2,8 @@ import { matcher } from './brandMatch';
 
 /**
  * Ready-made subscriptions offered when adding a Subscription, apart from the bill billers in billers.ts.
- * Like the billers they have no logo files: a circle in a brand-like colour with initials, matched to a
- * subscription by its name, so nothing extra is stored or synced.
+ * Each is a circle in a brand-like colour: the brand's mark when one is bundled (ui/brandMarks.ts),
+ * otherwise its initials. It is matched to a subscription by its name, so nothing extra is stored or synced.
  */
 export type SubscriptionGroup = 'streaming' | 'cloud' | 'ai' | 'apps' | 'life';
 
@@ -35,8 +35,9 @@ const sub = (
 export const SUBSCRIPTIONS: SubscriptionService[] = [
   sub('netflix', 'Netflix', 'streaming', 'N', '#e50914', WHITE),
   sub('disney', 'Disney+ Hotstar', 'streaming', 'D+', '#113ccf', WHITE, { aliases: ['disney plus', 'disney', 'hotstar'] }),
-  sub('youtube', 'YouTube Premium', 'streaming', 'YT', '#ff0000', WHITE, { aliases: ['youtube'] }),
+  sub('youtube', 'YouTube Premium', 'streaming', 'YT', '#ff0000', WHITE, { aliases: ['youtube', 'youtube music'] }),
   sub('spotify', 'Spotify', 'streaming', 'S', '#1db954', '#111111'),
+  sub('apple-tv', 'Apple TV+', 'streaming', 'TV', '#111111', WHITE, { aliases: ['apple tv', 'appletv'] }),
   sub('apple-music', 'Apple Music', 'streaming', 'AM', '#fa243c', WHITE),
   sub('astro', 'Astro', 'streaming', 'A', '#0033a0', WHITE, { aliases: ['astro njoi', 'astro go'] }),
   sub('viu', 'Viu', 'streaming', 'V', '#ffb400', '#1a1a1a'),

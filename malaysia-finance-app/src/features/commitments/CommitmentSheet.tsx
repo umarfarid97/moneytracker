@@ -196,7 +196,7 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
                     key={p.id}
                     label={p.name}
                     accessibilityLabel={`Pay later ${p.name}`}
-                    leading={<BrandBadge initials={p.initials} color={p.color} ink={p.ink} size={22} />}
+                    leading={<BrandBadge id={p.id} initials={p.initials} color={p.color} ink={p.ink} size={22} />}
                     selected={bnplFor(name)?.id === p.id}
                     onPress={() => setName(p.name)}
                   />
@@ -218,7 +218,7 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
                   key={b.id}
                   label={b.name}
                   accessibilityLabel={`Subscription ${b.name}`}
-                  leading={<BrandBadge initials={b.initials} color={b.color} ink={b.ink} size={22} />}
+                  leading={<BrandBadge id={b.id} initials={b.initials} color={b.color} ink={b.ink} size={22} />}
                   selected={name === b.name}
                   onPress={() => {
                     setName(b.name);
@@ -245,7 +245,7 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
                   key={b.id}
                   label={b.name}
                   accessibilityLabel={`Biller ${b.name}`}
-                  leading={<BrandBadge initials={b.initials} color={b.color} ink={b.ink} size={22} />}
+                  leading={<BrandBadge id={b.id} initials={b.initials} color={b.color} ink={b.ink} size={22} />}
                   selected={name === b.name}
                   onPress={() => {
                     setName(b.name);
