@@ -1,0 +1,16 @@
+name = "duit-cloud"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+[vars]
+# Comma separated. The web app's origin; the Android app sends no Origin header and does not need CORS.
+ALLOWED_ORIGINS = "https://umarfarid97.github.io"
+# Address login codes are sent from. The domain must be verified in Resend.
+MAIL_FROM = "Duit <login@example.com>"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "duit-cloud"
+# Run `npx wrangler d1 create duit-cloud` and paste the printed id here.
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "migrations"
