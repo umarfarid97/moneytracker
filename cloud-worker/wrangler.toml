@@ -11,6 +11,6 @@ MAIL_FROM = "Duit <login@example.com>"
 [[d1_databases]]
 binding = "DB"
 database_name = "duit-cloud"
-# Run `npx wrangler d1 create duit-cloud` and paste the printed id here.
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+# Created in the Cloudflare account; schema from migrations/0001_init.sql is already applied.
+database_id = "26ff5993-5119-4b26-b645-09db333bbfca"
 migrations_dir = "migrations"

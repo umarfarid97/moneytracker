@@ -25,23 +25,20 @@ Duit's sync server is a small Cloudflare Worker with a D1 database (folder `clou
 
 ## 3. Deploy the server
 
-On your computer, with Node 22 installed, in the repo folder:
+The database `duit-cloud` is already created in your Cloudflare account and its tables are in place, and its id is in `wrangler.toml`. What is left is the Worker itself and its two secrets. On your computer, with Node 22 installed, in the repo folder:
 
 ```bash
 cd cloud-worker
 npm install
 npx wrangler login                      # opens the browser to authorise
-npx wrangler d1 create duit-cloud       # prints a database_id
 ```
 
-1. Open `cloud-worker/wrangler.toml` and paste the printed id over `REPLACE_WITH_D1_DATABASE_ID`.
-2. In the same file set `MAIL_FROM` to an address on your verified domain, for example `Duit <login@yourdomain.com>`.
-3. Keep `ALLOWED_ORIGINS` as `https://umarfarid97.github.io` (the web app).
+1. In `cloud-worker/wrangler.toml` set `MAIL_FROM` to an address on your verified Resend domain, for example `Duit <login@yourdomain.com>`.
+2. Keep `ALLOWED_ORIGINS` as `https://umarfarid97.github.io` (the web app).
 
 Then:
 
 ```bash
-npx wrangler d1 migrations apply duit-cloud --remote
 openssl rand -hex 32                    # copy the output
 npx wrangler secret put PEPPER          # paste that output when asked
 npx wrangler secret put RESEND_API_KEY  # paste the re_... key
