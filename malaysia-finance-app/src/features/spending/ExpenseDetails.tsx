@@ -6,13 +6,13 @@ import { HOME_CURRENCY, rateToInput } from '@/domain/fx';
 import { formatRM, senToInput } from '@/domain/money';
 import type { Expense } from '@/domain/types';
 import { t } from '@/i18n/t';
-import { resolveReceiptUri, useReceiptVersion } from '@/receipts';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { HeroCard, onHero } from '@/ui/HeroCard';
 import { IconBadge } from '@/ui/IconBadge';
 import { ReceiptPreview } from '@/ui/ReceiptPreview';
+import { ReceiptMissing, useReceipt } from '@/ui/useReceipt';
 import { Screen } from '@/ui/Screen';
 import { categoryLook, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
@@ -35,7 +35,7 @@ type Props = {
 export function ExpenseDetails({ expense, categoryName, categoryIcon, methodName, reliefName, error, busy, onEdit, onDelete, onClose }: Props) {
   const { c } = useTheme();
   const [previewing, setPreviewing] = useState(false);
-  useReceiptVersion();
+  const receipt = useReceipt(expense.receiptUri);
   const look = categoryLook(categoryName, categoryIcon);
   const year = expense.date.slice(0, 4);
 
@@ -102,19 +102,23 @@ export function ExpenseDetails({ expense, categoryName, categoryIcon, methodName
       <Card style={{ gap: 12, flexGrow: expense.receiptUri ? 1 : 0 }}>
         <AppText variant="eyebrow" tone="muted">{t('expense.receipt')}</AppText>
         {expense.receiptUri ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('receipt.view')}
-            onPress={() => setPreviewing(true)}
-            style={{ flexGrow: 1, minHeight: 180, borderRadius: radius.control, backgroundColor: c.ground, overflow: 'hidden' }}
-          >
-            <Image
-              source={{ uri: resolveReceiptUri(expense.receiptUri) }}
-              accessibilityLabel={t('expense.receipt')}
-              resizeMode="contain"
-              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-            />
-          </Pressable>
+          receipt.uri ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('receipt.view')}
+              onPress={() => setPreviewing(true)}
+              style={{ flexGrow: 1, minHeight: 180, borderRadius: radius.control, backgroundColor: c.ground, overflow: 'hidden' }}
+            >
+              <Image
+                source={{ uri: receipt.uri }}
+                accessibilityLabel={t('expense.receipt')}
+                resizeMode="contain"
+                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+              />
+            </Pressable>
+          ) : (
+            <View style={{ flexGrow: 1, minHeight: 180, flexDirection: 'row' }}>{receipt.missing ? <ReceiptMissing /> : null}</View>
+          )
         ) : (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Ionicons name="image-outline" size={20} color={c.muted} />
@@ -123,7 +127,7 @@ export function ExpenseDetails({ expense, categoryName, categoryIcon, methodName
         )}
       </Card>
       <ReceiptPreview
-        uri={previewing && expense.receiptUri ? resolveReceiptUri(expense.receiptUri) : null}
+        uri={previewing && receipt.uri ? receipt.uri : null}
         onClose={() => setPreviewing(false)}
       />
     </Screen>

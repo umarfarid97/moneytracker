@@ -10,6 +10,7 @@ import { toBase64 } from '@/sync/bytes';
 jest.mock('@/sync/random', () => ({ randomBytes: (n: number) => new Uint8Array(require('node:crypto').randomBytes(n)) }));
 jest.mock('@/sync/receiptFiles', () => ({
   RECEIPT_FILES: true,
+  prepareReceipts: jest.fn(async () => {}),
   isStoredReceipt: (s: string | null) => !!s && s.startsWith('receipts/'),
   receiptExists: jest.fn((s: string) => mockLocal.has(s)),
   readReceiptBase64: jest.fn(async (s: string) => mockLocal.get(s) ?? null),
@@ -27,7 +28,7 @@ function fakeCloud() {
   const tokens = new Set<string>();
   let code = '123456';
   const calls: string[] = [];
-  const state = { failNextPutWithConflict: false };
+  const state = { failNextPutWithConflict: false, quotaFull: false };
   const fetchMock = jest.fn(async (url: string, init: RequestInit = {}) => {
     const path = new URL(url).pathname;
     const method = init.method ?? 'GET';
@@ -67,6 +68,7 @@ function fakeCloud() {
     if (path === '/receipts' && method === 'GET') return Response.json({ receipts: [...receipts.keys()].map((name) => ({ name })) });
     const rc = path.match(/^\/receipts\/(.+)$/);
     if (rc && method === 'PUT') {
+      if (state.quotaFull) return Response.json({ error: 'quota' }, { status: 413 });
       receipts.set(decodeURIComponent(rc[1]), await body());
       return new Response(null, { status: 204 });
     }
@@ -100,7 +102,7 @@ test('first device uploads encrypted data; a second device gets it and adds its 
   const phone = await freshDb();
   await spend(phone, 'nasi');
   const first = await syncWithCloud(phone, api(), key);
-  expect(first).toEqual({ changedLocal: false, version: 1 });
+  expect(first).toMatchObject({ changedLocal: false, version: 1 });
   // The server holds only ciphertext.
   expect(Buffer.from(cloud.blob!).includes('nasi')).toBe(false);
 
@@ -186,6 +188,43 @@ test('receipt photos travel encrypted', async () => {
   const tablet = await freshDb();
   await syncWithCloud(tablet, api(), key);
   expect(mockLocal.get('receipts/r1.jpg')).toBe(toBase64(new Uint8Array([1, 2, 3, 4])));
+});
+
+test('a quiet poll still fetches a photo another device uploaded after the data', async () => {
+  await login();
+  const phone = await freshDb();
+  await spend(phone, 'with photo', 'receipts/r2.jpg');
+  const first = await syncWithCloud(phone, api(), key); // data goes up, the photo is not on this phone yet
+  expect(cloud.receipts.size).toBe(0);
+
+  const tablet = await freshDb();
+  const sync = await syncWithCloud(tablet, api(), key);
+  expect(mockLocal.has('receipts/r2.jpg')).toBe(false);
+
+  // The phone's photo arrives later, without any change to the data.
+  mockLocal.set('receipts/r2.jpg', toBase64(new Uint8Array([9, 8, 7])));
+  await syncWithCloud(phone, api(), key, first.version);
+  expect(cloud.receipts.size).toBe(0); // quiet poll on the phone: nothing missing there, so no upload round
+
+  await syncWithCloud(phone, api(), key); // full round after a change uploads it
+  expect([...cloud.receipts.keys()]).toEqual(['r2.jpg']);
+
+  await syncWithCloud(tablet, api(), key, sync.version);
+  expect(mockLocal.get('receipts/r2.jpg')).toBe(toBase64(new Uint8Array([9, 8, 7])));
+});
+
+test('says so when the cloud refuses photos because storage is full', async () => {
+  await login();
+  const phone = await freshDb();
+  mockLocal.set('receipts/big.jpg', toBase64(new Uint8Array([1])));
+  await spend(phone, 'big', 'receipts/big.jpg');
+  cloud.state.quotaFull = true;
+  const result = await syncWithCloud(phone, api(), key);
+  expect(result.photosFull).toBe(true);
+  expect(cloud.receipts.size).toBe(0);
+  cloud.state.quotaFull = false;
+  expect((await syncWithCloud(phone, api(), key)).photosFull).toBe(false);
+  expect(cloud.receipts.size).toBe(1);
 });
 
 describe('account flow', () => {

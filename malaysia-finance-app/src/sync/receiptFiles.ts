@@ -15,6 +15,9 @@ function ensureDir() {
 const MIME: Record<string, string> = { png: 'image/png', heic: 'image/heic', webp: 'image/webp' };
 const mimeOf = (stored: string) => MIME[stored.split('.').pop()?.toLowerCase() ?? ''] ?? 'image/jpeg';
 
+/** Nothing to load first: phone receipts are plain files. */
+export const prepareReceipts = async (): Promise<void> => {};
+
 export function receiptExists(stored: string): boolean {
   return fileFor(stored).exists;
 }

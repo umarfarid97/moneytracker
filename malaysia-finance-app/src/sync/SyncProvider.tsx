@@ -17,7 +17,7 @@ import { googleAuth } from './googleAuth';
 import { DemoLoadedError, SyncTooNewError } from './syncErrors';
 
 /** Why the last sync failed: sign in again, update the app, no internet, the data key no longer fits, or something else. */
-export type SyncProblem = 'signIn' | 'tooNew' | 'offline' | 'locked' | 'demo' | 'failed';
+export type SyncProblem = 'signIn' | 'tooNew' | 'offline' | 'locked' | 'demo' | 'photosFull' | 'failed';
 
 /** Where the sign-in is: not started, waiting for a passphrase to be chosen or entered, or syncing. */
 export type CloudStep = 'off' | 'create' | 'unlock' | 'ready';
@@ -159,7 +159,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         }
         const now = Date.now();
         setLastSyncedAt(now);
-        setProblem(null);
+        setProblem(result.photosFull ? 'photosFull' : null);
         await saveState('cloud.lastSync', String(now));
       } catch (e) {
         // The next round must do a full sync, since this one may not have uploaded.

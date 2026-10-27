@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 export type ReceiptSource = 'camera' | 'library';
 
 /** Longest side kept for a stored receipt, so photos from a phone camera stay small in the browser's storage. */
-const MAX_SIDE = 1600;
+const MAX_SIDE = 1280;
+const JPEG_QUALITY = 0.7;
 const DB_NAME = 'duit-receipts';
 const STORE = 'receipts';
 
@@ -22,6 +23,7 @@ const urls = new Map<string, string>();
 const listeners = new Set<() => void>();
 let version = 0;
 let loaded: Promise<void> | null = null;
+let loadDone = false;
 
 function bump() {
   version += 1;
@@ -75,6 +77,7 @@ export function loadReceipts(): Promise<void> {
       } catch {
         // No IndexedDB (private mode): receipts attached this visit still show; saved ones just don't.
       }
+      loadDone = true;
       bump();
     })();
   }
@@ -107,7 +110,7 @@ async function prepare(file: Blob): Promise<Blob> {
     if (!ctx) return file;
     ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     bitmap.close?.();
-    const out = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+    const out = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY));
     return out && out.size > 0 ? out : file;
   } catch {
     return file;
@@ -123,6 +126,35 @@ export async function storeReceipt(source: Blob, now: number = Date.now()): Prom
   urls.set(key, URL.createObjectURL(blob));
   bump();
   return key;
+}
+
+/** True until the saved receipts have been read, so a screen can wait instead of claiming a photo is missing. */
+export function receiptPending(stored: string): boolean {
+  return !loadDone && !urls.has(stored);
+}
+
+/** Whether the picture for this key is in this browser. Call after loadReceipts. */
+export const hasReceipt = (key: string): boolean => urls.has(key);
+
+/** The saved picture for a key, or null. */
+export async function readReceiptBlob(key: string): Promise<Blob | null> {
+  await loadReceipts();
+  try {
+    const blob = await withStore<Blob | undefined>('readonly', (s) => s.get(key));
+    return blob ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Saves a picture exactly as given (it came from a backup or another device, already shrunk). */
+export async function saveReceiptBlob(key: string, blob: Blob): Promise<void> {
+  await loadReceipts();
+  await withStore('readwrite', (s) => s.put(blob, key));
+  const old = urls.get(key);
+  urls.set(key, URL.createObjectURL(blob));
+  if (old) URL.revokeObjectURL(old);
+  bump();
 }
 
 /** Picture uri for a stored receipt key; empty until saved receipts have loaded (see useReceiptVersion). */
