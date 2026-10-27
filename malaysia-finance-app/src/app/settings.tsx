@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, View } from 'react-native';
+import { useShowPending } from '@/hooks/useShowPending';
 import { LANGUAGES, LANGUAGE_NAMES, setLanguage, useLanguage } from '@/i18n/language';
 import { t } from '@/i18n/t';
 import type { StringKey } from '@/i18n/en';
@@ -29,6 +30,7 @@ export default function Settings() {
   const { c } = useTheme();
   const appearance = useAppearance();
   const language = useLanguage();
+  const [showPending, setShowPending] = useShowPending();
   const [picking, setPicking] = useState<'appearance' | 'language' | null>(null);
 
   const options =
@@ -67,6 +69,16 @@ export default function Settings() {
             <Ionicons name="chevron-forward" size={20} color={c.accent} />
           </Pressable>
         ))}
+      </Card>
+      <Card style={{ padding: 0, paddingHorizontal: 14 }}>
+        <View style={{ minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 8 }}>
+          <IconBadge icon="time" size={34} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <AppText variant="bodyStrong">{t('settings.showPending')}</AppText>
+            <AppText variant="small" tone="muted">{t('settings.showPendingHint')}</AppText>
+          </View>
+          <Switch accessibilityLabel={t('settings.showPending')} value={showPending} onValueChange={setShowPending} />
+        </View>
       </Card>
       <Sheet visible={picking !== null} title={picking === 'appearance' ? t('more.appearance') : t('more.language')} onClose={() => setPicking(null)}>
         <View>
