@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useMemo } from 'react';
-import { View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, View } from 'react-native';
 import { periodKey } from '@/domain/budgetPeriod';
 import { balanceLeft } from '@/domain/balance';
 import { buildHome } from '@/domain/summary';
@@ -22,6 +22,7 @@ import { GET_STARTED_MAX_SPENDINGS, GetStarted } from '@/features/onboarding/Get
 import { HeroCard, onHero } from '@/ui/HeroCard';
 import { Screen } from '@/ui/Screen';
 import { radius } from '@/ui/theme';
+import { loadHideBalance, saveHideBalance } from '@/ui/appearanceStorage';
 import { Tile } from '@/ui/Tile';
 import { TileGrid } from '@/ui/TileGrid';
 
@@ -43,6 +44,12 @@ export default function Home() {
     () => balanceLeft({ profile, expenses, commitments, today, extraIncome: incomeEntries, estimatedPcb }),
     [profile, expenses, commitments, today, incomeEntries, estimatedPcb],
   );
+  const [hidden, setHidden] = useState(loadHideBalance);
+  const toggleHidden = () => {
+    saveHideBalance(!hidden);
+    setHidden(!hidden);
+  };
+  const money = (cents: number) => (hidden ? 'RM ••••' : formatRM(cents));
   const categoryById = useMemo(() => new Map(categories.map((cat) => [cat.id, cat])), [categories]);
 
   return (
@@ -75,20 +82,30 @@ export default function Home() {
       <View style={{ height: 1, backgroundColor: onHero.chip, marginVertical: 12 }} />
       {balance ? (
         <View style={{ gap: 4 }}>
-          <AppText variant="eyebrow" color={onHero.soft}>
-            {t('home.balanceTitle')}
-          </AppText>
-          <AppText variant="kpi" tone={balance.left < 0 ? 'negative' : 'text'}>
-            {balance.left >= 0 ? formatRM(balance.left) : `-${formatRM(-balance.left)}`}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <AppText variant="eyebrow" color={onHero.soft}>
+              {t('home.balanceTitle')}
+            </AppText>
+            <Pressable
+              onPress={toggleHidden}
+              accessibilityRole="button"
+              accessibilityLabel={t(hidden ? 'home.balanceShow' : 'home.balanceHide')}
+              hitSlop={12}
+            >
+              <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={22} color={onHero.soft} />
+            </Pressable>
+          </View>
+          <AppText variant="kpi" tone={balance.left < 0 && !hidden ? 'negative' : 'text'}>
+            {hidden ? money(0) : balance.left >= 0 ? formatRM(balance.left) : `-${formatRM(-balance.left)}`}
           </AppText>
           <AppText variant="small" color={onHero.soft}>
             {balance.extra > 0
-              ? t('home.balanceDetailExtra', { income: formatRM(balance.income), extra: formatRM(balance.extra), spent: formatRM(balance.spent) })
-              : t('home.balanceDetail', { income: formatRM(balance.income), spent: formatRM(balance.spent) })}
+              ? t('home.balanceDetailExtra', { income: money(balance.income), extra: money(balance.extra), spent: money(balance.spent) })
+              : t('home.balanceDetail', { income: money(balance.income), spent: money(balance.spent) })}
           </AppText>
           {balance.upcoming > 0 ? (
             <AppText variant="small" color={onHero.soft}>
-              {t('home.balanceUpcoming', { upcoming: formatRM(balance.upcoming), free: formatRM(Math.max(0, balance.afterBills)) })}
+              {t('home.balanceUpcoming', { upcoming: money(balance.upcoming), free: money(Math.max(0, balance.afterBills)) })}
             </AppText>
           ) : null}
         </View>

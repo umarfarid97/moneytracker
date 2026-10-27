@@ -32,6 +32,8 @@ export const en = {
   'home.balanceTitle': 'Balance left this month',
   'home.balanceDetail': 'Take-home {income} - spent {spent}',
   'home.balanceUpcoming': '{upcoming} in bills still to pay, so {free} is free',
+  'home.balanceShow': 'Show balance',
+  'home.balanceHide': 'Hide balance',
   'home.balanceSetup': 'Add your salary in your profile to see what is left each month',
   'home.balanceSetupButton': 'Add salary',
 
