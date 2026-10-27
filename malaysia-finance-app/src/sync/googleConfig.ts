@@ -4,14 +4,14 @@
  * project for package my.duit.app and the signing key's SHA-1. While this is empty, Drive sync shows as
  * unavailable and everything else works.
  */
-export const GOOGLE_WEB_CLIENT_ID: string = '253956095950-6jiouhu3p7lhkdu1vrjpp6j48i7bm1q6.apps.googleusercontent.com';
+export const GOOGLE_WEB_CLIENT_ID: string = '719997929789-fc1og019f60m78nq1k3jpoot4dmt7umk.apps.googleusercontent.com';
 
 /**
  * OAuth "Android" client ID (package my.duit.app + the signing key's SHA-1, with "Custom URI scheme"
  * switched on under Advanced settings). Used for the browser sign-in that phones without Google Play
  * services (Huawei) fall back to. While this is empty those phones get a clear message instead.
  */
-export const GOOGLE_ANDROID_CLIENT_ID: string = '253956095950-72aln9bslqeepbjvtp5vl1ilghug04vr.apps.googleusercontent.com';
+export const GOOGLE_ANDROID_CLIENT_ID: string = '719997929789-vsm4ottpd7iq9f8iortj2cgii74et534.apps.googleusercontent.com';
 
 /** Only the app's own hidden folder in the user's Drive: Duit cannot see any other file. */
 export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
