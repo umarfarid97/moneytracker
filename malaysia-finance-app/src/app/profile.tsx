@@ -102,7 +102,23 @@ export default function Profile() {
   } as const;
 
   return (
-    <Screen>
+    <Screen
+      footer={(
+        <View style={{ gap: 8 }}>
+          {error ? (
+            <AppText variant="small" tone="negative">
+              {error}
+            </AppText>
+          ) : null}
+          {saved ? (
+            <AppText variant="smallStrong" tone="positive">
+              {t('profile.saved')}
+            </AppText>
+          ) : null}
+          <Button title={t('common.save')} onPress={onSave} disabled={!valid || busy || saved} />
+        </View>
+      )}
+    >
       <BackButton />
       <AppText variant="title">{t('profile.title')}</AppText>
       {draft ? (
@@ -159,17 +175,6 @@ export default function Profile() {
         <PaydayPicker value={startDay} onChange={setStartDay} />
         <AppText variant="small" tone="muted">{t('profile.salaryDayHint')}</AppText>
       </View>
-      {error ? (
-        <AppText variant="small" tone="negative">
-          {error}
-        </AppText>
-      ) : null}
-      {saved ? (
-        <AppText variant="smallStrong" tone="positive">
-          {t('profile.saved')}
-        </AppText>
-      ) : null}
-      <Button title={t('common.save')} onPress={onSave} disabled={!valid || busy || saved} />
     </Screen>
   );
 }

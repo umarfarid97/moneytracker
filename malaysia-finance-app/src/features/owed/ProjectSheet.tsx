@@ -53,7 +53,24 @@ export function ProjectSheet({ existing, suggestions, today, onClose, onSave, on
   }
 
   return (
-    <Sheet visible title={t(existing ? 'project.edit' : 'owed.newProject')} onClose={onClose}>
+    <Sheet visible title={t(existing ? 'project.edit' : 'owed.newProject')} onClose={onClose}
+      footer={(
+        <View style={{ gap: 8 }}>
+          {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
+          <Button
+            title={t(existing ? 'common.save' : 'project.create')}
+            disabled={!valid || busy}
+            onPress={() => run(() => onSave({
+              name: normalizeName(name), members, owner: existing?.owner ?? '',
+              startDate: dated ? start : null, endDate: dated ? end : null,
+            }))}
+          />
+          {existing && onDelete ? (
+            <Button title={t('common.delete')} variant="secondary" disabled={busy} onPress={() => run(onDelete)} />
+          ) : null}
+        </View>
+      )}
+    >
       <View style={{ gap: 16 }}>
         <TextField label={t('project.name')} value={name} onChange={setName} placeholder={t('project.namePlaceholder')} maxLength={40} />
 
@@ -101,19 +118,6 @@ export function ProjectSheet({ existing, suggestions, today, onClose, onSave, on
             </View>
           </View>
         </View>
-
-        {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
-        <Button
-          title={t(existing ? 'common.save' : 'project.create')}
-          disabled={!valid || busy}
-          onPress={() => run(() => onSave({
-            name: normalizeName(name), members, owner: existing?.owner ?? '',
-            startDate: dated ? start : null, endDate: dated ? end : null,
-          }))}
-        />
-        {existing && onDelete ? (
-          <Button title={t('common.delete')} variant="secondary" disabled={busy} onPress={() => run(onDelete)} />
-        ) : null}
       </View>
     </Sheet>
   );

@@ -41,7 +41,14 @@ export function ImportSheet({ onClose, onImport }: Props) {
   }
 
   return (
-    <Sheet visible title={t('project.import.title')} onClose={onClose}>
+    <Sheet visible title={t('project.import.title')} onClose={onClose}
+      footer={(
+        <View style={{ gap: 8 }}>
+          {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
+          <Button title={t('project.import.button')} disabled={!shared || me === null || busy} onPress={run} />
+        </View>
+      )}
+    >
       <View style={{ gap: 16 }}>
         <AppText variant="small" tone="muted">{t('project.import.hint')}</AppText>
         <TextInput
@@ -69,8 +76,6 @@ export function ImportSheet({ onClose, onImport }: Props) {
             </View>
           </View>
         ) : null}
-        {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
-        <Button title={t('project.import.button')} disabled={!shared || me === null || busy} onPress={run} />
       </View>
     </Sheet>
   );

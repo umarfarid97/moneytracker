@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
-import { Platform, ScrollView, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { space } from './theme';
@@ -46,6 +46,8 @@ export function Screen({ children, scroll = true, fab = false, compact = false, 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.ground }}>
       <Animated.View style={[{ flex: 1 }, enter]}>
+        {/* On iOS the keyboard lifts the pinned footer with the content; Android and web resize the window instead. */}
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {scroll ? (
           <ScrollView
             contentContainerStyle={content}
@@ -62,6 +64,7 @@ export function Screen({ children, scroll = true, fab = false, compact = false, 
             {footer}
           </SafeAreaView>
         ) : null}
+        </KeyboardAvoidingView>
       </Animated.View>
     </SafeAreaView>
   );

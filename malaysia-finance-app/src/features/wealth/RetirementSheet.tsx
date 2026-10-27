@@ -85,7 +85,17 @@ export function RetirementSheet({ visible, group, existing, onClose, onSave, onD
     );
 
   return (
-    <Sheet visible={visible} title={t(existing ? 'retirement.edit' : 'retirement.add')} onClose={onClose}>
+    <Sheet visible={visible} title={t(existing ? 'retirement.edit' : 'retirement.add')} onClose={onClose}
+      footer={(
+        <View style={{ gap: 8 }}>
+          {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
+          <Button title={t('common.save')} onPress={save} disabled={!valid || busy} />
+          {existing && onDelete ? (
+            <Button title={t('common.delete')} variant="secondary" disabled={busy} onPress={() => run(onDelete)} />
+          ) : null}
+        </View>
+      )}
+    >
       <View style={{ gap: 16 }}>
         {group === 'socso' ? (
           <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -116,11 +126,6 @@ export function RetirementSheet({ visible, group, existing, onClose, onSave, onD
           <AmountInput label={t('common.amount')} value={amount} onChange={setAmount} compact />
         )}
         <TextField label={t('common.note')} value={note} onChange={setNote} maxLength={80} />
-        {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
-        <Button title={t('common.save')} onPress={save} disabled={!valid || busy} />
-        {existing && onDelete ? (
-          <Button title={t('common.delete')} variant="secondary" disabled={busy} onPress={() => run(onDelete)} />
-        ) : null}
       </View>
     </Sheet>
   );

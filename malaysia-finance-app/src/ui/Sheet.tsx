@@ -7,13 +7,20 @@ import { AppText } from './AppText';
 import { radius } from './theme';
 import { useTheme } from './useTheme';
 
-type Props = { visible: boolean; title: string; onClose: () => void; children: ReactNode };
+type Props = {
+  visible: boolean;
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  /** Save/Cancel buttons: pinned under the scrolling content so they never scroll away. */
+  footer?: ReactNode;
+};
 
 const OFFSCREEN = 700;
 const DISMISS_DISTANCE = 120;
 
 /** Bottom sheet: slides up, closes by dragging down, the backdrop or the close button. */
-export function Sheet({ visible, title, onClose, children }: Props) {
+export function Sheet({ visible, title, onClose, children, footer }: Props) {
   const { c } = useTheme();
   const { height } = useWindowDimensions();
   const y = useSharedValue(OFFSCREEN);
@@ -78,6 +85,7 @@ export function Sheet({ visible, title, onClose, children }: Props) {
           <ScrollView style={{ maxHeight: height * 0.7 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             {children}
           </ScrollView>
+          {footer ? <View testID="sheet-footer">{footer}</View> : null}
         </Animated.View>
         </KeyboardAvoidingView>
       </GestureHandlerRootView>

@@ -56,7 +56,23 @@ export function OwedSheet({ existing, people, projectId, today, onClose, onSave,
   }
 
   return (
-    <Sheet visible title={t(existing ? 'owed.edit' : 'owed.add')} onClose={onClose}>
+    <Sheet visible title={t(existing ? 'owed.edit' : 'owed.add')} onClose={onClose}
+      footer={(
+        <View style={{ gap: 8 }}>
+          {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
+          <Button
+            title={t('common.save')}
+            disabled={!valid || busy}
+            onPress={() => run(async () => {
+              if (transfer) await onSave({ ...entryOf(transfer), date, note: note.trim(), projectId: existing?.projectId ?? projectId });
+            })}
+          />
+          {existing && onDelete ? (
+            <Button title={t('common.delete')} variant="secondary" disabled={busy} onPress={() => run(onDelete)} />
+          ) : null}
+        </View>
+      )}
+    >
       <View style={{ gap: 16 }}>
         <View style={{ gap: 8 }}>
           <AppText variant="eyebrow" tone="muted">{t('owed.type')}</AppText>
@@ -84,17 +100,6 @@ export function OwedSheet({ existing, people, projectId, today, onClose, onSave,
         ) : (
           <AppText variant="small" tone="muted">{t(a !== null && b !== null && sameName(a, b) ? 'owed.sameParty' : 'owed.previewHint')}</AppText>
         )}
-        {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
-        <Button
-          title={t('common.save')}
-          disabled={!valid || busy}
-          onPress={() => run(async () => {
-            if (transfer) await onSave({ ...entryOf(transfer), date, note: note.trim(), projectId: existing?.projectId ?? projectId });
-          })}
-        />
-        {existing && onDelete ? (
-          <Button title={t('common.delete')} variant="secondary" disabled={busy} onPress={() => run(onDelete)} />
-        ) : null}
       </View>
     </Sheet>
   );

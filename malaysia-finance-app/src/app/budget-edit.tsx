@@ -64,7 +64,21 @@ export default function BudgetEdit() {
   }
 
   return (
-    <Screen>
+    <Screen
+      footer={(
+        <View style={{ gap: 8 }}>
+          {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flex: 1 }}>
+              <Button title={t('common.cancel')} variant="secondary" onPress={() => router.back()} disabled={busy} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button title={t('common.save')} onPress={save} disabled={!allValid || busy} />
+            </View>
+          </View>
+        </View>
+      )}
+    >
       <BackButton />
       <View style={{ gap: 4 }}>
         <AppText variant="title">{t('budget.edit')}</AppText>
@@ -84,15 +98,6 @@ export default function BudgetEdit() {
             onChange={(next) => setDrafts((prev) => ({ ...prev, [category.id]: next }))}
           />
         ))}
-      </View>
-      {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        <View style={{ flex: 1 }}>
-          <Button title={t('common.cancel')} variant="secondary" onPress={() => router.back()} disabled={busy} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Button title={t('common.save')} onPress={save} disabled={!allValid || busy} />
-        </View>
       </View>
     </Screen>
   );
