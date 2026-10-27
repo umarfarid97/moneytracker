@@ -4,3 +4,10 @@ export class SyncTooNewError extends Error {
     super('Synced data is from a newer version of Duit');
   }
 }
+
+/** Demo data is loaded (More > Demo data); syncing waits until it is cleared so it can never pass as real data. */
+export class DemoLoadedError extends Error {
+  constructor() {
+    super('Demo data is loaded');
+  }
+}

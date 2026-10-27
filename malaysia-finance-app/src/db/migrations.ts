@@ -157,6 +157,14 @@ export const MIGRATIONS: string[] = [
     value TEXT NOT NULL
   );
   `,
+  // 17: which rows are demo data (More > Demo data), so clearing it removes only those; kept on this phone only
+  `
+  CREATE TABLE demo_records (
+    tbl TEXT NOT NULL,
+    ref TEXT NOT NULL,
+    PRIMARY KEY (tbl, ref)
+  );
+  `,
 ];
 
 function projectsMigration(): string {

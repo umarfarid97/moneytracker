@@ -1,7 +1,8 @@
+import { isDemoLoaded } from '@/db/repos/demo';
 import type { Db } from '@/db/types';
 import { DriveAuthError, listFiles, readText, writeJson, type DriveFile } from './drive';
 import { mergeSnapshots } from './merge';
-import { SyncTooNewError } from './syncErrors';
+import { DemoLoadedError, SyncTooNewError } from './syncErrors';
 import {
   downloadReceipt, isStoredReceipt, RECEIPT_FILES, receiptExists, uploadReceipt,
 } from './receiptFiles';
@@ -10,13 +11,14 @@ import { applySnapshot, canonical, exportSnapshot, isSnapshot, schemaVersion, wi
 /** The one data file in the user's hidden Duit folder on Drive. Receipt photos sit beside it. */
 export const SYNC_FILE = 'duit-sync.json';
 
-export { SyncTooNewError };
+export { DemoLoadedError, SyncTooNewError };
 
 /**
  * One sync round: download the Drive copy, merge it with this phone's data, write the result here and
  * upload it if Drive was behind, then exchange receipt photos. Returns whether this phone's data changed.
  */
 export async function syncWithDrive(db: Db, token: string): Promise<{ changedLocal: boolean }> {
+  if (await isDemoLoaded(db)) throw new DemoLoadedError();
   const files = await listFiles(token);
   const dataFile = files.find((f) => f.name === SYNC_FILE);
   let remote: Snapshot | null = null;

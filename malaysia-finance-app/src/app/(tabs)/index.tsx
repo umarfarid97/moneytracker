@@ -1,3 +1,4 @@
+import { DemoBanner } from '@/features/demo/DemoBanner';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Fragment, useMemo, useState, type ReactNode } from 'react';
@@ -199,6 +200,7 @@ export default function Home() {
 
   return (
     <Screen fab>
+      <DemoBanner />
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <AppText variant="title">{shortDate(today)}</AppText>
         <Pressable

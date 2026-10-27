@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { DemoBanner } from '@/features/demo/DemoBanner';
 import { t } from '@/i18n/t';
 import type { StringKey } from '@/i18n/en';
 import { AppText } from '@/ui/AppText';
@@ -9,7 +10,7 @@ import { IconBadge } from '@/ui/IconBadge';
 import { Screen } from '@/ui/Screen';
 import { useTheme } from '@/ui/useTheme';
 
-type Path = '/wealth' | '/tax' | '/profile' | '/budget' | '/loan-calculator' | '/reports' | '/import-statement' | '/owed' | '/settings';
+type Path = '/wealth' | '/tax' | '/profile' | '/budget' | '/loan-calculator' | '/reports' | '/import-statement' | '/owed' | '/settings' | '/demo';
 type Item = { label: StringKey; path: Path; icon: keyof typeof Ionicons.glyphMap; color: string };
 
 const SECTIONS: { title: StringKey; items: Item[] }[] = [
@@ -39,6 +40,7 @@ const SECTIONS: { title: StringKey; items: Item[] }[] = [
     title: 'more.section.tools',
     items: [
       { label: 'more.import', path: '/import-statement', icon: 'download', color: '#0d5bd3' },
+      { label: 'more.demo', path: '/demo', icon: 'flask', color: '#7c3aed' },
       { label: 'more.settings', path: '/settings', icon: 'settings', color: '#64748b' },
     ],
   },
@@ -49,6 +51,7 @@ export default function More() {
   return (
     <Screen fab>
       <AppText variant="title">{t('tab.more')}</AppText>
+      <DemoBanner />
       {/* Grouped lists, like iOS Settings: coloured icons with hairlines between rows. */}
       {SECTIONS.map((section) => (
         <View key={section.title} style={{ gap: 8 }}>

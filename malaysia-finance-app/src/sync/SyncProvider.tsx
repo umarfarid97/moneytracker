@@ -14,10 +14,10 @@ import { deviceName } from './deviceName';
 import { DriveAuthError } from './drive';
 import { syncWithDrive } from './driveSync';
 import { googleAuth } from './googleAuth';
-import { SyncTooNewError } from './syncErrors';
+import { DemoLoadedError, SyncTooNewError } from './syncErrors';
 
 /** Why the last sync failed: sign in again, update the app, no internet, the data key no longer fits, or something else. */
-export type SyncProblem = 'signIn' | 'tooNew' | 'offline' | 'locked' | 'failed';
+export type SyncProblem = 'signIn' | 'tooNew' | 'offline' | 'locked' | 'demo' | 'failed';
 
 /** Where the sign-in is: not started, waiting for a passphrase to be chosen or entered, or syncing. */
 export type CloudStep = 'off' | 'create' | 'unlock' | 'ready';
@@ -172,8 +172,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
           setProblem(
             e instanceof CloudAuthError ? 'signIn'
               : e instanceof SyncTooNewError ? 'tooNew'
-                : e instanceof TypeError ? 'offline'
-                  : 'failed',
+                : e instanceof DemoLoadedError ? 'demo'
+                  : e instanceof TypeError ? 'offline'
+                    : 'failed',
           );
         }
       } finally {

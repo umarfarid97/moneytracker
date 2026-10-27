@@ -1,6 +1,7 @@
 import { DEFAULT_PROJECT_UID } from '@/db/migrations';
 import type { Db, SqlParam } from '@/db/types';
 import { FALLBACK_CATEGORY } from '@/db/repos/categories';
+import { demoUids, realProfile } from '@/db/repos/demo';
 
 /**
  * A copy of all the user's data that does not depend on this phone's row ids, so it can be merged with
@@ -56,13 +57,15 @@ export async function schemaVersion(db: Db): Promise<number> {
   return (await db.get<{ user_version: number }>('PRAGMA user_version'))?.user_version ?? 0;
 }
 
-/** Reads everything into a snapshot. */
+/** Reads everything into a snapshot. Demo data (More > Demo data) is left out, and the profile is as it was before it. */
 export async function exportSnapshot(db: Db, now: number = Date.now()): Promise<Snapshot> {
   const raw = {} as Record<EntityTable, Row[]>;
   const uidOf = {} as Record<EntityTable, Map<number, string>>;
+  const demo = await demoUids(db);
   for (const t of ENTITY_TABLES) {
-    raw[t] = await db.all<Row>(`SELECT * FROM ${t} ORDER BY id`);
-    uidOf[t] = new Map(raw[t].map((r) => [r.id as number, r.uid as string]));
+    const all = await db.all<Row>(`SELECT * FROM ${t} ORDER BY id`);
+    uidOf[t] = new Map(all.map((r) => [r.id as number, r.uid as string]));
+    raw[t] = demo.has(t) ? all.filter((r) => !demo.get(t)!.has(r.uid as string)) : all;
   }
   const toUid = (parent: Parent, id: SqlParam) => (id == null ? null : uidOf[parent].get(id as number) ?? null);
 
@@ -75,9 +78,10 @@ export async function exportSnapshot(db: Db, now: number = Date.now()): Promise<
   }
   for (const b of await db.all<Row>('SELECT * FROM budgets')) {
     const category = toUid('categories', b.category_id);
-    if (category) tables.budgets.push({ ...b, category_id: category });
+    if (category && !demo.get('budgets')?.has(`${category}|${b.month}`)) tables.budgets.push({ ...b, category_id: category });
   }
-  const profileRow = await db.get<Row>('SELECT * FROM profile WHERE id = 1');
+  const currentProfile = await db.get<Row>('SELECT * FROM profile WHERE id = 1');
+  const profileRow = currentProfile ? await realProfile(db, currentProfile) : null;
   const { id: _id, ...profile } = profileRow ?? {};
   const deleted = await db.all<Tombstone>(
     'SELECT tbl, uid, deleted_at AS deletedAt, merged_into AS mergedInto FROM sync_deleted',

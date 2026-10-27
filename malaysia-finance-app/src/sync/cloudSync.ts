@@ -1,3 +1,4 @@
+import { isDemoLoaded } from '@/db/repos/demo';
 import type { Db } from '@/db/types';
 import { fromBase64, toBase64 } from './bytes';
 import { CloudAuthError, CloudConflictError, type CloudApi } from './cloudApi';
@@ -5,7 +6,7 @@ import { BadBlobError, openReceipt, openSnapshot, sealReceipt, sealSnapshot } fr
 import { mergeSnapshots } from './merge';
 import { isStoredReceipt, readReceiptBase64, RECEIPT_FILES, receiptExists, writeReceiptBase64 } from './receiptFiles';
 import { applySnapshot, canonical, exportSnapshot, isSnapshot, schemaVersion, withAllTables, type Snapshot } from './snapshot';
-import { SyncTooNewError } from './syncErrors';
+import { DemoLoadedError, SyncTooNewError } from './syncErrors';
 
 const NAME = /^[A-Za-z0-9._-]{1,100}$/;
 /** Merge-and-upload tries before giving up; each retry means another phone uploaded in between. */
@@ -23,6 +24,7 @@ export type CloudSyncResult = { changedLocal: boolean; version: number };
 export async function syncWithCloud(
   db: Db, api: CloudApi, dataKey: Uint8Array, knownVersion: number | null = null,
 ): Promise<CloudSyncResult> {
+  if (await isDemoLoaded(db)) throw new DemoLoadedError();
   if (knownVersion !== null && (await api.version()) === knownVersion) return { changedLocal: false, version: knownVersion };
 
   let changedLocal = false;
