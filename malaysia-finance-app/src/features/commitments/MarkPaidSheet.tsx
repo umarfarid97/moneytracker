@@ -62,7 +62,7 @@ export function MarkPaidSheet({ visible, bill, lastPaid = null, suggested = null
               : t('commitments.markPaidFor', { name: bill.name, amount: formatRM(suggested ?? bill.amount) })}
           </AppText>
         ) : null}
-        <AmountInput label={t('common.amount')} value={amountText} onChange={(text) => setAmountText(text)} autoFocus />
+        <AmountInput label={t('common.amount')} value={amountText} onChange={(text) => setAmountText(text)} />
         {(
           <View style={{ gap: 6 }}>
             <AppText variant="smallStrong">{t('commitments.payDate')}</AppText>
