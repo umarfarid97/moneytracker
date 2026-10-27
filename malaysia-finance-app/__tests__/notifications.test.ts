@@ -17,7 +17,7 @@ const n = jest.mocked(Notifications);
 const now = new Date('2026-10-20T04:00:00Z');
 const c = (id: number, name: string, amount: number, dayOfMonth: number, active = true): Commitment => ({
   id, name, amount, dayOfMonth, kind: 'bill', active,
-  categoryId: null, paymentMethodId: null, reliefId: null, autoRecord: false, startDate: null, lastAutoDue: null, variable: false, ...NO_LOAN,
+  categoryId: null, paymentMethodId: null, reliefId: null, autoRecord: false, startDate: null, lastAutoDue: null, variable: false, ...NO_LOAN, startsOn: null, endsOn: null,
 });
 
 beforeEach(() => {
@@ -155,5 +155,28 @@ describe('scheduleReminders lead time', () => {
     await scheduleReminders([c(1, 'Astro', 8900, 24)], now, 3);
     expect(sent().content.title).toBe('Astro is due in 3 days');
     expect(sent().trigger.date.toISOString()).toBe('2026-10-21T01:00:00.000Z');
+  });
+});
+
+describe('reminders and bill dates', () => {
+  // An earlier test makes scheduling fail; clearAllMocks keeps that behaviour, so start these from a clean mock.
+  beforeEach(() => {
+    n.scheduleNotificationAsync.mockReset();
+    n.scheduleNotificationAsync.mockResolvedValue('id');
+  });
+
+  test('no reminder is scheduled after a bill ends', async () => {
+    const ending = { ...c(1, 'Astro', 8900, 24), endsOn: '2026-11-30' };
+    const count = await scheduleReminders([ending], now);
+    expect(count).toBe(2);
+    const dates = n.scheduleNotificationAsync.mock.calls.map((x) => (x[0] as { trigger: { date: Date } }).trigger.date.toISOString());
+    expect(dates).toEqual(['2026-10-23T01:00:00.000Z', '2026-11-23T01:00:00.000Z']);
+  });
+
+  test('no reminder is scheduled before a bill starts', async () => {
+    const later = { ...c(1, 'Astro', 8900, 24), startsOn: '2026-12-01' };
+    await scheduleReminders([later], now);
+    const first = (n.scheduleNotificationAsync.mock.calls[0][0] as { trigger: { date: Date } }).trigger.date.toISOString();
+    expect(first).toBe('2026-12-23T01:00:00.000Z');
   });
 });

@@ -1,6 +1,7 @@
 import type { StringKey } from './en';
 import { homeLayoutMs } from './homeLayout';
 import { lockRemindersMs } from './lockReminders';
+import { billDatesMs } from './billDates';
 import { statementImportMs } from './statementImport';
 import { reportsMs } from './reports';
 import { cleanupMs } from './cleanup';
@@ -578,6 +579,7 @@ export const ms: Record<StringKey, string> = {
   'budget.daysLeft1': '1 hari lagi',
 
   ...lockRemindersMs,
+  ...billDatesMs,
   'more.owed': 'Buku 555',
   'more.income': 'Pendapatan tambahan',
   'fx.original': 'Dibayar dalam {code}',

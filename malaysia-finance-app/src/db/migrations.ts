@@ -165,6 +165,11 @@ export const MIGRATIONS: string[] = [
     PRIMARY KEY (tbl, ref)
   );
   `,
+  // 18: optional first and last day a bill counts (YYYY-MM-DD); NULL means no limit, so existing bills are unchanged
+  `
+  ALTER TABLE commitments ADD COLUMN starts_on TEXT;
+  ALTER TABLE commitments ADD COLUMN ends_on TEXT;
+  `,
 ];
 
 function projectsMigration(): string {

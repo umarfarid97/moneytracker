@@ -6,7 +6,7 @@ import {
 } from '@/domain/bills';
 import { billerFor } from '@/domain/billers';
 import { subscriptionFor } from '@/domain/subscriptions';
-import { monthLabel, shortDate } from '@/domain/dates';
+import { longDate, monthLabel, shortDate } from '@/domain/dates';
 import {
   activeMonthly, bnplFor, isPaidOff, loanBalance, loanProgress, nextPayment, totalOwed, type LoanProgress,
 } from '@/domain/loanTracker';
@@ -42,7 +42,7 @@ const KIND_LOOK: Record<CommitmentKind, { icon: 'flash' | 'business' | 'repeat';
 
 const KINDS: CommitmentKind[] = ['bill', 'loan', 'subscription'];
 
-const RANK: Record<BillState, number> = { overdue: 0, due: 1, upcoming: 2, paid: 3, paused: 4 };
+const RANK: Record<BillState, number> = { overdue: 0, due: 1, upcoming: 2, paid: 3, paused: 4, ended: 5 };
 
 /** The brand mark for a biller or pay later provider, or null to use the plain icon of its kind. */
 function brandOf(item: Commitment) {
@@ -68,6 +68,8 @@ function statusLabel(s: BillStatus): string {
       return s.days === 1 ? t('commitments.overdue1') : t('commitments.overdue', { days: s.days });
     case 'paused':
       return t('commitments.paused');
+    case 'ended':
+      return t('commitments.ended');
     case 'paid':
       return s.days === 1 ? t('commitments.paidNextTomorrow') : t('commitments.paidNext', { days: s.days });
     default:
@@ -171,6 +173,12 @@ export default function Commitments() {
                         ? `${statusLabel(status)} · ${t('commitments.varies')}`
                         : `${statusLabel(status)}${loan ? ` · ${shortDate(status.dueDate)}` : ''}`}
                   </AppText>
+                  {item.startsOn !== null && item.startsOn > today ? (
+                    <AppText variant="small" tone="muted">{t('bill.starts', { date: longDate(item.startsOn) })}</AppText>
+                  ) : null}
+                  {item.endsOn !== null ? (
+                    <AppText variant="small" tone="muted">{t('bill.ends', { date: longDate(item.endsOn) })}</AppText>
+                  ) : null}
                   {loan && !loan.paidOff ? (
                     <View style={{ gap: 4 }}>
                       <AppText testID="loan-line" variant="small" tone="muted">{loanLine(loan)}</AppText>

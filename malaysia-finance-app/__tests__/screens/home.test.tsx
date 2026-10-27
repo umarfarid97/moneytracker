@@ -119,4 +119,21 @@ describe('Home balance left', () => {
     fireEvent.press(screen.getByText('Add salary'));
     expect(router.push).toHaveBeenCalledWith('/profile');
   });
+
+  test('tapping the bills line lists the unpaid bills, skipping ones that ended, and masks amounts while hidden', async () => {
+    const db = await freshDb();
+    await db.run('UPDATE profile SET gross_monthly = 600000, net_monthly_override = 500000');
+    await db.run("INSERT INTO commitments (name, amount, day_of_month, kind, start_date) VALUES ('Rent', 100000, 28, 'bill', '2026-01-01')");
+    await db.run("INSERT INTO commitments (name, amount, day_of_month, kind, start_date, ends_on) VALUES ('Old gym', 9000, 27, 'subscription', '2026-01-01', '2026-10-20')");
+    await renderWithData(db, <Home />);
+    const line = await screen.findByRole('button', { name: 'See which bills are still to pay' });
+    await fireEvent.press(line);
+    expect(await screen.findByText('Bills still to pay')).toBeTruthy();
+    expect(screen.getByText('Rent')).toBeTruthy();
+    expect(screen.queryByText('Old gym')).toBeNull();
+    expect(screen.getByText('How this is worked out')).toBeTruthy();
+    expect(screen.queryByText('RM 1,000.00')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Show balance' }));
+    expect(screen.getAllByText('RM 1,000.00').length).toBeGreaterThan(0);
+  });
 });

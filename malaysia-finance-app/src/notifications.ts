@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { paidDueDatesFor } from '@/domain/bills';
-import { nextReminder } from '@/domain/commitments';
+import { nextReminderFor } from '@/domain/commitments';
 import { shortDate } from '@/domain/dates';
 import { formatRM } from '@/domain/money';
 import type { BudgetAlert } from '@/domain/summary';
@@ -69,7 +69,9 @@ async function replaceReminders(commitments: Commitment[], now: Date, leadDays: 
       // The next few due dates, so reminders keep coming if the app is not opened for a while. A due date that
       // is already paid gets no reminder.
       for (let n = 0; n < REMINDERS_AHEAD; n++) {
-        const { dueDate, fireAt } = nextReminder(c.dayOfMonth, from, leadDays);
+        const next = nextReminderFor(c, from, leadDays);
+        if (!next) break;
+        const { dueDate, fireAt } = next;
         from = fireAt;
         if (paid.has(dueDate)) continue;
         await Notifications.scheduleNotificationAsync({

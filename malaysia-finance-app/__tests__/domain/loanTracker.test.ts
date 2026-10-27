@@ -6,7 +6,7 @@ import type { Commitment, Expense } from '@/domain/types';
 const loan = (over: Partial<Commitment> = {}): Commitment => ({
   id: 1, name: 'PTPTN', amount: 20000, dayOfMonth: 28, kind: 'loan', active: true,
   categoryId: null, paymentMethodId: null, reliefId: null, autoRecord: false, startDate: '2026-09-01',
-  lastAutoDue: null, variable: false, ...NO_LOAN,
+  lastAutoDue: null, variable: false, ...NO_LOAN, startsOn: null, endsOn: null,
   loanType: 'ptptn', loanBalance: 100000, loanBalanceDate: '2026-09-01', loanOriginal: 200000, ...over,
 });
 const pay = (id: number, due: string, amount: number, date = due, commitmentId = 1): Expense => ({

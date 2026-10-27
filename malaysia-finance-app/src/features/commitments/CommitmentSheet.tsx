@@ -4,6 +4,7 @@ import { resolveTaxData } from '@/data/tax';
 import { BILLER_GROUPS, billersIn, type BillerGroup } from '@/domain/billers';
 import { SUBSCRIPTION_GROUPS, subscriptionsIn, type SubscriptionGroup } from '@/domain/subscriptions';
 import { BNPL_PROVIDERS, bnplFor, LOAN_TYPES } from '@/domain/loanTracker';
+import { isValidDate } from '@/domain/dates';
 import { parsePercent, parseRM, senToInput, type Sen } from '@/domain/money';
 import type { Commitment, CommitmentKind, LoanType, NewCommitment } from '@/domain/types';
 import { useCategories } from '@/hooks/useCategories';
@@ -15,6 +16,7 @@ import { AppText } from '@/ui/AppText';
 import { BrandBadge } from '@/ui/BrandBadge';
 import { Button } from '@/ui/Button';
 import { Chip } from '@/ui/Chip';
+import { DateField } from '@/ui/DateField';
 import { MethodBadge } from '@/ui/MethodBadge';
 import { ReliefPicker } from '@/ui/ReliefPicker';
 import { Sheet } from '@/ui/Sheet';
@@ -63,6 +65,10 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
   const [balanceText, setBalanceText] = useState(startBalance !== null ? senToInput(startBalance) : '');
   const [originalText, setOriginalText] = useState(existing?.loanOriginal != null ? senToInput(existing.loanOriginal) : '');
   const [rateText, setRateText] = useState(existing?.loanRatePct != null ? String(existing.loanRatePct) : '');
+  const [hasStart, setHasStart] = useState(existing?.startsOn != null);
+  const [startsOn, setStartsOn] = useState(existing?.startsOn ?? today);
+  const [hasEnd, setHasEnd] = useState(existing?.endsOn != null);
+  const [endsOn, setEndsOn] = useState(existing?.endsOn ?? today);
   const [group, setGroup] = useState<BillerGroup>('utilities');
   const [subGroup, setSubGroup] = useState<SubscriptionGroup>('streaming');
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +87,9 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
 
   const amount = parseRM(amountText);
   const day = /^\d{1,2}$/.test(dayText.trim()) ? Number(dayText) : NaN;
-  const valid = name.trim() !== '' && amount !== null && amount > 0 && day >= 1 && day <= 31 && loanValid;
+  const datesOk =
+    (!hasStart || isValidDate(startsOn)) && (!hasEnd || isValidDate(endsOn)) && (!hasStart || !hasEnd || endsOn >= startsOn);
+  const valid = name.trim() !== '' && amount !== null && amount > 0 && day >= 1 && day <= 31 && loanValid && datesOk;
 
   async function run(action: () => Promise<boolean | void>) {
     setBusy(true);
@@ -323,6 +331,18 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
           <AppText variant="smallStrong">{t('relief.field')}</AppText>
           <ReliefPicker reliefs={reliefs} value={reliefId} onChange={setReliefId} />
         </View>
+        <View style={{ gap: 8 }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            <Chip label={t('bill.hasStart')} selected={hasStart} onPress={() => setHasStart((v) => !v)} />
+            <Chip label={t('bill.hasEnd')} selected={hasEnd} onPress={() => setHasEnd((v) => !v)} />
+          </View>
+          {hasStart ? <DateField label={t('bill.startDate')} value={startsOn} onChange={setStartsOn} /> : null}
+          {hasEnd ? <DateField label={t('bill.endDate')} value={endsOn} onChange={setEndsOn} /> : null}
+          {hasStart && hasEnd && !datesOk ? (
+            <AppText variant="small" tone="negative">{t('bill.endBeforeStart')}</AppText>
+          ) : null}
+          <AppText variant="small" tone="muted">{t('bill.datesHint')}</AppText>
+        </View>
         {/* A bill that changes every month can't be recorded for you: its amount is only known when paid. */}
         {variable ? null : (
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -360,6 +380,7 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
                 name: name.trim(), amount: amount ?? 0, dayOfMonth: day, kind, active,
                 categoryId, paymentMethodId: methodId, reliefId, autoRecord: auto && !variable, variable,
                 startDate: existing?.startDate ?? today,
+                startsOn: hasStart ? startsOn : null, endsOn: hasEnd ? endsOn : null,
                 ...loanFields(),
               }),
             )
