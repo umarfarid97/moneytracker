@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Platform, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
 import { resolveTaxData } from '@/data/tax';
 import { addDays, isValidDate } from '@/domain/dates';
-import { HOME_CURRENCY, parseRate, rateToInput, toMyr } from '@/domain/fx';
+import { HOME_CURRENCY } from '@/domain/fx';
 import { formatRM, parseRM, senToInput } from '@/domain/money';
 import { suggestRelief } from '@/domain/reliefSpending';
 import type { ReceiptScan } from '@/domain/receiptText';
@@ -22,7 +22,6 @@ import { AmountInput } from '@/ui/AmountInput';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
-import { choiceFor, CurrencyField, CurrencyPickerSheet, RINGGIT, type CurrencyChoice } from '@/features/currency/CurrencyField';
 import { ExpenseDetails } from '@/features/spending/ExpenseDetails';
 import { Chip } from '@/ui/Chip';
 import { confirmDelete } from '@/ui/confirm';
@@ -51,8 +50,6 @@ export default function AddExpense() {
   const [amountText, setAmountText] = useState('');
   const [categoryId, setCategoryId] = useState<number>(categories[0]?.id ?? 1);
   const [methodId, setMethodId] = useState<number | null>(editingId === null ? (methods[0]?.id ?? null) : null);
-  const [currency, setCurrency] = useState<CurrencyChoice>(() => choiceFor(profile.defaultCurrency));
-  const [pickCurrency, setPickCurrency] = useState(false);
   const [date, setDate] = useState(today);
   const [note, setNote] = useState('');
   const [reliefId, setReliefId] = useState<string | null>(null);
@@ -69,9 +66,7 @@ export default function AddExpense() {
 
   useEffect(() => {
     if (!existing) return;
-    const abroad = existing.currency && existing.currency !== HOME_CURRENCY && existing.foreignAmount != null && existing.fxRate != null;
-    setAmountText(senToInput(abroad ? existing.foreignAmount! : existing.amount));
-    setCurrency(abroad ? { code: existing.currency!, rateText: rateToInput(existing.fxRate!), manual: true } : RINGGIT);
+    setAmountText(senToInput(existing.amount));
     setCategoryId(existing.categoryId);
     setMethodId(existing.paymentMethodId);
     setDate(existing.date);
@@ -84,13 +79,10 @@ export default function AddExpense() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing?.id]);
 
-  // Spending abroad: the typed amount is in that currency and the rate turns it into ringgit.
-  const abroad = currency.code !== HOME_CURRENCY;
-  const typed = parseRM(amountText);
-  const rate = abroad ? parseRate(currency.rateText) : null;
-  const amount = abroad ? (typed !== null && rate !== null ? toMyr(typed, rate) : null) : typed;
-  const fx = abroad && typed !== null && rate !== null
-    ? { currency: currency.code, foreignAmount: typed, fxRate: rate }
+  const amount = parseRM(amountText);
+  // Older spending logged abroad keeps its original currency and rate, until the ringgit amount is changed.
+  const fx = existing && amount === existing.amount
+    ? { currency: existing.currency, foreignAmount: existing.foreignAmount, fxRate: existing.fxRate }
     : { currency: HOME_CURRENCY, foreignAmount: null, fxRate: null };
   // The claimable part only matters while a relief is chosen; a leftover value must not block saving.
   const claim = reliefId === null || claimText.trim() === '' ? null : parseRM(claimText);
@@ -219,20 +211,12 @@ export default function AddExpense() {
     <AmountInput
       compact={!wide}
       large={wide}
-      label={abroad ? t('fx.amount', { code: currency.code }) : t('common.amount')}
-      currency={abroad ? currency.code : undefined}
-      onCurrencyPress={() => setPickCurrency(true)}
+      label={t('common.amount')}
       value={amountText}
       onChange={(text) => setAmountText(text)}
       autoFocus={!existing}
     />
   );
-
-  const currencyCard = abroad ? (
-    <Card style={wide ? undefined : { padding: 14 }}>
-      <CurrencyField value={currency} onChange={setCurrency} ringgit={amount} />
-    </Card>
-  ) : null;
 
   const categoryField = (
     <View style={{ gap: wide ? 10 : 4 }}>
@@ -456,7 +440,6 @@ export default function AddExpense() {
     <Screen compact={!wide} footer={<View style={{ gap: 8 }}>{errorText}{actions}</View>}>
       {title}
       {amountField}
-      {currencyCard}
       {landscape ? (
         <View style={{ flexDirection: 'row', gap, flexGrow: 1 }}>
           <View style={{ flex: 1, gap }}>
@@ -478,12 +461,6 @@ export default function AddExpense() {
           {reliefCard}
         </>
       )}
-      <CurrencyPickerSheet
-        visible={pickCurrency}
-        value={currency.code}
-        onPick={(code) => setCurrency((prev) => (prev.code === code ? prev : choiceFor(code)))}
-        onClose={() => setPickCurrency(false)}
-      />
     </Screen>
   );
 }

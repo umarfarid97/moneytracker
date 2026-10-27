@@ -1,4 +1,5 @@
 import { cleanupEn } from './cleanup';
+import { cloudEn } from './cloud';
 import { homeLayoutEn } from './homeLayout';
 import { loansBillers } from './loansBillers';
 import { lockRemindersEn } from './lockReminders';
@@ -345,8 +346,8 @@ export const en = {
   'backup.drive.fail.unknown': "Could not connect to Google. Try again, or use a backup file for now.",
   'backup.drive.connectBrowser': 'Sign in with browser',
   'backup.drive.connectFailed': 'Could not connect to Google. Check your internet and try again.',
-  'backup.problem.signIn': 'Google sign-in has expired. Tap Sync now to sign in again.',
-  'backup.problem.tooNew': 'Your Drive data was saved by a newer version of Duit. Update the app on this device to keep syncing.',
+  'backup.problem.signIn': 'Your Duit cloud sign-in has expired. Open Duit cloud to sign in again.',
+  'backup.problem.tooNew': 'Your cloud data was saved by a newer version of Duit. Update the app on this device to keep syncing.',
   'backup.problem.offline': 'No internet connection. Duit will sync when you are back online.',
   'backup.problem.failed': 'Sync did not finish. Duit will try again soon.',
   'backup.file': 'Backup file',
@@ -510,22 +511,6 @@ export const en = {
 
   'more.owed': 'Buku 555',
   'more.income': 'Extra income',
-  'fx.field': 'Currency',
-  'fx.change': 'Change currency, now {code}',
-  'settings.defaultCurrency': 'Default currency',
-  'settings.defaultCurrencyHint': 'Used for new spending. Tap the currency tag on an amount to use another one for just that entry.',
-  'fx.amount': 'Amount in {code}',
-  'fx.rate': '1 {code} = RM',
-  'fx.loading': 'Getting the latest rate...',
-  'fx.live': 'Live rate, updated {when}',
-  'fx.saved': 'Saved rate from {when} (offline). You can type your own.',
-  'fx.none': 'No rate saved yet. Type the rate you were given.',
-  'fx.refresh': 'Refresh rate',
-  'fx.counts': 'Counts as {amount}',
-  'fx.rateInvalid': 'Enter a rate above 0.',
-  'fx.justNow': 'just now',
-  'fx.hoursAgo': '{count} h ago',
-  'fx.daysAgo': '{count} d ago',
   'fx.original': 'Paid in {code}',
   'fx.originalValue': '{amount} {code} at RM {rate}',
   'owed.title': 'Buku 555',
@@ -697,6 +682,7 @@ export const en = {
   ...reportsEn,
   ...homeLayoutEn,
   ...cleanupEn,
+  ...cloudEn,
 } as const;
 
 export type StringKey = keyof typeof en;
