@@ -7,6 +7,53 @@ const { router } = jest.requireMock('expo-router');
 
 beforeEach(() => jest.clearAllMocks());
 
+async function addBill(db: Awaited<ReturnType<typeof freshDb>>, name: string, day: number, amount = 3000, extra = '') {
+  await db.run(
+    `INSERT INTO commitments (name, amount, day_of_month, kind, active, auto_record, start_date, variable${extra ? ', starts_on' : ''}) VALUES (?, ?, ?, 'bill', 1, 0, '2026-10-01', 0${extra ? ', ?' : ''})`,
+    extra ? [name, amount, day, extra] : [name, amount, day],
+  );
+}
+
+describe('Spending: pending bills', () => {
+  test('due bills show as pending, are not counted as spent, and become a normal transaction once marked paid', async () => {
+    const db = await freshDb();
+    await addExpenseRow(db, CAT.Makan, 1000, '2026-10-24', 'nasi');
+    await addBill(db, 'Internet', 30);
+    await renderWithData(db, <Spending />);
+    await waitFor(() => expect(screen.getByText('Internet')).toBeTruthy());
+    expect(screen.getByText('Pending bills')).toBeTruthy();
+    expect(screen.getByText('Pending')).toBeTruthy();
+    expect(screen.getByText(/^Due (\w{3} )?30 Oct$/)).toBeTruthy();
+    expect(screen.getByText('RM 10.00 spent this month')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Mark paid Internet' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Confirm paid' }));
+    await waitFor(() => expect(screen.getByText('RM 40.00 spent this month')).toBeTruthy());
+    expect(screen.queryByTestId('pending-row')).toBeNull();
+    expect(screen.queryByText('Pending bills')).toBeNull();
+    expect(screen.getByText('Internet')).toBeTruthy(); // now a real transaction
+    const rows = await db.all<{ date: string; due_date: string }>('SELECT date, due_date FROM expenses WHERE commitment_id IS NOT NULL');
+    expect(rows).toEqual([{ date: '2026-10-24', due_date: '2026-10-30' }]);
+  });
+
+  test('bills due in a later period are not shown', async () => {
+    const db = await freshDb();
+    await addBill(db, 'Gym', 25, 5000, '2026-11-25');
+    await renderWithData(db, <Spending />);
+    await waitFor(() => expect(screen.getByText('October 2026')).toBeTruthy());
+    expect(screen.queryByText('Gym')).toBeNull();
+  });
+
+  test('pending bills can be hidden from the filters', async () => {
+    const db = await freshDb();
+    await addBill(db, 'Internet', 30);
+    await renderWithData(db, <Spending />);
+    await waitFor(() => expect(screen.getByText('Internet')).toBeTruthy());
+    await fireEvent.press(screen.getByText('Filters'));
+    await fireEvent.press(screen.getByText('Show pending bills'));
+    expect(screen.queryByTestId('pending-row')).toBeNull();
+  });
+});
+
 describe('Spending', () => {
   test('lists this month by day with day totals and a month total', async () => {
     const db = await freshDb();

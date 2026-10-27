@@ -1,5 +1,10 @@
 /** Strings for bill start and end dates and the "bills still to pay" breakdown (merged into `en` and `ms`). */
 export const billDatesEn = {
+  'spending.pending': 'Pending bills',
+  'spending.pendingBadge': 'Pending',
+  'spending.pendingDue': 'Due {date}',
+  'spending.pendingOverdue': 'Was due {date}',
+  'spending.showPending': 'Show pending bills',
   'commitments.startsOn': 'Starts {date}',
   'commitments.dueOn': 'Due {date}',
   'commitments.payDate': 'Payment date',
@@ -28,6 +33,11 @@ export const billDatesEn = {
 } as const;
 
 export const billDatesMs: Record<keyof typeof billDatesEn, string> = {
+  'spending.pending': 'Bil belum dibayar',
+  'spending.pendingBadge': 'Belum dibayar',
+  'spending.pendingDue': 'Perlu dibayar {date}',
+  'spending.pendingOverdue': 'Sepatutnya dibayar {date}',
+  'spending.showPending': 'Tunjuk bil belum dibayar',
   'commitments.startsOn': 'Bermula {date}',
   'commitments.dueOn': 'Perlu dibayar {date}',
   'commitments.payDate': 'Tarikh bayaran',
