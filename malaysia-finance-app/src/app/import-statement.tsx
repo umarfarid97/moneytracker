@@ -10,6 +10,7 @@ import { parseStatementCsv, parseStatementLines, type StatementRow } from '@/dom
 import { useCategories } from '@/hooks/useCategories';
 import { useExpenses } from '@/hooks/useExpenses';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+import { methodLabel } from '@/i18n/content';
 import { t } from '@/i18n/t';
 import { pickStatementFile } from '@/statementFile';
 import { AmountInput } from '@/ui/AmountInput';
@@ -141,7 +142,7 @@ export default function ImportStatement() {
   const duplicates = items.filter((i) => i.duplicate).length;
   const allMethod = items.length > 0 && items.every((i) => i.paymentMethodId === items[0].paymentMethodId) ? items[0].paymentMethodId : null;
   const categoryName = (id: number) => categories.find((x) => x.id === id)?.name ?? '';
-  const methodName = (id: number | null) => methods.find((m) => m.id === id)?.name ?? '';
+  const methodName = (id: number | null) => methodLabel(methods.find((m) => m.id === id)?.name ?? '');
 
   return (
     <Screen
@@ -170,8 +171,8 @@ export default function ImportStatement() {
           {methods.map((m) => (
             <Chip
               key={m.id}
-              label={m.name}
-              accessibilityLabel={`${t('import.paidWith')} ${m.name}`}
+              label={methodLabel(m.name)}
+              accessibilityLabel={`${t('import.paidWith')} ${methodLabel(m.name)}`}
               selected={allMethod === m.id}
               onPress={() => change((list) => list.map((i) => ({ ...i, paymentMethodId: m.id })))}
             />
@@ -242,7 +243,7 @@ export default function ImportStatement() {
                     <AppText variant="eyebrow" tone="muted">{t('import.paidWith')}</AppText>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                       {methods.map((m) => (
-                        <Chip key={m.id} compact label={m.name} selected={item.paymentMethodId === m.id} onPress={() => patch(item.key, { paymentMethodId: m.id })} />
+                        <Chip key={m.id} compact label={methodLabel(m.name)} selected={item.paymentMethodId === m.id} onPress={() => patch(item.key, { paymentMethodId: m.id })} />
                       ))}
                     </View>
                   </View>

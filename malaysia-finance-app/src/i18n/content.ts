@@ -63,6 +63,19 @@ export function noteLabel(note: string): string {
   return getLanguage() === 'ms' ? NOTE_MS[note] ?? note : note;
 }
 
+const METHOD_MS: Record<string, string> = {
+  Cash: 'Tunai',
+  'Debit card': 'Kad debit',
+  'Credit card': 'Kad kredit',
+  'E-wallet': 'E-dompet',
+  'Online transfer': 'Pindahan dalam talian',
+};
+
+/** A built-in payment method (stored in English) in the chosen language; names the user made are left alone. */
+export function methodLabel(name: string): string {
+  return getLanguage() === 'ms' ? METHOD_MS[name] ?? name : name;
+}
+
 const MONTHS: Record<'en' | 'ms', string[]> = {
   en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
   ms: ['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'],

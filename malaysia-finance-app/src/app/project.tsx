@@ -40,7 +40,14 @@ export default function Project() {
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const summary = projects.find((p) => p.project.id === Number(id));
 
-  if (!summary) return <Screen><BackButton /></Screen>;
+  if (!summary) {
+    return (
+      <Screen>
+        <BackButton />
+        <AppText variant="body" tone="muted">{t('project.missing')}</AppText>
+      </Screen>
+    );
+  }
   const { project } = summary;
   const title = projectName(project);
   const projectId = project.id;
