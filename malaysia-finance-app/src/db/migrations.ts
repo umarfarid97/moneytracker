@@ -142,6 +142,10 @@ export const MIGRATIONS: string[] = [
   `
   ALTER TABLE profile ADD COLUMN default_currency TEXT NOT NULL DEFAULT 'MYR';
   `,
+  // 14: monthly income tax (PCB) from the payslip, in sen; 0 means not entered (it is estimated instead)
+  `
+  ALTER TABLE profile ADD COLUMN pcb_monthly INTEGER NOT NULL DEFAULT 0 CHECK (pcb_monthly >= 0);
+  `,
 ];
 
 function projectsMigration(): string {
