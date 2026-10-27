@@ -51,7 +51,7 @@ const RELIEFS = LATEST_TAX_YEAR.reliefs;
 const PendingRow = memo(function PendingRow({ bill, amount, onPay }: { bill: PendingBill; amount: number; onPay: (b: PendingBill) => void }) {
   const { c } = useTheme();
   const { commitment: item } = bill;
-  const brand = brandForBill(item.name, item.kind);
+  const brand = brandForBill(item.name, item.kind, item.loanType);
   return (
     <View
       testID="pending-row"

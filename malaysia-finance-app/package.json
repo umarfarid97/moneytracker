@@ -61,11 +61,15 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
+    "brands": "node scripts/gen-brand-logos.js",
+    "prestart": "node scripts/gen-brand-logos.js",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
+    "preweb": "node scripts/gen-brand-logos.js",
     "web": "expo start --web",
     "lint": "eslint .",
+    "pretest": "node scripts/gen-brand-logos.js",
     "test": "jest",
     "typecheck": "tsc --noEmit",
     "web:smoke": "node scripts/web-smoke.js"

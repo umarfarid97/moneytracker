@@ -45,7 +45,7 @@ const RANK: Record<BillState, number> = { overdue: 0, due: 1, upcoming: 2, paid:
 
 /** The brand mark for a biller or pay later provider, or null to use the plain icon of its kind. */
 function brandOf(item: Commitment) {
-  return brandForBill(item.name, item.kind);
+  return brandForBill(item.name, item.kind, item.loanType);
 }
 
 function loanLine(p: LoanProgress): string {

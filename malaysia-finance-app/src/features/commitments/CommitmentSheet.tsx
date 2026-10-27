@@ -13,6 +13,7 @@ import { useToday } from '@/hooks/useToday';
 import { t } from '@/i18n/t';
 import { AmountInput } from '@/ui/AmountInput';
 import { AppText } from '@/ui/AppText';
+import { brandForBill } from '@/domain/brandLookup';
 import { BrandBadge } from '@/ui/BrandBadge';
 import { Button } from '@/ui/Button';
 import { Chip } from '@/ui/Chip';
@@ -181,6 +182,7 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
                 <Chip
                   key={lt}
                   label={t(`loans.type.${lt}`)}
+                  leading={<BrandBadge {...brandForBill('', 'loan', lt)!} size={22} />}
                   selected={loanType === lt}
                   onPress={() => {
                     setLoanType(lt);
@@ -245,7 +247,7 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
                   key={b.id}
                   label={b.name}
                   accessibilityLabel={`Biller ${b.name}`}
-                  leading={<BrandBadge id={b.id} initials={b.initials} color={b.color} ink={b.ink} size={22} />}
+                  leading={<BrandBadge id={b.id} initials={b.initials} color={b.color} ink={b.ink} icon={b.icon} size={22} />}
                   selected={name === b.name}
                   onPress={() => {
                     setName(b.name);
