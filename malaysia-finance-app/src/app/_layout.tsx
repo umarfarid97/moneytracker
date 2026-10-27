@@ -4,7 +4,7 @@ import {
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BillsSync } from '@/features/commitments/BillsSync';
@@ -17,18 +17,28 @@ import { QuickAddSync } from '@/quickAdd/QuickAddSync';
 import { SyncProvider } from '@/sync/SyncProvider';
 import { useTheme } from '@/ui/useTheme';
 
+const FONT_WAIT_MS = 3000;
+
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({ Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold });
+  const [fontsLoaded, fontError] = useFonts({ Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold });
+  // A cold first visit on a slow connection can leave the fonts loading for a long time, or fail; the app then shows in
+  // the system font instead of staying blank (it switches to Outfit once the fonts arrive).
+  const [fontWaitOver, setFontWaitOver] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setFontWaitOver(true), FONT_WAIT_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  const ready = fontsLoaded || fontError != null || fontWaitOver;
   const { scheme, c } = useTheme();
   const language = useLanguage();
 
   useEffect(() => {
-    if (fontsLoaded) SplashScreen.hideAsync().catch(() => {});
-  }, [fontsLoaded]);
+    if (ready) SplashScreen.hideAsync().catch(() => {});
+  }, [ready]);
 
-  if (!fontsLoaded) return null;
+  if (!ready) return null;
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: c.ground }}>
       <SafeAreaProvider>
