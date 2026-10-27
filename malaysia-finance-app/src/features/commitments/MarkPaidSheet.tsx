@@ -50,7 +50,18 @@ export function MarkPaidSheet({ visible, bill, lastPaid = null, suggested = null
   }
 
   return (
-    <Sheet visible={visible} title={t('commitments.markPaid')} onClose={onClose}>
+    <Sheet visible={visible} title={t('commitments.markPaid')} onClose={onClose}
+      footer={(
+        <View style={{ gap: 8 }}>
+          {error ? (
+            <AppText variant="small" tone="negative">
+              {error}
+            </AppText>
+          ) : null}
+          <Button title={t('commitments.confirmPaid')} disabled={!valid || busy} onPress={confirm} />
+        </View>
+      )}
+    >
       <View style={{ gap: 16 }}>
         {bill ? (
           <AppText variant="body" tone="muted">
@@ -76,12 +87,6 @@ export function MarkPaidSheet({ visible, bill, lastPaid = null, suggested = null
             ) : null}
           </View>
         )}
-        {error ? (
-          <AppText variant="small" tone="negative">
-            {error}
-          </AppText>
-        ) : null}
-        <Button title={t('commitments.confirmPaid')} disabled={!valid || busy} onPress={confirm} />
       </View>
     </Sheet>
   );

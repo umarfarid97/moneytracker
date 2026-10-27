@@ -59,7 +59,33 @@ export function SavingsSheet({ visible, existing, onClose, onSave, onDelete }: P
   }
 
   return (
-    <Sheet visible={visible} title={t(existing ? 'savings.edit' : 'savings.add')} onClose={onClose}>
+    <Sheet visible={visible} title={t(existing ? 'savings.edit' : 'savings.add')} onClose={onClose}
+      footer={(
+        <View style={{ gap: 8 }}>
+          {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
+          <Button
+            title={t('common.save')}
+            disabled={!valid || busy}
+            onPress={() =>
+              run(() =>
+                onSave({
+                  name: name.trim(),
+                  kind,
+                  balance: balanceSen ?? 0,
+                  invested: investedSen ?? 0,
+                  target: targetSen,
+                  monthly: monthlySen && monthlySen > 0 ? monthlySen : null,
+                  note: existing?.note ?? '',
+                }),
+              )
+            }
+          />
+          {existing && onDelete ? (
+            <Button title={t('common.delete')} variant="secondary" disabled={busy} onPress={() => run(onDelete)} />
+          ) : null}
+        </View>
+      )}
+    >
       <View style={{ gap: 16 }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {SAVINGS_KINDS.map((k) => (
@@ -72,27 +98,6 @@ export function SavingsSheet({ visible, existing, onClose, onSave, onDelete }: P
         <AppText variant="small" tone="muted">{t('savings.investedHint')}</AppText>
         <AmountInput label={t('savings.target')} value={target} onChange={setTarget} compact />
         <AmountInput label={t('savings.monthly')} value={monthly} onChange={setMonthly} compact />
-        {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
-        <Button
-          title={t('common.save')}
-          disabled={!valid || busy}
-          onPress={() =>
-            run(() =>
-              onSave({
-                name: name.trim(),
-                kind,
-                balance: balanceSen ?? 0,
-                invested: investedSen ?? 0,
-                target: targetSen,
-                monthly: monthlySen && monthlySen > 0 ? monthlySen : null,
-                note: existing?.note ?? '',
-              }),
-            )
-          }
-        />
-        {existing && onDelete ? (
-          <Button title={t('common.delete')} variant="secondary" disabled={busy} onPress={() => run(onDelete)} />
-        ) : null}
       </View>
     </Sheet>
   );

@@ -130,7 +130,14 @@ export function SplitSheet({ people, categories, existing = null, onClose, onSav
   }
 
   return (
-    <Sheet visible title={t(old ? 'bill.editTitle' : 'split.title')} onClose={onClose}>
+    <Sheet visible title={t(old ? 'bill.editTitle' : 'split.title')} onClose={onClose}
+      footer={(
+        <View style={{ gap: 8 }}>
+          {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
+          <Button title={t('split.save')} disabled={!valid || busy} onPress={save} />
+        </View>
+      )}
+    >
       <View style={{ gap: 16 }}>
         <AmountInput label={t('split.total')} value={total} onChange={setTotal} compact autoFocus={!old} />
         <TextField label={t('split.note')} value={note} onChange={setNote} maxLength={80} />
@@ -266,8 +273,6 @@ export function SplitSheet({ people, categories, existing = null, onClose, onSav
             </View>
           </View>
         ) : null}
-        {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
-        <Button title={t('split.save')} disabled={!valid || busy} onPress={save} />
       </View>
     </Sheet>
   );

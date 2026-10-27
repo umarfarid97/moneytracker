@@ -44,14 +44,19 @@ function MoneySheet({ account, mode, onClose, onSave }: Money & { onClose: () =>
   }
 
   return (
-    <Sheet visible title={t(mode === 'deposit' ? 'savings.deposit' : 'savings.updateValue')} onClose={onClose}>
+    <Sheet visible title={t(mode === 'deposit' ? 'savings.deposit' : 'savings.updateValue')} onClose={onClose}
+      footer={(
+        <View style={{ gap: 8 }}>
+          {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
+          <Button title={t('common.save')} disabled={!valid} onPress={save} />
+        </View>
+      )}
+    >
       <View style={{ gap: 16 }}>
         <AppText variant="small" tone="muted">
           {t(mode === 'deposit' ? 'savings.depositHint' : 'savings.valueHint', { name: account.name })}
         </AppText>
         <AmountInput label={t(mode === 'deposit' ? 'common.amount' : 'savings.balance')} value={text} onChange={setText} autoFocus compact />
-        {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
-        <Button title={t('common.save')} disabled={!valid} onPress={save} />
       </View>
     </Sheet>
   );

@@ -48,7 +48,25 @@ export function RuleSheet({ existing, today, onClose, onSave, onDelete }: Common
   const valid = name.trim() !== '' && sen !== null && sen > 0 && dayOk;
 
   return (
-    <Sheet visible title={t(existing ? 'income.ruleEdit' : 'income.addRule')} onClose={onClose}>
+    <Sheet visible title={t(existing ? 'income.ruleEdit' : 'income.addRule')} onClose={onClose}
+      footer={(
+        <View style={{ gap: 8 }}>
+          {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
+          <Button
+            title={t('common.save')}
+            disabled={!valid || busy}
+            onPress={() => run(() => onSave({
+              name: name.trim(), amount: sen ?? 0, dayOfMonth: day, active,
+              // A rule only fills in days from the day it was added, so earlier days are never invented.
+              startDate: existing?.startDate ?? today,
+            }))}
+          />
+          {existing && onDelete ? (
+            <Button title={t('common.delete')} variant="secondary" disabled={busy} onPress={() => run(onDelete)} />
+          ) : null}
+        </View>
+      )}
+    >
       <View style={{ gap: 16 }}>
         <TextField label={t('income.name')} value={name} onChange={setName} placeholder={t('income.namePlaceholder')} maxLength={40} />
         <AmountInput label={t('common.amount')} value={amount} onChange={setAmount} compact />
@@ -58,19 +76,6 @@ export function RuleSheet({ existing, today, onClose, onSave, onDelete }: Common
           <Chip label={t('income.active')} selected={active} onPress={() => setActive(true)} />
           <Chip label={t('income.paused')} selected={!active} onPress={() => setActive(false)} />
         </View>
-        {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
-        <Button
-          title={t('common.save')}
-          disabled={!valid || busy}
-          onPress={() => run(() => onSave({
-            name: name.trim(), amount: sen ?? 0, dayOfMonth: day, active,
-            // A rule only fills in days from the day it was added, so earlier days are never invented.
-            startDate: existing?.startDate ?? today,
-          }))}
-        />
-        {existing && onDelete ? (
-          <Button title={t('common.delete')} variant="secondary" disabled={busy} onPress={() => run(onDelete)} />
-        ) : null}
       </View>
     </Sheet>
   );
@@ -89,7 +94,21 @@ export function EntrySheet({ existing, today, onClose, onSave, onDelete }: Commo
   const valid = name.trim() !== '' && sen !== null && sen > 0 && isValidDate(date);
 
   return (
-    <Sheet visible title={t(existing ? 'income.entryEdit' : 'income.addOnce')} onClose={onClose}>
+    <Sheet visible title={t(existing ? 'income.entryEdit' : 'income.addOnce')} onClose={onClose}
+      footer={(
+        <View style={{ gap: 8 }}>
+          {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
+          <Button
+            title={t('common.save')}
+            disabled={!valid || busy}
+            onPress={() => run(() => onSave({ name: name.trim(), amount: sen ?? 0, date }))}
+          />
+          {existing && onDelete ? (
+            <Button title={t('common.delete')} variant="secondary" disabled={busy} onPress={() => run(onDelete)} />
+          ) : null}
+        </View>
+      )}
+    >
       <View style={{ gap: 16 }}>
         <TextField label={t('income.name')} value={name} onChange={setName} placeholder={t('income.namePlaceholder')} maxLength={40} />
         <AmountInput label={t('common.amount')} value={amount} onChange={setAmount} compact />
@@ -99,15 +118,6 @@ export function EntrySheet({ existing, today, onClose, onSave, onDelete }: Commo
             <DateField label={t('common.date')} value={date} onChange={setDate} />
           </View>
         </View>
-        {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
-        <Button
-          title={t('common.save')}
-          disabled={!valid || busy}
-          onPress={() => run(() => onSave({ name: name.trim(), amount: sen ?? 0, date }))}
-        />
-        {existing && onDelete ? (
-          <Button title={t('common.delete')} variant="secondary" disabled={busy} onPress={() => run(onDelete)} />
-        ) : null}
       </View>
     </Sheet>
   );

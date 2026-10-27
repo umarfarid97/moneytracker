@@ -51,7 +51,23 @@ export function GivingSheet({ visible, existing, preset, onClose, onSave, onDele
   }
 
   return (
-    <Sheet visible={visible} title={t(existing ? 'giving.edit' : 'giving.add')} onClose={onClose}>
+    <Sheet visible={visible} title={t(existing ? 'giving.edit' : 'giving.add')} onClose={onClose}
+      footer={(
+        <View style={{ gap: 8 }}>
+          {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
+          <Button
+            title={t('common.save')}
+            disabled={!valid || busy}
+            onPress={() =>
+              run(() => onSave({ kind, date, amount: amount ?? 0, recipient: recipient.trim(), note: note.trim(), countsForTax: counts }))
+            }
+          />
+          {existing && onDelete ? (
+            <Button title={t('common.delete')} variant="secondary" disabled={busy} onPress={() => run(onDelete)} />
+          ) : null}
+        </View>
+      )}
+    >
       <View style={{ gap: 16 }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {GIVING_KINDS.map((k) => (
@@ -74,17 +90,6 @@ export function GivingSheet({ visible, existing, preset, onClose, onSave, onDele
           </View>
           <Switch accessibilityLabel={t('giving.counts')} value={counts} onValueChange={setCounts} />
         </View>
-        {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
-        <Button
-          title={t('common.save')}
-          disabled={!valid || busy}
-          onPress={() =>
-            run(() => onSave({ kind, date, amount: amount ?? 0, recipient: recipient.trim(), note: note.trim(), countsForTax: counts }))
-          }
-        />
-        {existing && onDelete ? (
-          <Button title={t('common.delete')} variant="secondary" disabled={busy} onPress={() => run(onDelete)} />
-        ) : null}
       </View>
     </Sheet>
   );

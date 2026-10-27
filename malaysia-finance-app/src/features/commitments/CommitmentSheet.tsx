@@ -133,7 +133,40 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
   } as const;
 
   return (
-    <Sheet visible={visible} title={t(existing ? 'commitments.edit' : 'commitments.add')} onClose={onClose}>
+    <Sheet visible={visible} title={t(existing ? 'commitments.edit' : 'commitments.add')} onClose={onClose}
+      footer={(
+        <View style={{ gap: 8 }}>
+          {error ? (
+            <AppText variant="small" tone="negative">
+              {error}
+            </AppText>
+          ) : null}
+          {!valid && loanValid ? (
+            <AppText variant="small" tone="muted">
+              {name.trim() === '' ? t('commitments.need.name') : amount === null || amount <= 0 ? t('commitments.need.amount') : t('commitments.need.day')}
+            </AppText>
+          ) : null}
+          <Button
+            title={t('common.save')}
+            disabled={!valid || busy}
+            onPress={() =>
+              run(() =>
+                onSave({
+                  name: name.trim(), amount: amount ?? 0, dayOfMonth: day, kind, active,
+                  categoryId, paymentMethodId: methodId, reliefId, autoRecord: auto && !variable, variable,
+                  startDate: existing?.startDate ?? today,
+                  startsOn: hasStart ? startsOn : null, endsOn: hasEnd ? endsOn : null,
+                  ...loanFields(),
+                }),
+              )
+            }
+          />
+          {existing && onDelete ? (
+            <Button title={t('common.delete')} variant="secondary" disabled={busy} onPress={() => run(onDelete)} />
+          ) : null}
+        </View>
+      )}
+    >
       <View style={{ gap: 16 }}>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {KINDS.map((k) => (
@@ -360,34 +393,6 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
             <AppText variant="bodyStrong">{t('commitments.active')}</AppText>
             <Switch accessibilityLabel={t('commitments.active')} value={active} onValueChange={setActive} />
           </View>
-        ) : null}
-        {error ? (
-          <AppText variant="small" tone="negative">
-            {error}
-          </AppText>
-        ) : null}
-        {!valid && loanValid ? (
-          <AppText variant="small" tone="muted">
-            {name.trim() === '' ? t('commitments.need.name') : amount === null || amount <= 0 ? t('commitments.need.amount') : t('commitments.need.day')}
-          </AppText>
-        ) : null}
-        <Button
-          title={t('common.save')}
-          disabled={!valid || busy}
-          onPress={() =>
-            run(() =>
-              onSave({
-                name: name.trim(), amount: amount ?? 0, dayOfMonth: day, kind, active,
-                categoryId, paymentMethodId: methodId, reliefId, autoRecord: auto && !variable, variable,
-                startDate: existing?.startDate ?? today,
-                startsOn: hasStart ? startsOn : null, endsOn: hasEnd ? endsOn : null,
-                ...loanFields(),
-              }),
-            )
-          }
-        />
-        {existing && onDelete ? (
-          <Button title={t('common.delete')} variant="secondary" disabled={busy} onPress={() => run(onDelete)} />
         ) : null}
       </View>
     </Sheet>

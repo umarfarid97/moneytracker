@@ -41,12 +41,17 @@ export function ShareSheet({ project, entries, onClose }: Props) {
   }
 
   return (
-    <Sheet visible title={t('project.shareTitle')} onClose={onClose}>
+    <Sheet visible title={t('project.shareTitle')} onClose={onClose}
+      footer={(
+        <View style={{ gap: 8 }}>
+          {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
+          <Button title={t('project.sharePay')} disabled={text === ''} onPress={send} />
+        </View>
+      )}
+    >
       <View style={{ gap: 16 }}>
         <AppText variant="small" tone="muted">{t('project.shareHint')}</AppText>
         <TextField label={t('project.shareName')} value={name} onChange={setName} maxLength={30} />
-        {error ? <AppText variant="small" tone="negative">{error}</AppText> : null}
-        <Button title={t('project.sharePay')} disabled={text === ''} onPress={send} />
       </View>
     </Sheet>
   );
