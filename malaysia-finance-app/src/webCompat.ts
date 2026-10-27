@@ -87,10 +87,21 @@ export function installStartupFallback(win: Scope, doc: Scope, waitMs = 6000): (
     }
   };
 
+  // The branded loading screen in public/index.html covers the page until the app has drawn something.
+  const hideLoading = () => doc.getElementById('duit-loading')?.remove();
+  const appShown = () => String(doc.getElementById('root')?.innerText ?? '').trim().length > 0;
+  const watch = win.setInterval?.(() => {
+    if (appShown()) {
+      hideLoading();
+      win.clearInterval(watch);
+    }
+  }, 100);
+
   const check = () => {
     const root = doc.getElementById('root');
-    const shown = String(root?.innerText ?? '').trim().length > 0;
+    const shown = appShown();
     if (!root || shown) {
+      hideLoading();
       try { win.sessionStorage.removeItem(RELOAD_FLAG); } catch { /* nothing to clear */ }
       return;
     }
@@ -102,6 +113,7 @@ export function installStartupFallback(win: Scope, doc: Scope, waitMs = 6000): (
         return;
       } catch { /* fall through to the message */ }
     }
+    hideLoading();
     const box = doc.createElement('div');
     box.id = 'duit-startup-error';
     box.setAttribute('style',
