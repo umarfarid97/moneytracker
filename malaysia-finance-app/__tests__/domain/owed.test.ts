@@ -1,4 +1,4 @@
-import { allocate, encodeBill, groupEntries, parseBill, balances, entryOf, netPositions, participants, settleTransfers, splitTransfers, transferOf, projectSummaries, settleUp, splitBill, splitEntries, splitEqually, totals, type OwedEntry, type OwedProject } from '@/domain/owed';
+import { allocate, encodeBill, groupEntries, sectionEntries, parseBill, balances, entryOf, netPositions, participants, settleTransfers, splitTransfers, transferOf, projectSummaries, settleUp, splitBill, splitEntries, splitEqually, totals, type OwedEntry, type OwedProject } from '@/domain/owed';
 
 let id = 0;
 const entry = (person: string, kind: OwedEntry['kind'], amount: number, date = '2026-10-01'): OwedEntry => ({
@@ -326,5 +326,18 @@ describe('splitting to the sen', () => {
     expect(parseBill('{not json')).toBeNull();
     const old = entry('Aina', 'lent', 500);
     expect(groupEntries([old, { ...old, id: 999, bill: 'garbage' }]).map((i) => i.type)).toEqual(['entry', 'entry']);
+  });
+});
+
+describe('sectionEntries', () => {
+  const e = (id: number, date: string, kind: OwedEntry['kind'], bill = ''): OwedEntry =>
+    ({ id, person: 'Danish', kind, amount: 1000, date, note: '', projectId: 1, counter: '', bill });
+
+  test('groups bills and IOUs by day, newest first, and sets payments apart', () => {
+    const items = groupEntries([e(1, '2026-10-01', 'lent'), e(2, '2026-10-03', 'paidBack'), e(3, '2026-10-03', 'lent'), e(4, '2026-10-02', 'repaid')]);
+    const { days, payments } = sectionEntries(items);
+    expect(days.map((d) => d.date)).toEqual(['2026-10-03', '2026-10-01']);
+    expect(days[0].items).toHaveLength(1);
+    expect(payments.map((p) => p.id)).toEqual([2, 4]);
   });
 });
