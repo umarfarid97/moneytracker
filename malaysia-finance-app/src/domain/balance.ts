@@ -50,13 +50,15 @@ export function balanceLeft(i: {
   today: string;
   /** Extra income entries; only those dated inside the period count. */
   extraIncome?: IncomeEntry[];
+  /** Monthly income tax (PCB) estimated from the tax calculation; used when the profile has none entered. */
+  estimatedPcb?: Sen;
 }): BalanceLeft | null {
   const startDay = i.profile.budgetStartDay ?? DEFAULT_START_DAY;
   const key = periodKey(i.today, startDay);
   const start = periodStart(key, startDay);
   const end = periodEnd(key, startDay);
   const extra = (i.extraIncome ?? []).filter((e) => e.date >= start && e.date <= end).reduce((s, e) => s + e.amount, 0);
-  const income = estimateNetMonthly(i.profile) + extra;
+  const income = estimateNetMonthly(i.profile, i.estimatedPcb) + extra;
   if (income <= 0) return null;
   const spent = i.expenses.filter((e) => periodKey(e.date, startDay) === key).reduce((s, e) => s + e.amount, 0);
   const upcoming = upcomingBills(i.commitments, i.expenses, key, startDay);

@@ -32,3 +32,19 @@ export function saveLanguage(value: string): void {
     // Ignore: the choice simply lasts until the app restarts.
   }
 }
+
+export function loadHideBalance(): boolean {
+  try {
+    return Storage.getItemSync('hideBalance') !== 'false';
+  } catch {
+    return true;
+  }
+}
+
+export function saveHideBalance(hidden: boolean): void {
+  try {
+    Storage.setItemSync('hideBalance', hidden ? 'true' : 'false');
+  } catch {
+    // Ignore: the choice simply lasts until the app restarts.
+  }
+}
