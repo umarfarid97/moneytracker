@@ -32,6 +32,8 @@ export const ms: Record<StringKey, string> = {
   'home.balanceTitle': 'Baki bulan ini',
   'home.balanceDetail': 'Gaji bersih {income} - belanja {spent}',
   'home.balanceUpcoming': '{upcoming} bil belum dibayar, jadi {free} boleh digunakan',
+  'home.balanceShow': 'Tunjukkan baki',
+  'home.balanceHide': 'Sembunyikan baki',
   'home.balanceSetup': 'Masukkan gaji dalam profil untuk lihat baki setiap bulan',
   'home.balanceSetupButton': 'Tambah gaji',
 

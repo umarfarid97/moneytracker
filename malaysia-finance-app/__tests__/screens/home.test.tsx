@@ -91,8 +91,25 @@ describe('Home balance left', () => {
     await db.run('UPDATE profile SET gross_monthly = 600000, net_monthly_override = 500000');
     await addExpenseRow(db, CAT.Makan, 30000, '2026-10-03');
     await renderWithData(db, <Home />);
-    await waitFor(() => expect(screen.getByText('RM 4,700.00')).toBeTruthy());
-    expect(screen.getByText('Balance left this month')).toBeTruthy();
+    await waitFor(() => expect(screen.getByText('Balance left this month')).toBeTruthy());
+    await fireEvent.press(screen.getByRole('button', { name: 'Show balance' }));
+    expect(screen.getByText('RM 4,700.00')).toBeTruthy();
+  });
+
+  test('hides the balance and its details until the eye is tapped, and hides again', async () => {
+    const db = await freshDb();
+    await db.run('UPDATE profile SET gross_monthly = 600000, net_monthly_override = 500000');
+    await addExpenseRow(db, CAT.Makan, 30000, '2026-10-03');
+    await renderWithData(db, <Home />);
+    await waitFor(() => expect(screen.getByText('Balance left this month')).toBeTruthy());
+    expect(screen.queryByText('RM 4,700.00')).toBeNull();
+    expect(screen.getByText('RM ••••')).toBeTruthy();
+    expect(screen.getByText('Take-home RM •••• - spent RM ••••')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Show balance' }));
+    expect(screen.getByText('RM 4,700.00')).toBeTruthy();
+    expect(screen.getByText('Take-home RM 5,000.00 - spent RM 300.00')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Hide balance' }));
+    expect(screen.queryByText('RM 4,700.00')).toBeNull();
   });
 
   test('asks for a salary when the profile has none and opens the profile', async () => {
