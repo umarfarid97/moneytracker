@@ -31,7 +31,7 @@ export function BillsLeftSheet({ visible, balance, today, hidden, onClose }: Pro
           <View style={{ gap: 12 }}>
             {balance.upcomingItems.map((b) => (
               <View key={`${b.commitmentId}-${b.dueDate}`} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                {brandForBill(b.name) ? <BrandBadge {...brandForBill(b.name)!} size={32} /> : null}
+                {brandForBill(b.name, b.kind, b.loanType) ? <BrandBadge {...brandForBill(b.name, b.kind, b.loanType)!} size={32} /> : null}
                 <View style={{ flex: 1 }}>
                   <AppText variant="bodyStrong" numberOfLines={1}>{b.name}</AppText>
                   <AppText variant="small" tone={b.dueDate < today ? 'negative' : 'muted'}>

@@ -1,6 +1,7 @@
 import { brandForBill, brandForNote } from '@/domain/brandLookup';
 import { BRAND_MARKS } from '@/ui/brandMarks';
 import { SUBSCRIPTIONS } from '@/domain/subscriptions';
+import { BILLERS } from '@/domain/billers';
 
 describe('brandForBill', () => {
   it('matches subscriptions by what the user typed', () => {
@@ -35,5 +36,29 @@ describe('bundled marks', () => {
       expect(ids.has(id)).toBe(true);
       expect(d.startsWith('M') || d.startsWith('m')).toBe(true);
     }
+  });
+});
+
+describe('bill and loan badges', () => {
+  it('gives every biller an icon', () => {
+    for (const b of BILLERS) expect(b.icon).toBeTruthy();
+    expect(brandForBill('TNB electricity', 'bill')?.icon).toBe('flash');
+    expect(brandForBill('Air Selangor', 'bill')?.icon).toBe('water');
+    expect(brandForBill('Unifi', 'bill')?.icon).toBe('wifi');
+  });
+
+  it('shows the lender with the loan type icon', () => {
+    expect(brandForBill('Maybank car loan', 'loan', 'car')).toMatchObject({ id: 'maybank', icon: 'car' });
+    expect(brandForBill('PTPTN', 'loan', 'ptptn')).toMatchObject({ id: 'ptptn', icon: 'school' });
+  });
+
+  it('falls back to a loan type tile when no lender is named', () => {
+    expect(brandForBill('Kereta', 'loan', 'car')).toMatchObject({ id: 'loan-car', icon: 'car' });
+    expect(brandForBill('Rumah', 'loan', 'home')).toMatchObject({ id: 'loan-home', icon: 'home' });
+  });
+
+  it('recognises a lender in a payment note only when it says loan', () => {
+    expect(brandForNote('Maybank car loan')?.id).toBe('maybank');
+    expect(brandForNote('Maybank transfer')).toBeNull();
   });
 });

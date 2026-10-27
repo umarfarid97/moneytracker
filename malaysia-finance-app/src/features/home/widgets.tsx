@@ -86,7 +86,7 @@ function UpcomingBills() {
       .map((r) => ({
         id: r.c.id,
         name: r.c.name,
-        brand: brandForBill(r.c.name, r.c.kind),
+        brand: brandForBill(r.c.name, r.c.kind, r.c.loanType),
         amount: formatRM(billEstimate(r.c, expenses)),
         when:
           r.status.state === 'due' ? t('commitments.dueToday')

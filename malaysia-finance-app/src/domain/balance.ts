@@ -10,6 +10,7 @@ export type UpcomingBill = {
   commitmentId: number;
   name: string;
   kind: Commitment['kind'];
+  loanType: Commitment['loanType'];
   dueDate: string;
   amount: Sen;
   /** The amount is an estimate because the bill changes every month. */
@@ -47,7 +48,7 @@ export function upcomingBills(commitments: Commitment[], expenses: Expense[], ke
     const amount = billEstimate(c, expenses);
     const from = c.startDate !== null && c.startDate > start ? c.startDate : start;
     for (const due of dueDatesBetween(c, from, end)) {
-      if (!paid.has(due)) out.push({ commitmentId: c.id, name: c.name, kind: c.kind, dueDate: due, amount, variable: c.variable });
+      if (!paid.has(due)) out.push({ commitmentId: c.id, name: c.name, kind: c.kind, loanType: c.loanType, dueDate: due, amount, variable: c.variable });
     }
   }
   return out.sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.name.localeCompare(b.name));
