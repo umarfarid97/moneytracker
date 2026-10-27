@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { TextInput, View } from 'react-native';
-import { daysLeftInPeriod, parseStartDay, periodKey, periodLabel } from '@/domain/budgetPeriod';
+import { View } from 'react-native';
+import { daysLeftInPeriod, periodKey, periodLabel } from '@/domain/budgetPeriod';
 import { formatRM } from '@/domain/money';
 import { buildHome, type BudgetTile } from '@/domain/summary';
 import { useExpenses } from '@/hooks/useExpenses';
@@ -9,21 +9,16 @@ import { useBudgets } from '@/hooks/useBudgets';
 import { useCategories } from '@/hooks/useCategories';
 import { useProfile } from '@/hooks/useProfile';
 import { useToday } from '@/hooks/useToday';
-import { getLanguage } from '@/i18n/language';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
 import { BackButton } from '@/ui/BackButton';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Chip } from '@/ui/Chip';
+import { PaydayPicker } from '@/ui/PaydayPicker';
 import { ProgressBar } from '@/ui/ProgressBar';
 import { Screen } from '@/ui/Screen';
-import { controlHeight, fontFamily, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
-import { sanitizeNumber } from '@/ui/numeric';
-
-const PAYDAY_CHOICES = [{ day: 1 }, { day: 15 }, { day: 25 }, { day: 28 }, { day: 31 }];
-const ordinal = (n: number) => getLanguage() === 'ms' ? String(n) : `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th')}`;
 
 export default function Budget() {
   const { c } = useTheme();
@@ -42,7 +37,6 @@ export default function Budget() {
   const warnings = budgeted.filter((x) => x.status !== 'on-track');
 
   const [error, setError] = useState<string | null>(null);
-  const [dayText, setDayText] = useState(startDay === 1 ? '' : String(startDay));
 
   /** The budget period changes with the start day, so budgets already typed in are left as they were. */
   async function changeStartDay(day: number) {
@@ -50,7 +44,6 @@ export default function Budget() {
     setError(null);
     try {
       await saveProfile({ ...profile, budgetStartDay: day });
-      setDayText(PAYDAY_CHOICES.some((x) => x.day === day) ? '' : String(day));
     } catch {
       setError(t('common.saveFailed'));
     }
@@ -106,39 +99,7 @@ export default function Budget() {
           <AppText variant="bodyStrong">{t('budget.startDay')}</AppText>
           <AppText variant="small" tone="muted">{t('budget.startDayHint')}</AppText>
         </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {PAYDAY_CHOICES.map((choice) => (
-            <Chip
-              key={choice.day}
-              label={choice.day === 31 ? t('budget.startDay.last') : ordinal(choice.day)}
-              accessibilityLabel={`Budget starts ${choice.day === 31 ? 'on the last day' : `on day ${choice.day}`}`}
-              selected={startDay === choice.day}
-              onPress={() => changeStartDay(choice.day)}
-            />
-          ))}
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <TextInput
-            accessibilityLabel={t('budget.startDay.day')}
-            value={dayText}
-            onChangeText={(text) => setDayText(sanitizeNumber(text, 0))}
-            keyboardType="number-pad"
-            maxLength={2}
-            placeholder={t('budget.startDay.day')}
-            placeholderTextColor={c.muted}
-            style={{
-              flex: 1, minWidth: 0, height: controlHeight, borderRadius: radius.control, backgroundColor: c.surface,
-              borderWidth: 1, borderColor: dayText !== '' && parseStartDay(dayText) === null ? c.negative : c.control,
-              paddingHorizontal: 14, color: c.text, fontFamily: fontFamily.medium, fontSize: 16,
-            }}
-          />
-          <Button
-            title={t('budget.startDay.set')}
-            variant="secondary"
-            disabled={parseStartDay(dayText) === null || parseStartDay(dayText) === startDay}
-            onPress={() => changeStartDay(parseStartDay(dayText)!)}
-          />
-        </View>
+        <PaydayPicker value={startDay} onChange={changeStartDay} />
       </Card>
       <Card style={{ gap: 4 }}>
         <AppText variant="small" tone="muted">
