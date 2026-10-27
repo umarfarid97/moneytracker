@@ -5,6 +5,8 @@ import { createBackup } from '@/sync/backup';
 import { SyncProvider } from '@/sync/SyncProvider';
 import { CAT, freshDb, renderWithData } from '../screens/helpers';
 
+// This test is about a build with no server address; the real address is set in cloudConfig.
+jest.mock('@/sync/cloudConfig', () => ({ CLOUD_API_URL: '' }));
 jest.mock('@/sync/googleAuth', () => ({
   googleAuth: {
     available: false,
