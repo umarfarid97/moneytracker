@@ -1,5 +1,9 @@
 /** Strings for the grouped More menu, the income link on Profile and the other tidy-ups (merged into `en` and `ms`). */
 export const cleanupEn = {
+  'profile.takeHome': 'Estimated monthly take-home',
+  'profile.takeHomeOverride': 'Monthly take-home (the figure you entered)',
+  'profile.section.salary': 'Salary',
+  'profile.section.deductions': 'Deductions',
   'more.section.money': 'Money',
   'more.section.wealth': 'Wealth',
   'more.section.tax': 'Tax & loans',
@@ -16,6 +20,10 @@ export const cleanupEn = {
 } as const;
 
 export const cleanupMs = {
+  'profile.takeHome': 'Anggaran gaji bersih sebulan',
+  'profile.takeHomeOverride': 'Gaji bersih sebulan (jumlah yang anda taip)',
+  'profile.section.salary': 'Gaji',
+  'profile.section.deductions': 'Potongan',
   'more.section.money': 'Wang',
   'more.section.wealth': 'Kekayaan',
   'more.section.tax': 'Cukai & pinjaman',
