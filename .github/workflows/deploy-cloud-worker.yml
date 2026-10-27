@@ -33,7 +33,8 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npx wrangler d1 migrations apply duit-cloud --remote
-      - run: npx wrangler deploy
+      - name: Deploy
+        run: npx wrangler deploy 2>&1 | tee deploy.log
       - name: Set secrets
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
@@ -45,5 +46,10 @@ jobs:
           fi
       - name: Check the server answers
         run: |
-          URL=$(npx wrangler deployments list 2>/dev/null | grep -o 'https://[^ ]*workers.dev' | head -1 || true)
-          echo "Deployed. Open the Worker in the Cloudflare dashboard (Workers & Pages > duit-cloud) to see its address: $URL"
+          URL=$(grep -o 'https://[^ ]*workers.dev' deploy.log | head -1)
+          echo "Server address: $URL"
+          echo "Server address: $URL" >> "$GITHUB_STEP_SUMMARY"
+          for i in 1 2 3 4 5; do
+            curl -fsS "$URL/" && break
+            sleep 5
+          done
