@@ -2,7 +2,7 @@ name: Deploy cloud server
 
 # Deploys cloud-worker/ to Cloudflare from the Actions tab (Run workflow). No terminal needed.
 # Needs these repository secrets (Settings > Secrets and variables > Actions):
-#   CLOUDFLARE_API_TOKEN  Cloudflare > My Profile > API Tokens > "Edit Cloudflare Workers" template, plus the permission Account > Workers R2 Storage > Edit (receipts live in R2)
+#   CLOUDFLARE_API_TOKEN  Cloudflare > My Profile > API Tokens > "Edit Cloudflare Workers" template, and, if you build the token by hand, these Account permissions: Workers Scripts Edit, D1 Edit, Workers R2 Storage Edit
 #   CLOUDFLARE_ACCOUNT_ID shown on the right of the Cloudflare dashboard home
 #   RESEND_API_KEY        the Resend API key (re_...)
 # The PEPPER secret is generated once on the first run and kept on Cloudflare. See docs/cloud-sync-setup.md.
@@ -36,11 +36,17 @@ jobs:
         run: npx wrangler r2 bucket info duit-receipts >/dev/null 2>&1 || npx wrangler r2 bucket create duit-receipts
       - run: npx wrangler d1 migrations apply duit-cloud --remote
       - name: Deploy
-        run: npx wrangler deploy 2>&1 | tee deploy.log
+        run: |
+          set -o pipefail
+          npx wrangler deploy 2>&1 | tee deploy.log
       - name: Set secrets
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
         run: |
+          if [ -z "$RESEND_API_KEY" ]; then
+            echo "::error::The RESEND_API_KEY repository secret is empty or missing (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
           echo "$RESEND_API_KEY" | npx wrangler secret put RESEND_API_KEY
           # PEPPER is made once; changing it later would make every account look new.
           if ! npx wrangler secret list | grep -q '"PEPPER"'; then

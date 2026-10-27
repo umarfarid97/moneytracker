@@ -64,7 +64,7 @@ You can also do it yourself: set `CLOUD_API_URL` in that file and rebuild.
 
 Use this if you do not want to run commands on your computer. Actions tab > **Deploy cloud server** > Run workflow. It needs three repository secrets (Settings > Secrets and variables > Actions > New repository secret):
 
-- `CLOUDFLARE_API_TOKEN`: Cloudflare dashboard > My Profile > API Tokens > Create Token > the *Edit Cloudflare Workers* template, then **add one more permission row**: Account > *Workers R2 Storage* > *Edit*. Without it the deploy fails when creating the receipts bucket. R2 must also be enabled on the account (Cloudflare dashboard > Storage & databases > R2; it asks for a card but the free tier is not charged).
+- `CLOUDFLARE_API_TOKEN`: Cloudflare dashboard > My Profile > API Tokens > Create Token > the *Edit Cloudflare Workers* template, then **add one more permission row**: Account > *Workers R2 Storage* > *Edit*. If you build a token from scratch instead, it needs these Account permissions: *Workers Scripts* Edit, *D1* Edit and *Workers R2 Storage* Edit. Without it the deploy fails when creating the receipts bucket. R2 must also be enabled on the account (Cloudflare dashboard > Storage & databases > R2; it asks for a card but the free tier is not charged).
 - `CLOUDFLARE_ACCOUNT_ID`: shown on the right of the Cloudflare dashboard home.
 - `RESEND_API_KEY`: your Resend key (`re_...`).
 
