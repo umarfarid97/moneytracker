@@ -7,6 +7,7 @@ import { HOME_CURRENCY } from '@/domain/fx';
 import { formatRM, parseRM, senToInput } from '@/domain/money';
 import { suggestRelief } from '@/domain/reliefSpending';
 import type { ReceiptScan } from '@/domain/receiptText';
+import { isImageReceipt } from '@/receiptKind';
 import { scanReceipt } from '@/receiptScan';
 import { noteSuggestions, type NoteSuggestion } from '@/domain/spendingFilter';
 import { budgetAlert } from '@/domain/summary';
@@ -146,7 +147,8 @@ export default function AddExpense() {
       setSst(null);
       return;
     }
-    void runScan(uri, false);
+    // Only pictures are read for amounts; a PDF or other document is just attached.
+    if (isImageReceipt(uri)) void runScan(uri, false);
   }
 
   async function save() {
@@ -427,7 +429,7 @@ export default function AddExpense() {
   const receipt = (
     <Card style={[pad, { flexGrow: 1 }]}>
       <ReceiptField fill compact={!wide} uri={receiptUri} onChange={onReceiptChange} />
-      {receiptUri && Platform.OS !== 'web' ? scanStatus : null}
+      {receiptUri && isImageReceipt(receiptUri) && Platform.OS !== 'web' ? scanStatus : null}
     </Card>
   );
   const reliefCard = (

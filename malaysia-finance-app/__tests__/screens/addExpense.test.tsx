@@ -75,7 +75,7 @@ describe('AddExpense (receipt)', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Take photo' }));
     await waitFor(() => expect(screen.getByText('Receipt attached')).toBeTruthy());
     expect(pickReceipt).toHaveBeenCalledWith('camera');
-    await fireEvent.press(screen.getByRole('button', { name: 'Remove photo' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Remove' }));
     expect(screen.queryByText('Receipt attached')).toBeNull();
     await fireEvent.press(screen.getByRole('button', { name: 'Choose photo' }));
     await waitFor(() => expect(screen.getByText('Receipt attached')).toBeTruthy());
@@ -228,6 +228,6 @@ describe('AddExpense layout', () => {
     await waitFor(() => expect(router.back).toHaveBeenCalled());
     expect(await db.all('SELECT amount, category_id FROM expenses')).toEqual([{ amount: 820, category_id: CAT.Hiburan }]);
     // Every size shows the receipt area that fills the free space.
-    expect(screen.getByText('No receipt yet. Snap one so it is ready at tax time.')).toBeTruthy();
+    expect(screen.getByText('No receipt yet. Snap a photo or attach a file (PDF, Word, Excel) so it is ready at tax time.')).toBeTruthy();
   });
 });

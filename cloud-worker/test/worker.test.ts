@@ -228,7 +228,7 @@ describe('receipts', () => {
   it('rejects bad names and big files', async () => {
     const a = await signIn();
     expect((await call('PUT', '/receipts/..%2Fx', { token: a.token, body: bytes(3) })).status).toBe(400);
-    expect((await call('PUT', '/receipts/big.enc', { token: a.token, body: bytes(3 * 1024 * 1024 + 1) })).status).toBe(413);
+    expect((await call('PUT', '/receipts/big.enc', { token: a.token, body: bytes(10 * 1024 * 1024 + 1025) })).status).toBe(413);
   });
   it('does not touch the snapshot cleanup', async () => {
     const a = await signIn();

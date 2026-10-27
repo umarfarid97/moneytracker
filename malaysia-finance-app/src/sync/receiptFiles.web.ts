@@ -1,4 +1,5 @@
 import { hasReceipt, loadReceipts, readReceiptBlob, saveReceiptBlob } from '../receipts.web';
+import { receiptMime } from '../receiptKind';
 import { createFile, downloadUrl, DriveAuthError, mediaUrl } from './drive';
 
 /** The web build keeps receipt photos in the browser's IndexedDB; they go into backups and cloud sync like phone files. */
@@ -7,8 +8,7 @@ export const RECEIPT_FILES = true;
 /** Receipts saved by this app version ("receipts/receipt-123.jpg"). */
 export const isStoredReceipt = (stored: string | null): stored is string => !!stored && /^receipts\/[^/]+$/.test(stored);
 
-const MIME: Record<string, string> = { png: 'image/png', heic: 'image/heic', webp: 'image/webp' };
-const mimeOf = (stored: string) => MIME[stored.split('.').pop()?.toLowerCase() ?? ''] ?? 'image/jpeg';
+const mimeOf = receiptMime;
 
 /** Reads the browser's saved receipts first, so receiptExists can answer straight away. */
 export const prepareReceipts = (): Promise<void> => loadReceipts();

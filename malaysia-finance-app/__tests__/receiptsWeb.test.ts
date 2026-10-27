@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { hasReceipt, pickReceipt, readReceiptBlob, receiptPending, resolveReceiptUri, saveReceiptBlob, storeReceipt, loadReceipts } from '@/receipts.web';
+import { hasReceipt, pickReceipt, receiptSize, readReceiptBlob, receiptPending, resolveReceiptUri, saveReceiptBlob, storeReceipt, loadReceipts } from '@/receipts.web';
 
 class FakeInput extends EventTarget {
   type = '';
@@ -75,5 +75,24 @@ describe('web receipts', () => {
     input2.files = [new File(['x'], 'a.txt', { type: 'text/plain' })];
     input2.dispatchEvent(new Event('change'));
     await expect(bad).rejects.toThrow();
+  });
+
+  it('keeps a PDF as it is under its own name, with its size', async () => {
+    const pdf = new File(['%PDF-1.4 body'], 'TNB bill.pdf', { type: 'application/pdf' });
+    inputs.length = 0;
+    const pending = pickReceipt('file', 3);
+    expect(inputs[0].accept).toContain('.pdf');
+    inputs[0].files = [pdf];
+    inputs[0].dispatchEvent(new Event('change'));
+    const key = await pending;
+    expect(key).toBe('receipts/receipt-3-TNB_bill.pdf');
+    expect(receiptSize(key!)).toBe(pdf.size);
+  });
+
+  it('rejects a document over the size limit and a type receipts do not allow', async () => {
+    const big = new File(['x'], 'big.pdf', { type: 'application/pdf' });
+    Object.defineProperty(big, 'size', { value: 11 * 1024 * 1024 });
+    await expect(storeReceipt(big, 4)).rejects.toMatchObject({ code: 'tooLarge' });
+    await expect(storeReceipt(new File(['x'], 'a.zip', { type: 'application/zip' }), 5)).rejects.toMatchObject({ code: 'unsupported' });
   });
 });
