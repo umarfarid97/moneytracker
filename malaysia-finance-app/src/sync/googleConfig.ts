@@ -17,7 +17,7 @@ export const GOOGLE_ANDROID_CLIENT_ID: string = '719997929789-vsm4ottpd7iq9f8ior
 export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 
 /** Why a sign-in failed, so the screen can say something useful. */
-export type GoogleAuthFailure = 'noPlayServices' | 'notSetUp' | 'network' | 'blocked' | 'unknown';
+export type GoogleAuthFailure = 'noPlayServices' | 'popupBlocked' | 'notSetUp' | 'network' | 'blocked' | 'unknown';
 export class GoogleAuthError extends Error {
   constructor(readonly reason: GoogleAuthFailure, detail?: string) {
     super(detail ?? reason);

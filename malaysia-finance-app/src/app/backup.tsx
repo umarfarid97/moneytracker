@@ -132,6 +132,9 @@ export default function Backup() {
         {sync.email ? (
           <View style={{ gap: 10 }}>
             <Button title={t('backup.drive.syncNow')} disabled={sync.syncing} onPress={() => void sync.syncNow()} />
+            {sync.problem === 'signIn' ? (
+              <Button title={t('backup.drive.signInAgain')} variant="secondary" disabled={busy !== null} onPress={() => void connect()} />
+            ) : null}
             {sync.problem === 'signIn' && sync.connectWithBrowser ? (
               <Button title={t('backup.drive.connectBrowser')} variant="secondary" disabled={busy !== null} onPress={() => void connect(true)} />
             ) : null}
