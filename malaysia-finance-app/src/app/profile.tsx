@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { TextInput, View } from 'react-native';
 import { formatRM, parsePercent, parseRM, senToInput } from '@/domain/money';
 import { estimateEis, estimateSocso, takeHomeBreakdown, type Deduction } from '@/domain/netpay';
@@ -13,6 +13,7 @@ import { AppText } from '@/ui/AppText';
 import { BackButton } from '@/ui/BackButton';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { Ionicons } from '@expo/vector-icons';
 import { PaydayPicker } from '@/ui/PaydayPicker';
 import { PressableScale } from '@/ui/PressableScale';
 import { Screen } from '@/ui/Screen';
@@ -24,11 +25,22 @@ import { sanitizeNumber } from '@/ui/numeric';
 const rateToText = (rate: number) => String(Math.round(rate * 10000) / 100);
 
 function DeductionRow({ label, amount, deduction }: { label: string; amount: number; deduction?: Deduction }) {
-  const kind = deduction ? ` (${t(deduction.estimated ? 'profile.estimated' : 'profile.entered')})` : '';
   return (
-    <AppText variant="small" tone="muted">
-      {`${label}: - ${formatRM(amount)}${kind}`}
-    </AppText>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+      <AppText variant="small" tone="muted" style={{ flexShrink: 1 }}>
+        {deduction ? `${label} (${t(deduction.estimated ? 'profile.estimated' : 'profile.entered')})` : label}
+      </AppText>
+      <AppText variant="smallStrong">{`- ${formatRM(amount)}`}</AppText>
+    </View>
+  );
+}
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <View style={{ gap: 8 }}>
+      <AppText variant="eyebrow" tone="muted">{title}</AppText>
+      <Card style={{ gap: 16 }}>{children}</Card>
+    </View>
   );
 }
 
@@ -122,10 +134,13 @@ export default function Profile() {
       <BackButton />
       <AppText variant="title">{t('profile.title')}</AppText>
       {draft ? (
-        <Card style={{ gap: 6 }}>
-          <AppText variant="bodyStrong">{t(breakdown!.overridden ? 'profile.estimateOverride' : 'profile.estimate', { amount: formatRM(breakdown!.net) })}</AppText>
+        <Card style={{ gap: 12 }}>
+          <View style={{ gap: 2 }}>
+            <AppText variant="small" tone="muted">{t(breakdown!.overridden ? 'profile.takeHomeOverride' : 'profile.takeHome')}</AppText>
+            <AppText variant="kpi" color={c.accent}>{formatRM(breakdown!.net)}</AppText>
+          </View>
           {breakdown!.overridden ? null : (
-            <View style={{ gap: 2 }}>
+            <View style={{ gap: 6, borderTopWidth: 1, borderTopColor: c.border, paddingTop: 12 }}>
               <DeductionRow label={t('profile.line.epf')} amount={breakdown!.epf} />
               <DeductionRow label={t('profile.line.socso')} amount={breakdown!.socso.amount} deduction={breakdown!.socso} />
               <DeductionRow label={t('profile.line.eis')} amount={breakdown!.eis.amount} deduction={breakdown!.eis} />
@@ -134,47 +149,46 @@ export default function Profile() {
           )}
         </Card>
       ) : null}
-      <PressableScale accessibilityRole="button" accessibilityLabel={t('profile.extra')} onPress={() => router.push('/income')}>
-        <Card style={{ gap: 4 }}>
-          <AppText variant="bodyStrong">{t('profile.extra')}</AppText>
-          <AppText variant="small" tone="muted">{t('profile.extraHint', { amount: formatRM(received) })}</AppText>
-        </Card>
-      </PressableScale>
-      <AmountInput label={t('profile.gross')} value={gross} onChange={(text) => setGross(text)} />
-      <View style={{ gap: 4 }}>
-        <AmountInput label={t('profile.net')} value={net} onChange={(text) => setNet(text)} />
-        <AppText variant="small" tone="muted">
-          {t('profile.netHint')}
-        </AppText>
-      </View>
-      <View style={{ gap: 8 }}>
-        <AppText variant="smallStrong">{t('profile.epf')}</AppText>
-        <TextInput
-          accessibilityLabel={t('profile.epf')}
-          value={epf}
-          onChangeText={(text) => setEpf(sanitizeNumber(text, 2))}
-          keyboardType="decimal-pad"
-          inputMode="decimal"
-          style={field}
-        />
-      </View>
-      <View style={{ gap: 4 }}>
-        <AmountInput label={t('profile.socso')} value={socso} onChange={(text) => setSocso(text)} placeholder={senToInput(estimateSocso(grossSen ?? 0))} />
+      <Section title={t('profile.section.salary')}>
+        <AmountInput compact label={t('profile.gross')} value={gross} onChange={(text) => setGross(text)} />
+        <View style={{ gap: 4 }}>
+          <AmountInput compact label={t('profile.net')} value={net} onChange={(text) => setNet(text)} />
+          <AppText variant="small" tone="muted">{t('profile.netHint')}</AppText>
+        </View>
+      </Section>
+      <Section title={t('profile.section.deductions')}>
         <AppText variant="small" tone="muted">{t('profile.deductionHint')}</AppText>
-      </View>
-      <View style={{ gap: 4 }}>
-        <AmountInput label={t('profile.eis')} value={eis} onChange={(text) => setEis(text)} placeholder={senToInput(estimateEis(grossSen ?? 0))} />
-        <AppText variant="small" tone="muted">{t('profile.deductionHint')}</AppText>
-      </View>
-      <View style={{ gap: 4 }}>
-        <AmountInput label={t('profile.pcb')} value={pcb} onChange={(text) => setPcb(text)} placeholder={senToInput(estimatedPcb)} />
-        <AppText variant="small" tone="muted">{t('profile.pcbHint')}</AppText>
-      </View>
-      <View style={{ gap: 8 }}>
-        <AppText variant="smallStrong">{t('profile.salaryDay')}</AppText>
+        <View style={{ gap: 8 }}>
+          <AppText variant="eyebrow" tone="muted">{t('profile.epf')}</AppText>
+          <TextInput
+            accessibilityLabel={t('profile.epf')}
+            value={epf}
+            onChangeText={(text) => setEpf(sanitizeNumber(text, 2))}
+            keyboardType="decimal-pad"
+            inputMode="decimal"
+            style={field}
+          />
+        </View>
+        <AmountInput compact label={t('profile.socso')} value={socso} onChange={(text) => setSocso(text)} placeholder={senToInput(estimateSocso(grossSen ?? 0))} />
+        <AmountInput compact label={t('profile.eis')} value={eis} onChange={(text) => setEis(text)} placeholder={senToInput(estimateEis(grossSen ?? 0))} />
+        <View style={{ gap: 4 }}>
+          <AmountInput compact label={t('profile.pcb')} value={pcb} onChange={(text) => setPcb(text)} placeholder={senToInput(estimatedPcb)} />
+          <AppText variant="small" tone="muted">{t('profile.pcbHint')}</AppText>
+        </View>
+      </Section>
+      <Section title={t('profile.salaryDay')}>
         <PaydayPicker value={startDay} onChange={setStartDay} />
         <AppText variant="small" tone="muted">{t('profile.salaryDayHint')}</AppText>
-      </View>
+      </Section>
+      <PressableScale accessibilityRole="button" accessibilityLabel={t('profile.extra')} onPress={() => router.push('/income')}>
+        <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <AppText variant="bodyStrong">{t('profile.extra')}</AppText>
+            <AppText variant="small" tone="muted">{t('profile.extraHint', { amount: formatRM(received) })}</AppText>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={c.accent} />
+        </Card>
+      </PressableScale>
     </Screen>
   );
 }

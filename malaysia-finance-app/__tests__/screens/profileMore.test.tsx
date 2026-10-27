@@ -109,9 +109,10 @@ describe('Income profile', () => {
     await waitFor(() => expect(screen.getByLabelText('Monthly salary before deductions').props.value).toBe('5000.00'));
     expect(screen.getByLabelText('EPF rate you pay (%)').props.value).toBe('11');
     // 5000 - 550 EPF - 10 SOCSO - 4 EIS; PCB for this salary is below the tax-free bands' first charge, so it is estimated at 0 or more
-    expect(screen.getByText(/^Estimated take-home RM [\d,.]+, after EPF, SOCSO, EIS and income tax \(PCB\)$/)).toBeTruthy();
-    expect(screen.getByText('SOCSO: - RM 10.00 (entered)')).toBeTruthy();
-    expect(screen.getByText(/^Income tax \(PCB\): - RM [\d,.]+ \(estimated\)$/)).toBeTruthy();
+    expect(screen.getByText('Estimated monthly take-home')).toBeTruthy();
+    expect(screen.getByText('SOCSO (entered)')).toBeTruthy();
+    expect(screen.getByText('- RM 10.00')).toBeTruthy();
+    expect(screen.getByText('Income tax (PCB) (estimated)')).toBeTruthy();
   });
 
   test('an entered payslip PCB is saved and taken off the take-home pay', async () => {
@@ -121,8 +122,9 @@ describe('Income profile', () => {
     await waitFor(() => expect(screen.getByLabelText('Income tax (PCB) per month')).toBeTruthy());
     await fireEvent.changeText(screen.getByLabelText('Income tax (PCB) per month'), '250.50');
     // 5000 - 550 EPF - 10 SOCSO - 4 EIS - 250.50 PCB
-    expect(screen.getByText('Estimated take-home RM 4,185.50, after EPF, SOCSO, EIS and income tax (PCB)')).toBeTruthy();
-    expect(screen.getByText('Income tax (PCB): - RM 250.50 (entered)')).toBeTruthy();
+    expect(screen.getByText('RM 4,185.50')).toBeTruthy();
+    expect(screen.getByText('Income tax (PCB) (entered)')).toBeTruthy();
+    expect(screen.getByText('- RM 250.50')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(router.back).toHaveBeenCalled());
     expect((await db.get<{ pcb_monthly: number }>('SELECT pcb_monthly FROM profile'))!.pcb_monthly).toBe(25050);
