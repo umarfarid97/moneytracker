@@ -167,6 +167,7 @@ export const ms: Record<StringKey, string> = {
   'tax.upTo': 'Sehingga {amount}',
   'tax.claimedOf': '{claimed} daripada {limit}',
   'tax.limit': 'Had {amount} setahun',
+  'tax.editClaim': 'Sunting tuntutan',
   'tax.addClaim': 'Tambah tuntutan',
   'tax.claims': 'Tuntutan anda',
   'tax.noClaims': 'Belum ada tuntutan',

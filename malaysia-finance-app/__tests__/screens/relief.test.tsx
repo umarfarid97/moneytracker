@@ -89,16 +89,37 @@ describe('Relief page', () => {
     expect(await claimsIn(db)).toEqual([]);
   });
 
-  test('reliefs that do not need receipts show no receipt warning or photo buttons', async () => {
+  test('reliefs that do not need receipts show no receipt warning, but still allow a photo', async () => {
     useLocalSearchParams.mockReturnValue({ id: 'epf' });
     const db = await freshDb();
     await renderWithData(db, <Relief />);
     await waitFor(() => expect(screen.getByLabelText('Amount')).toBeTruthy());
-    expect(screen.queryByRole('button', { name: 'Choose photo' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Choose photo' })).toBeTruthy();
     await fireEvent.changeText(screen.getByLabelText('Amount'), '4000');
     await fireEvent.press(screen.getByRole('button', { name: 'Add claim' }));
     await waitFor(async () => expect((await claimsIn(db)).length).toBe(1));
     expect(screen.queryByText('Receipt missing')).toBeNull();
+  });
+
+  test('a saved claim can be edited and Cancel leaves it as it was', async () => {
+    useLocalSearchParams.mockReturnValue({ id: 'epf' });
+    const db = await freshDb();
+    await renderWithData(db, <Relief />);
+    await waitFor(() => expect(screen.getByLabelText('Amount')).toBeTruthy());
+    await fireEvent.changeText(screen.getByLabelText('Amount'), '4000');
+    await fireEvent.changeText(screen.getByLabelText('Note'), 'First');
+    await fireEvent.press(screen.getByRole('button', { name: 'Add claim' }));
+    await waitFor(async () => expect((await claimsIn(db)).length).toBe(1));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Edit' }));
+    expect(screen.getByLabelText('Amount').props.value).toBe('4000.00');
+    await fireEvent.changeText(screen.getByLabelText('Amount'), '2500');
+    await fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
+    expect((await claimsIn(db))[0].amount).toBe(400000);
+    await fireEvent.press(await screen.findByRole('button', { name: 'Edit' }));
+    await fireEvent.changeText(screen.getByLabelText('Amount'), '2500');
+    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(async () => expect((await claimsIn(db))[0].amount).toBe(250000));
+    expect((await claimsIn(db)).length).toBe(1);
   });
 
   test('per-child reliefs say to add one claim per child', async () => {

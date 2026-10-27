@@ -3,8 +3,9 @@ import { useMemo, useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 import { dayMonth } from '@/domain/dates';
 import { estimateSocso } from '@/domain/netpay';
-import { formatRM, parseRM } from '@/domain/money';
+import { formatRM, parseRM, senToInput } from '@/domain/money';
 import { capReliefClaims } from '@/domain/reliefs';
+import type { ReliefClaim } from '@/domain/types';
 import { useAllReliefClaims } from '@/hooks/useAllReliefClaims';
 import { useExpenses } from '@/hooks/useExpenses';
 import { useProfile } from '@/hooks/useProfile';
@@ -27,7 +28,7 @@ export default function ReliefPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { year, data } = useTaxYear();
   const def = data.reliefs.find((r) => r.id === id);
-  const { data: allClaims, manual, add, remove } = useAllReliefClaims(year);
+  const { data: allClaims, manual, add, update, remove } = useAllReliefClaims(year);
   const { data: expenses } = useExpenses();
   const { data: profile } = useProfile();
   const summary = useMemo(() => capReliefClaims(allClaims, data.reliefs), [allClaims, data]);
@@ -37,6 +38,7 @@ export default function ReliefPage() {
   const [receiptUri, setReceiptUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   if (!def) {
     return (
@@ -77,15 +79,31 @@ export default function ReliefPage() {
     }
   }
 
-  async function addClaim() {
+  function resetForm() {
+    setEditingId(null);
+    setAmountText('');
+    setNote('');
+    setReceiptUri(null);
+    setError(null);
+  }
+
+  function startEdit(claim: ReliefClaim) {
+    setEditingId(claim.id);
+    setAmountText(senToInput(claim.amount));
+    setNote(claim.note);
+    setReceiptUri(claim.receiptUri);
+    setError(null);
+  }
+
+  async function saveClaim() {
     if (!def || amount === null || amount <= 0 || busy) return;
     setBusy(true);
     setError(null);
     try {
-      await add({ reliefId: def.id, year, amount, receiptUri, note: note.trim() });
-      setAmountText('');
-      setNote('');
-      setReceiptUri(null);
+      const editing = manualClaims.find((claim) => claim.id === editingId);
+      if (editing) await update({ ...editing, amount, receiptUri, note: note.trim() });
+      else await add({ reliefId: def.id, year, amount, receiptUri, note: note.trim() });
+      resetForm();
     } catch {
       setError(t('common.saveFailed'));
     } finally {
@@ -101,8 +119,31 @@ export default function ReliefPage() {
     </View>
   );
 
+  const canSave = amount !== null && amount > 0 && !busy;
+  const footer = (
+    <View style={{ gap: 8 }}>
+      {error ? (
+        <AppText variant="small" tone="negative">
+          {error}
+        </AppText>
+      ) : null}
+      {editingId !== null ? (
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={{ flex: 2 }}>
+            <Button title={t('common.save')} onPress={saveClaim} disabled={!canSave} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button title={t('common.cancel')} variant="secondary" onPress={resetForm} disabled={busy} />
+          </View>
+        </View>
+      ) : (
+        <Button title={t('tax.addClaim')} onPress={saveClaim} disabled={!canSave} />
+      )}
+    </View>
+  );
+
   return (
-    <Screen>
+    <Screen footer={footer}>
       <BackButton />
       <View style={{ gap: 4 }}>
         <AppText variant="title">{reliefLabel(def)}</AppText>
@@ -197,6 +238,11 @@ export default function ReliefPage() {
                 <AppText variant="bodyStrong">{formatRM(claim.amount)}</AppText>
               </View>
               {def.requiresReceipt && !claim.receiptUri ? missingBadge : null}
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flex: 1 }}>
+              <Button title={t('common.edit')} variant="secondary" onPress={() => startEdit(claim)} disabled={busy} />
+              </View>
+              <View style={{ flex: 1 }}>
               <Button
                 title={t('common.delete')}
                 variant="secondary"
@@ -204,14 +250,22 @@ export default function ReliefPage() {
                   const ok = await confirmDelete(
                     t('confirm.deleteClaim'), t('confirm.deleteClaimBody', { amount: formatRM(claim.amount) }), t('common.delete'), t('common.cancel'),
                   );
-                  if (ok) remove(claim.id).catch(() => {});
+                  if (ok) {
+                    if (editingId === claim.id) resetForm();
+                    remove(claim.id).catch(() => {});
+                  }
                 }}
               />
+              </View>
+              </View>
             </View>
           ))}
         </View>
       ) : null}
 
+      {editingId !== null ? (
+        <AppText variant="section">{t('tax.editClaim')}</AppText>
+      ) : null}
       <AmountInput label={t('common.amount')} value={amountText} onChange={(text) => setAmountText(text)} />
       <View style={{ gap: 8 }}>
         <AppText variant="smallStrong">{t('common.note')}</AppText>
@@ -233,13 +287,7 @@ export default function ReliefPage() {
           }}
         />
       </View>
-      {def.requiresReceipt ? <ReceiptField uri={receiptUri} onChange={setReceiptUri} /> : null}
-      {error ? (
-        <AppText variant="small" tone="negative">
-          {error}
-        </AppText>
-      ) : null}
-      <Button title={t('tax.addClaim')} onPress={addClaim} disabled={amount === null || amount <= 0 || busy} />
+      <ReceiptField uri={receiptUri} onChange={setReceiptUri} />
     </Screen>
   );
 }
