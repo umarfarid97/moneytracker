@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { formatRM, parseRM } from '@/domain/money';
-import { normalizeName, sameName, splitBill, splitTransfers, type SplitMode } from '@/domain/owed';
+import { normalizeName, sameName, splitBill, splitTransfers, type SplitBill, type SplitMode } from '@/domain/owed';
 import type { Category } from '@/domain/types';
 import { TextField } from '@/features/wealth/TextField';
 import { t } from '@/i18n/t';
@@ -23,12 +23,18 @@ export type SplitInput = {
   paid: { name: string; amount: number }[];
   /** Category to record my share as spending under, or null to record nothing. */
   categoryId: number | null;
+  /** How it was split and what was typed for each of `parts`, kept so the bill can be edited. */
+  mode: SplitMode;
+  typed: string[];
+  myShares: string;
 };
 
 type Props = {
   /** People in the project. */
   people: string[];
   categories: Category[];
+  /** A bill being edited: the sheet starts with its values and does not record spending again. */
+  existing?: { bill: SplitBill; note: string } | null;
   onClose: () => void;
   onSave: (input: SplitInput) => Promise<void>;
 };
@@ -44,19 +50,24 @@ function valueOf(mode: SplitMode, text: string): number | null {
 }
 
 /** Split a bill between you and friends, paid by you, one of them or several: equally, or with a different amount, percent or share for each. */
-export function SplitSheet({ people, categories, onClose, onSave }: Props) {
-  const [total, setTotal] = useState('');
-  const [mode, setMode] = useState<SplitMode>('equal');
-  const [chosen, setChosen] = useState<string[]>([]);
+export function SplitSheet({ people, categories, existing = null, onClose, onSave }: Props) {
+  const old = existing?.bill ?? null;
+  const [total, setTotal] = useState(old ? (old.total / 100).toFixed(2) : '');
+  const [mode, setMode] = useState<SplitMode>(old?.mode ?? 'equal');
+  const [chosen, setChosen] = useState<string[]>(old ? old.parts.map((p) => p.name) : []);
   // What was typed for each person, kept per mode so switching back does not lose it.
-  const [typed, setTyped] = useState<Record<string, string>>({});
-  const [myShares, setMyShares] = useState('1');
+  const [typed, setTyped] = useState<Record<string, string>>(
+    old ? Object.fromEntries(old.parts.map((p, i) => [`${old.mode}|${p.name.toLowerCase()}`, old.typed[i] ?? ''])) : {},
+  );
+  const [myShares, setMyShares] = useState(old?.myShares ?? '1');
   const [extra, setExtra] = useState('');
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState(existing?.note ?? '');
   // Who paid ('' is you). With more than one payer, each types what they put in.
-  const [payers, setPayers] = useState<string[]>(['']);
-  const [several, setSeveral] = useState(false);
-  const [paidTyped, setPaidTyped] = useState<Record<string, string>>({});
+  const [payers, setPayers] = useState<string[]>(old ? old.paid.map((p) => p.name) : ['']);
+  const [several, setSeveral] = useState((old?.paid.length ?? 1) > 1);
+  const [paidTyped, setPaidTyped] = useState<Record<string, string>>(
+    old && old.paid.length > 1 ? Object.fromEntries(old.paid.map((p) => [p.name.toLowerCase(), (p.amount / 100).toFixed(2)])) : {},
+  );
   const [record, setRecord] = useState(false);
   const [categoryId, setCategoryId] = useState<number | null>(categories[0]?.id ?? null);
   const [error, setError] = useState<string | null>(null);
@@ -107,7 +118,8 @@ export function SplitSheet({ people, categories, onClose, onSave }: Props) {
       await onSave({
         total: sen, parts: result.parts, mine: result.mine, note: note.trim(),
         paid: (paid ?? []).map((p) => ({ name: p.name, amount: p.amount ?? 0 })),
-        categoryId: record ? categoryId : null,
+        categoryId: record && !old ? categoryId : null,
+        mode, myShares, typed: chosen.map((name) => typed[key(name)] ?? ''),
       });
       onClose();
     } catch {
@@ -118,7 +130,7 @@ export function SplitSheet({ people, categories, onClose, onSave }: Props) {
   }
 
   return (
-    <Sheet visible title={t('split.title')} onClose={onClose}>
+    <Sheet visible title={t(old ? 'bill.editTitle' : 'split.title')} onClose={onClose}>
       <View style={{ gap: 16 }}>
         <AmountInput label={t('split.total')} value={total} onChange={setTotal} compact autoFocus />
         <TextField label={t('split.note')} value={note} onChange={setNote} maxLength={80} />
@@ -243,8 +255,8 @@ export function SplitSheet({ people, categories, onClose, onSave }: Props) {
           <AppText variant="small" tone="muted">{t('split.needPeople')}</AppText>
         )}
 
-        <Chip label={t('split.recordMine')} selected={record} onPress={() => setRecord((r) => !r)} />
-        {record ? (
+        {old ? null : <Chip label={t('split.recordMine')} selected={record} onPress={() => setRecord((r) => !r)} />}
+        {record && !old ? (
           <View style={{ gap: 8 }}>
             <AppText variant="eyebrow" tone="muted">{t('split.category')}</AppText>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>

@@ -219,6 +219,55 @@ describe('A book', () => {
     await waitFor(() => expect(screen.getByTestId('project-iowe').props.children).toEqual(['You owe', ': ', 'RM 15.00']));
   });
 
+  test('a split bill shows once with its total, payers and share, owes rows under it; editing and deleting act on the whole bill', async () => {
+    const db = await freshDb();
+    const id = await trip(db, 'Danish\nAyang\nBunga');
+    await renderWithData(db, <Project />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Split a bill' })).toBeTruthy());
+    await press('Split a bill');
+    await type('Total bill', '100');
+    await type('What was it for?', 'Makan shawarma');
+    await pressTop('Danish');
+    await pressTop('Ayang');
+    await pressTop('Bunga');
+    await press('Several people paid');
+    await press('Paid by Danish');
+    await type('Amount paid by Me', '65');
+    await type('Amount paid by Danish', '35');
+    await press('Save split');
+
+    await waitFor(() => expect(screen.getAllByTestId('split-bill')).toHaveLength(1));
+    expect(screen.getByText('Makan shawarma')).toBeTruthy();
+    expect(screen.getByText('RM 100.00')).toBeTruthy();
+    expect(screen.getByText(/Paid by You RM 65.00 \+ Danish RM 35.00/)).toBeTruthy();
+    expect(screen.getByText('Split equally among 4 · RM 25.00 each')).toBeTruthy();
+    // The owes rows are tucked under the bill until it is opened.
+    expect(screen.queryByText('Ayang owes you RM 25.00')).toBeNull();
+    await press('Makan shawarma, RM 100.00');
+    expect(screen.getByText('Ayang owes you RM 25.00')).toBeTruthy();
+    expect(screen.getByText('Bunga owes you RM 15.00')).toBeTruthy();
+    expect(screen.getByText('Bunga owes Danish RM 10.00')).toBeTruthy();
+    expect(await db.all('SELECT DISTINCT bill FROM owed_entries')).toHaveLength(1);
+
+    // Editing replaces every entry of the bill.
+    await press('Edit this bill');
+    await type('Total bill', '200');
+    await type('Amount paid by Me', '130');
+    await type('Amount paid by Danish', '70');
+    await press('Save split');
+    await waitFor(() => expect(screen.getByText('RM 200.00')).toBeTruthy());
+    expect(screen.getAllByTestId('split-bill')).toHaveLength(1);
+    expect(await db.all('SELECT person, kind, amount, counter FROM owed_entries ORDER BY person, counter')).toEqual([
+      { person: 'Ayang', kind: 'lent', amount: 5000, counter: '' },
+      { person: 'Bunga', kind: 'lent', amount: 3000, counter: '' },
+      { person: 'Bunga', kind: 'lent', amount: 2000, counter: 'Danish' },
+    ]);
+
+    await press('Delete this bill');
+    await waitFor(() => expect(screen.queryAllByTestId('split-bill')).toHaveLength(0));
+    expect(await db.all('SELECT id FROM owed_entries WHERE project_id = ?', [id])).toEqual([]);
+  });
+
   test('percent and shares split the bill by the numbers typed', async () => {
     const db = await freshDb();
     await trip(db, 'Aina');

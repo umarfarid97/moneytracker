@@ -3,8 +3,9 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { shortDate } from '@/domain/dates';
 import { formatRM } from '@/domain/money';
-import { entryOf, isDefaultProject, normalizeName, sameName, splitTransfers, transferOf, type OwedEntry, type Transfer } from '@/domain/owed';
+import { billPeople, encodeBill, entryOf, groupEntries, isDefaultProject, normalizeName, sameName, splitTransfers, transferOf, type EntryItem, type OwedEntry, type Transfer } from '@/domain/owed';
 import { projectName } from '@/features/owed/projectName';
+import { BillCard } from '@/features/owed/BillCard';
 import { OwedSheet } from '@/features/owed/OwedSheet';
 import { payText, transferText, whoName } from '@/features/owed/sentences';
 import { ProjectSheet } from '@/features/owed/ProjectSheet';
@@ -27,7 +28,7 @@ import { Screen } from '@/ui/Screen';
 
 type Sheet =
   | { type: 'entry'; key: number; entry: OwedEntry | null }
-  | { type: 'split'; key: number }
+  | { type: 'split'; key: number; bill: Extract<EntryItem, { type: 'bill' }> | null }
   | { type: 'edit'; key: number }
   | { type: 'share'; key: number };
 
@@ -57,13 +58,21 @@ export default function Project() {
     if (n !== '' && !summary!.everyone.some((m) => sameName(m, n))) await projectOps.update({ ...project, members: [...project.members, n] });
   }
 
-  async function saveSplit(input: SplitInput) {
+  async function saveSplit(input: SplitInput, replacing: Extract<EntryItem, { type: 'bill' }> | null) {
     for (const part of input.parts) await addMember(part.name);
     for (const p of input.paid) await addMember(p.name);
+    // Every entry of the bill carries the original bill, so the list can show them as one item.
+    const bill = encodeBill({
+      id: replacing?.bill.id ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
+      total: input.total, paid: input.paid, parts: input.parts, mine: input.mine,
+      mode: input.mode, typed: input.typed, myShares: input.myShares,
+    });
+    const date = replacing?.date ?? today;
     // Everyone who paid more than their part is owed by those who paid less; one entry per payment that squares it.
     for (const tr of splitTransfers({ paid: input.paid, parts: input.parts, mine: input.mine })) {
-      await add({ ...entryOf(tr), date: today, note: input.note, projectId });
+      await add({ ...entryOf(tr), date, note: input.note, projectId, bill });
     }
+    if (replacing) for (const e of replacing.entries) await remove(e.id);
     if (input.categoryId !== null && input.mine > 0) {
       await addExpense({ amount: input.mine, categoryId: input.categoryId, date: today, note: input.note || title, receiptUri: null });
     }
@@ -79,12 +88,42 @@ export default function Project() {
     return true;
   }
 
+  async function removeBill(item: Extract<EntryItem, { type: 'bill' }>) {
+    if (!(await confirmDelete(t('bill.deleteTitle'), t('bill.deleteMessage'), t('common.delete'), t('common.cancel')))) return;
+    for (const e of item.entries) await remove(e.id);
+  }
+
   async function removeProject(): Promise<boolean> {
     if (!(await confirmDelete(t('project.deleteTitle'), t('project.deleteMessage'), t('common.delete'), t('common.cancel')))) return false;
     await projectOps.remove(project.id);
     router.back();
     return false;
   }
+
+  const entryRow = (e: OwedEntry) => (
+    <PressableScale
+      key={e.id}
+      accessibilityRole="button"
+      accessibilityLabel={transferText(transferOf(e))}
+      onPress={() => setSheet({ type: 'entry', key: Date.now(), entry: e })}
+      pressedScale={0.99}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
+    >
+      <View style={{ flex: 1 }}>
+        <AppText variant="bodyStrong">{transferText(transferOf(e))}</AppText>
+        <AppText variant="small" tone="muted">{[shortDate(e.date), e.note].filter(Boolean).join(' · ')}</AppText>
+      </View>
+      {(() => {
+        const tr = transferOf(e);
+        const gain = tr.from === '' ? 1 : tr.to === '' ? -1 : 0;
+        return (
+          <AppText variant="bodyStrong" tone={gain > 0 ? 'positive' : gain < 0 ? 'negative' : 'muted'}>
+            {gain > 0 ? '+' : gain < 0 ? '-' : ''}{formatRM(e.amount)}
+          </AppText>
+        );
+      })()}
+    </PressableScale>
+  );
 
   const dates = project.startDate
     ? `${shortDate(project.startDate)}${project.endDate && project.endDate !== project.startDate ? ` - ${shortDate(project.endDate)}` : ''}`
@@ -125,7 +164,7 @@ export default function Project() {
           <Button title={t('owed.add')} onPress={() => setSheet({ type: 'entry', key: Date.now(), entry: null })} />
         </View>
         <View style={{ flex: 1 }}>
-          <Button title={t('owed.split')} variant="secondary" onPress={() => setSheet({ type: 'split', key: Date.now() })} />
+          <Button title={t('owed.split')} variant="secondary" onPress={() => setSheet({ type: 'split', key: Date.now(), bill: null })} />
         </View>
       </View>
       <Button title={t('project.share')} variant="secondary" onPress={() => setSheet({ type: 'share', key: Date.now() })} />
@@ -134,30 +173,14 @@ export default function Project() {
         <View style={{ gap: 8 }}>
           <AppText variant="eyebrow" tone="muted">{t('project.entries')}</AppText>
           <Card style={{ gap: 14 }}>
-            {summary.entries.map((e) => (
-              <PressableScale
-                key={e.id}
-                accessibilityRole="button"
-                accessibilityLabel={transferText(transferOf(e))}
-                onPress={() => setSheet({ type: 'entry', key: Date.now(), entry: e })}
-                pressedScale={0.99}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
-              >
-                <View style={{ flex: 1 }}>
-                  <AppText variant="bodyStrong">{transferText(transferOf(e))}</AppText>
-                  <AppText variant="small" tone="muted">{[shortDate(e.date), e.note].filter(Boolean).join(' · ')}</AppText>
-                </View>
-                {(() => {
-                  const tr = transferOf(e);
-                  const gain = tr.from === '' ? 1 : tr.to === '' ? -1 : 0;
-                  return (
-                    <AppText variant="bodyStrong" tone={gain > 0 ? 'positive' : gain < 0 ? 'negative' : 'muted'}>
-                      {gain > 0 ? '+' : gain < 0 ? '-' : ''}{formatRM(e.amount)}
-                    </AppText>
-                  );
-                })()}
-              </PressableScale>
-            ))}
+            {groupEntries(summary.entries).map((item) => item.type === 'bill' ? (
+              <BillCard
+                key={item.bill.id}
+                item={item}
+                onEdit={() => setSheet({ type: 'split', key: Date.now(), bill: item })}
+                onDelete={() => removeBill(item)}
+              />
+            ) : entryRow(item.entry))}
           </Card>
         </View>
       ) : null}
@@ -209,7 +232,14 @@ export default function Project() {
         />
       ) : null}
       {sheet?.type === 'split' ? (
-        <SplitSheet key={sheet.key} people={summary.everyone} categories={categories} onClose={() => setSheet(null)} onSave={saveSplit} />
+        <SplitSheet
+          key={sheet.key}
+          people={summary.everyone}
+          categories={categories}
+          existing={sheet.bill ? { bill: sheet.bill.bill, note: sheet.bill.note } : null}
+          onClose={() => setSheet(null)}
+          onSave={(input) => saveSplit(input, sheet.bill)}
+        />
       ) : null}
       {sheet?.type === 'edit' ? (
         <ProjectSheet

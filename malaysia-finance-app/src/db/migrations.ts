@@ -142,6 +142,10 @@ export const MIGRATIONS: string[] = [
   `
   ALTER TABLE profile ADD COLUMN default_currency TEXT NOT NULL DEFAULT 'MYR';
   `,
+  // 14: the original bill behind a split (JSON, the same on each entry it produced); '' for a plain entry
+  `
+  ALTER TABLE owed_entries ADD COLUMN bill TEXT NOT NULL DEFAULT '';
+  `,
 ];
 
 function projectsMigration(): string {
