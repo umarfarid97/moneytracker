@@ -43,6 +43,18 @@ describe('Spending: pending bills', () => {
     expect(screen.queryByText('Gym')).toBeNull();
   });
 
+  test('the Settings switch hides pending bills and the Filters toggle reflects it', async () => {
+    const db = await freshDb();
+    await addBill(db, 'Internet', 30);
+    await db.run("INSERT INTO app_settings (key, value) VALUES ('showPendingBills', '0')");
+    await renderWithData(db, <Spending />);
+    await waitFor(() => expect(screen.getByText('October 2026')).toBeTruthy());
+    await waitFor(() => expect(screen.queryByTestId('pending-row')).toBeNull());
+    await fireEvent.press(screen.getByText('Filters'));
+    await fireEvent.press(screen.getByText('Show pending bills'));
+    await waitFor(() => expect(screen.getByTestId('pending-row')).toBeTruthy());
+  });
+
   test('pending bills can be hidden from the filters', async () => {
     const db = await freshDb();
     await addBill(db, 'Internet', 30);

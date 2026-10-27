@@ -19,6 +19,7 @@ import { useData } from '@/hooks/DataProvider';
 import { useCommitments } from '@/hooks/useCommitments';
 import { useExpenses } from '@/hooks/useExpenses';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+import { useShowPending } from '@/hooks/useShowPending';
 import { useToday } from '@/hooks/useToday';
 import { methodLabel } from '@/i18n/content';
 import { t } from '@/i18n/t';
@@ -171,7 +172,7 @@ export default function Spending() {
   const { data: expenses, remove } = useExpenses();
   const { payBill, profile } = useData();
   const { data: commitments } = useCommitments();
-  const [showPending, setShowPending] = useState(true);
+  const [showPending, setShowPending] = useShowPending();
   const [pay, setPay] = useState<{ bill: PendingBill | null; nonce: number }>({ bill: null, nonce: 0 });
   const { data: categories } = useCategories();
   const { data: methods } = usePaymentMethods();
@@ -446,7 +447,7 @@ export default function Spending() {
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             <Chip label={t('spending.taggedOnly')} selected={filters.taggedOnly} onPress={() => set({ taggedOnly: !filters.taggedOnly })} />
-            <Chip label={t('spending.showPending')} selected={showPending} onPress={() => setShowPending((v) => !v)} />
+            <Chip label={t('spending.showPending')} selected={showPending} onPress={() => setShowPending(!showPending)} />
             <Chip label={t('spending.missingReceipt')} selected={filters.missingReceipt} onPress={() => set({ missingReceipt: !filters.missingReceipt })} />
           </View>
           <Button title={t('spending.clear')} variant="secondary" onPress={() => setFilters((f) => ({ ...EMPTY_FILTERS, text: f.text }))} />

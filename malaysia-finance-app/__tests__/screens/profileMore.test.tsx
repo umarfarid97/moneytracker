@@ -67,6 +67,16 @@ describe('More tab', () => {
     }
   });
 
+  test('Settings has a switch for pending bills in Spending, on by default, remembered in the database', async () => {
+    const db = await freshDb();
+    await renderWithData(db, <Settings />);
+    await waitFor(() => expect(screen.getByLabelText('Show pending bills in Spending').props.value).toBe(true));
+    await fireEvent(screen.getByLabelText('Show pending bills in Spending'), 'valueChange', false);
+    await waitFor(async () =>
+      expect(await db.all("SELECT value FROM app_settings WHERE key = 'showPendingBills'")).toEqual([{ value: '0' }]));
+    expect(screen.getByLabelText('Show pending bills in Spending').props.value).toBe(false);
+  });
+
   test('Settings shows appearance and language as rows with the current value, and picks from a sheet', async () => {
     const db = await freshDb();
     await renderWithData(db, <Settings />);
