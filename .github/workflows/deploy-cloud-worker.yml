@@ -43,11 +43,14 @@ jobs:
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
         run: |
-          if [ -z "$RESEND_API_KEY" ]; then
-            echo "::error::The RESEND_API_KEY repository secret is empty or missing (Settings > Secrets and variables > Actions)."
+          if [ -n "$RESEND_API_KEY" ]; then
+            echo "$RESEND_API_KEY" | npx wrangler secret put RESEND_API_KEY
+          elif npx wrangler secret list | grep -q '"RESEND_API_KEY"'; then
+            echo "RESEND_API_KEY repository secret is empty; keeping the key already stored on Cloudflare."
+          else
+            echo "::error::No RESEND_API_KEY: add it as a repository secret (Settings > Secrets and variables > Actions)."
             exit 1
           fi
-          echo "$RESEND_API_KEY" | npx wrangler secret put RESEND_API_KEY
           # PEPPER is made once; changing it later would make every account look new.
           if ! npx wrangler secret list | grep -q '"PEPPER"'; then
             openssl rand -hex 32 | npx wrangler secret put PEPPER
