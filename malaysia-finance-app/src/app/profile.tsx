@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { formatRM, parsePercent, parseRM, senToInput } from '@/domain/money';
-import { estimateNetMonthly } from '@/domain/netpay';
+import { estimateEis, estimateNetMonthly, estimateSocso } from '@/domain/netpay';
 import { useIncome } from '@/hooks/useIncome';
 import { useProfile } from '@/hooks/useProfile';
 import { useToday } from '@/hooks/useToday';
@@ -33,6 +33,7 @@ export default function Profile() {
   const [eis, setEis] = useState(profile.eisMonthly > 0 ? senToInput(profile.eisMonthly) : '');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const optional = (text: string) => (text.trim() === '' ? 0 : parseRM(text));
   const grossSen = optional(gross);
@@ -60,7 +61,8 @@ export default function Profile() {
     setError(null);
     try {
       await save(draft);
-      router.back();
+      setSaved(true);
+      setTimeout(() => router.back(), 700);
     } catch {
       setError(t('common.saveFailed'));
     } finally {
@@ -113,14 +115,25 @@ export default function Profile() {
           style={field}
         />
       </View>
-      <AmountInput label={t('profile.socso')} value={socso} onChange={(text) => setSocso(text)} />
-      <AmountInput label={t('profile.eis')} value={eis} onChange={(text) => setEis(text)} />
+      <View style={{ gap: 4 }}>
+        <AmountInput label={t('profile.socso')} value={socso} onChange={(text) => setSocso(text)} placeholder={senToInput(estimateSocso(grossSen ?? 0))} />
+        <AppText variant="small" tone="muted">{t('profile.deductionHint')}</AppText>
+      </View>
+      <View style={{ gap: 4 }}>
+        <AmountInput label={t('profile.eis')} value={eis} onChange={(text) => setEis(text)} placeholder={senToInput(estimateEis(grossSen ?? 0))} />
+        <AppText variant="small" tone="muted">{t('profile.deductionHint')}</AppText>
+      </View>
       {error ? (
         <AppText variant="small" tone="negative">
           {error}
         </AppText>
       ) : null}
-      <Button title={t('common.save')} onPress={onSave} disabled={!valid || busy} />
+      {saved ? (
+        <AppText variant="smallStrong" tone="positive">
+          {t('profile.saved')}
+        </AppText>
+      ) : null}
+      <Button title={t('common.save')} onPress={onSave} disabled={!valid || busy || saved} />
     </Screen>
   );
 }

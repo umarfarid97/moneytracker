@@ -17,6 +17,7 @@ import { useToday } from '@/hooks/useToday';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
+import { GET_STARTED_MAX_SPENDINGS, GetStarted } from '@/features/onboarding/GetStarted';
 import { HeroCard, onHero } from '@/ui/HeroCard';
 import { Screen } from '@/ui/Screen';
 import { radius } from '@/ui/theme';
@@ -54,7 +55,7 @@ export default function Home() {
         </AppText>
         {home.today ? (
           <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: onHero.chip, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 5, marginTop: 4 }}>
-            <Ionicons name={home.today.left >= 0 ? 'checkmark-circle' : 'alert-circle'} size={16} color={onHero.ink} />
+            <Ionicons name={home.today.left >= 0 ? 'checkmark-circle' : 'information-circle'} size={16} color={onHero.ink} />
             <AppText variant="smallStrong" color={onHero.ink}>
               {home.today.left >= 0
                 ? t('home.todayLeft', { amount: formatRM(home.today.left) })
@@ -96,6 +97,9 @@ export default function Home() {
         </View>
       )}
       </HeroCard>
+      {(balance === null || commitments.length === 0 || expenses.length === 0) && expenses.length < GET_STARTED_MAX_SPENDINGS ? (
+        <GetStarted hasSalary={balance !== null} hasBill={commitments.length > 0} hasSpending={expenses.length > 0} />
+      ) : null}
       {home.tiles.length > 0 ? (
         <>
           <AppText variant="section">{t('home.categories')}</AppText>

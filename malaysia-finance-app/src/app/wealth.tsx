@@ -48,6 +48,9 @@ export default function Wealth() {
           <AppText variant="eyebrow" color={onHero.soft}>{t('netWorth.title')}</AppText>
           <AppText testID="wealth-total" variant="kpi" color={onHero.ink}>{formatRM(nw.net)}</AppText>
           <AppText variant="small" tone="muted">{t('netWorth.hint')}</AppText>
+          {savings.length === 0 && nw.totalLiabilities > nw.totalAssets ? (
+            <AppText variant="small" tone="muted">{t('netWorth.addAssets')}</AppText>
+          ) : null}
         </HeroCard>
       </PressableScale>
       <Card style={{ padding: 0, paddingHorizontal: 14 }}>

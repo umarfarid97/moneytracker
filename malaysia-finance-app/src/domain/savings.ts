@@ -23,7 +23,7 @@ export const SAVINGS_KINDS: { kind: SavingsKind; label: string; icon: string; de
   { kind: 'hajj', label: 'Hajj fund', icon: 'airplane', defaultName: 'Hajj fund' },
   { kind: 'prs', label: 'PRS', icon: 'umbrella', defaultName: 'PRS' },
   { kind: 'unit_trust', label: 'Unit trust', icon: 'pie-chart', defaultName: 'Unit trust' },
-  { kind: 'other', label: 'Other', icon: 'wallet', defaultName: '' },
+  { kind: 'other', label: 'Bank, cash or other', icon: 'wallet', defaultName: '' },
 ];
 
 /** Part of the target reached, 0 to 1, or null when there is no target. */

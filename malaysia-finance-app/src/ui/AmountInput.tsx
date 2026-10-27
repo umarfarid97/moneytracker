@@ -24,9 +24,11 @@ type Props = {
   currency?: string;
   /** Makes the currency tag tappable, e.g. to choose another currency. */
   onCurrencyPress?: () => void;
+  /** Greyed hint in the empty field; defaults to the standard 0.00 hint. */
+  placeholder?: string;
 };
 
-export function AmountInput({ label, value, onChange, autoFocus, compact = false, large = false, currency = 'RM', onCurrencyPress }: Props) {
+export function AmountInput({ label, value, onChange, autoFocus, compact = false, large = false, currency = 'RM', onCurrencyPress, placeholder }: Props) {
   const { c, scheme } = useTheme();
   const [focused, setFocused] = useState(false);
   const invalid = value.trim() !== '' && parseRM(value) === null;
@@ -77,7 +79,7 @@ export function AmountInput({ label, value, onChange, autoFocus, compact = false
           }}
           keyboardType="decimal-pad"
           inputMode="decimal"
-          placeholder={t('amount.placeholder')}
+          placeholder={placeholder ?? t('amount.placeholder')}
           placeholderTextColor={c.control}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}

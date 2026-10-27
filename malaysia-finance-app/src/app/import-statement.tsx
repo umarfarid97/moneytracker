@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { extractPdfLines } from '@/domain/pdfText';
 import { formatRM, senToInput } from '@/domain/money';
-import { todayKL } from '@/domain/dates';
+import { shortDate, todayKL } from '@/domain/dates';
 import { buildImportItems, mergeIntoPrevious, toNewExpenses, type ImportItem } from '@/domain/statementImport';
 import { parseStatementCsv, parseStatementLines, type StatementRow } from '@/domain/statementParse';
 import { useCategories } from '@/hooks/useCategories';
@@ -61,12 +61,13 @@ export default function ImportStatement() {
       let sourceText: string;
       if (file.kind === 'csv') {
         rows = parseStatementCsv(file.text, year);
-        sourceText = file.text.slice(0, 2000);
+        // Only the lines above the transactions name the bank; a merchant like "TNG" in a transaction must not decide the payment method.
+        sourceText = file.text.split('\n').filter((line) => !/\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}|\d{4}-\d{2}-\d{2}/.test(line)).slice(0, 5).join('\n');
       } else {
         const lines = extractPdfLines(file.bytes);
         if (lines.length === 0) return setPhase({ step: 'pick', error: t('import.noText') });
         rows = parseStatementLines(lines, year);
-        sourceText = lines.slice(0, 40).join('\n');
+        sourceText = lines.filter((line) => !/\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}|\d{4}-\d{2}-\d{2}/.test(line)).slice(0, 10).join('\n');
       }
       if (rows.length === 0) return setPhase({ step: 'pick', error: t('import.empty') });
       const { items, skippedIn } = buildImportItems(rows, { categories, methods, existing: expenses, source: file.name, sourceText });
@@ -209,9 +210,10 @@ export default function ImportStatement() {
                 >
                   <AppText variant="bodyStrong" numberOfLines={open ? undefined : 2}>{shownNote}</AppText>
                   <AppText variant="small" tone="muted">
-                    {item.date} · {categoryName(item.categoryId)}{item.paymentMethodId !== null ? ` · ${methodName(item.paymentMethodId)}` : ''}
+                    {shortDate(item.date)} · {categoryName(item.categoryId)}{item.paymentMethodId !== null ? ` · ${methodName(item.paymentMethodId)}` : ''}
                   </AppText>
                   {item.duplicate ? <AppText variant="small" tone="warning">{t('import.possibleDuplicate')}</AppText> : null}
+                  {item.topUp ? <AppText variant="small" tone="warning">{t('import.topUp')}</AppText> : null}
                 </PressableScale>
                 <AppText variant="bodyStrong" tone="negative">{formatRM(item.amount)}</AppText>
               </View>

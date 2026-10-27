@@ -15,7 +15,15 @@ export type ImportItem = {
   selected: boolean;
   /** An existing spending (or an earlier line in the same file) on the same day for the same amount. */
   duplicate: boolean;
+  /** Looks like moving money to an e-wallet (a reload or top-up), not spending; left unticked. */
+  topUp: boolean;
 };
+
+/** An e-wallet reload or top-up: the money is spent later from the wallet, so counting it too would double up. */
+const TOP_UP = /((reload|top\s*-?\s*up).*(tng|touch\s*n\s*go|grabpay|boost|shopeepay|e-?wallet)|(tng|touch\s*n\s*go|grabpay|boost|shopeepay|e-?wallet).*(reload|top\s*-?\s*up))/i;
+
+/** Short names that should stay in capitals when a bank line is softened. */
+const ACRONYMS = /\b(klcc|kl|tng|pj|jb|usj|sdn|bhd|atm|tnb|iwk|mrt|lrt|ktm|kfc|my|qr|uob|cimb|rhb|ocbc|hsbc|bsn|mae|sst|ssm|dbkl|mbpj|mbsa|ptptn|kwsp|epf|socso|jompay|duitnow)\b/gi;
 
 /** Words in a statement line and the default category that usually fits (names as in the default categories). */
 const KEYWORDS: { category: string; words: RegExp }[] = [
@@ -49,7 +57,7 @@ export function tidyDescription(text: string): string {
   const shown = base === base.toUpperCase()
     ? base.toLowerCase().replace(/(^|[\s(/-])([a-z])/g, (_m, p: string, c: string) => p + c.toUpperCase())
     : base;
-  return shown.slice(0, 80);
+  return shown.replace(ACRONYMS, (w) => w.toUpperCase()).slice(0, 80);
 }
 
 /**
@@ -114,6 +122,7 @@ export function buildImportItems(rows: StatementRow[], ctx: Context): { items: I
     const repeatInFile = seenInFile.has(fileKey);
     seenInFile.add(fileKey);
     const duplicate = repeatInFile || isDuplicate(row, ctx.existing);
+    const topUp = TOP_UP.test(row.description);
     items.push({
       key: `r${i}`,
       date: row.date,
@@ -121,8 +130,9 @@ export function buildImportItems(rows: StatementRow[], ctx: Context): { items: I
       amount: row.amount,
       categoryId: suggestCategory(row.description, ctx.categories, ctx.existing),
       paymentMethodId: methodId,
-      selected: !duplicate,
+      selected: !duplicate && !topUp,
       duplicate,
+      topUp,
     });
   });
   return { items, skippedIn };
@@ -142,6 +152,7 @@ export function mergeIntoPrevious(items: ImportItem[], key: string): ImportItem[
     date: above.date < item.date ? above.date : item.date,
     selected: above.selected || item.selected,
     duplicate: above.duplicate && item.duplicate,
+    topUp: above.topUp && item.topUp,
   };
   return [...items.slice(0, at - 1), merged, ...items.slice(at + 1)];
 }

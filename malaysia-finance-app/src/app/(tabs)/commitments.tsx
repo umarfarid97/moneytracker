@@ -32,6 +32,8 @@ import { Screen } from '@/ui/Screen';
 import { elevation, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
+const LOAN_ICON = { home: 'home', car: 'car', ptptn: 'school', personal: 'cash', bnpl: 'card' } as const;
+
 const KIND_LOOK: Record<CommitmentKind, { icon: 'flash' | 'business' | 'repeat'; color: string }> = {
   bill: { icon: 'flash', color: '#d97706' },
   loan: { icon: 'business', color: '#4f46e5' },
@@ -81,7 +83,8 @@ export default function Commitments() {
   const today = useToday();
   const { payBill } = useData();
   const { data, add, update, remove } = useCommitments();
-  const { data: expenses } = useExpenses();
+  const { data: expenses, remove: removeExpense } = useExpenses();
+  const [justPaid, setJustPaid] = useState<{ id: number; name: string } | null>(null);
   const [sheet, setSheet] = useState<SheetState>({ open: false, editing: null, nonce: 0 });
   const [filter, setFilter] = useState<CommitmentKind | 'all'>('all');
   const [pay, setPay] = useState<PaySheet>({ open: false, bill: null, dueDate: today, nonce: 0 });
@@ -150,7 +153,7 @@ export default function Commitments() {
                 {brandOf(item) ? (
                   <BrandBadge {...brandOf(item)!} size={42} testID={`brand-${brandOf(item)!.id}`} />
                 ) : (
-                  <IconBadge icon={KIND_LOOK[item.kind].icon} color={KIND_LOOK[item.kind].color} size={42} />
+                  <IconBadge icon={item.kind === 'loan' ? LOAN_ICON[item.loanType ?? 'personal'] : KIND_LOOK[item.kind].icon} color={KIND_LOOK[item.kind].color} size={42} />
                 )}
                 {/* The row and the Mark paid action are siblings: buttons must not be nested. */}
                 <Pressable
@@ -233,6 +236,22 @@ export default function Commitments() {
           </AppText>
         ) : null}
       </HeroCard>
+      {justPaid ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, backgroundColor: c.accentSoft, borderRadius: radius.control, paddingHorizontal: 14, paddingVertical: 10 }}>
+          <AppText variant="smallStrong" color={c.accentInk} style={{ flex: 1 }}>{t('commitments.justPaid', { name: justPaid.name })}</AppText>
+          <PressableScale
+            accessibilityRole="button"
+            accessibilityLabel={t('commitments.undo')}
+            hitSlop={8}
+            onPress={() => {
+              removeExpense(justPaid.id).catch(() => {});
+              setJustPaid(null);
+            }}
+          >
+            <AppText variant="bodyStrong" color={c.accent}>{t('commitments.undo')}</AppText>
+          </PressableScale>
+        </View>
+      ) : null}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         <Chip compact label={t('commitments.filter.all')} selected={filter === 'all'} onPress={() => setFilter('all')} />
         {KINDS.map((kind) => (
@@ -240,7 +259,7 @@ export default function Commitments() {
         ))}
       </View>
       {rows.length === 0 ? (
-        <EmptyState icon="calendar-outline" text={t('commitments.none')} />
+        <EmptyState icon="calendar-outline" text={t('commitments.none')} hint={t('commitments.noneHint')} />
       ) : (
         <View style={{ gap: 16 }}>
           {byKind.filter((g) => filter === 'all' || g.kind === filter).map((g) => (
@@ -287,7 +306,9 @@ export default function Commitments() {
         suggested={pay.bill ? nextPayment(pay.bill, loanBalance(pay.bill, expenses)) : null}
         onClose={closePay}
         onConfirm={async (amount) => {
-          if (pay.bill) await payBill(pay.bill, pay.dueDate, { amount, date: today });
+          if (!pay.bill) return;
+          const saved = await payBill(pay.bill, pay.dueDate, { amount, date: today });
+          if (saved) setJustPaid({ id: saved.id, name: pay.bill.name });
         }}
       />
     </Screen>

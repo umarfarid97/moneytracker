@@ -47,6 +47,9 @@ export default function NetWorth() {
         <AppText variant="eyebrow" color={onHero.soft}>{t('netWorth.title')}</AppText>
         <AppText testID="net-worth" variant="kpi" color={onHero.ink}>{formatRM(nw.net)}</AppText>
         <AppText variant="small" tone="muted">{t('netWorth.hint')}</AppText>
+        {savings.length === 0 && nw.totalLiabilities > nw.totalAssets ? (
+          <AppText variant="small" tone="muted">{t('netWorth.addAssets')}</AppText>
+        ) : null}
       </HeroCard>
       {group(t('netWorth.assets'), nw.assets, nw.totalAssets, t('netWorth.noAssets'))}
       {group(t('netWorth.liabilities'), nw.liabilities, nw.totalLiabilities, t('netWorth.noLoans'), true)}

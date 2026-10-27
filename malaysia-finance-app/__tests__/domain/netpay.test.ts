@@ -1,4 +1,4 @@
-import { estimateNetMonthly } from '@/domain/netpay';
+import { estimateEis, estimateNetMonthly, estimateSocso } from '@/domain/netpay';
 import type { Profile } from '@/domain/types';
 
 const base: Profile = {
@@ -8,6 +8,15 @@ const base: Profile = {
 describe('estimateNetMonthly', () => {
   test('gross minus EPF, SOCSO and EIS', () => {
     expect(estimateNetMonthly(base)).toBe(443600);
+  });
+  test('estimates SOCSO and EIS from the salary when left empty', () => {
+    expect(estimateSocso(550000)).toBe(2750);
+    expect(estimateEis(550000)).toBe(1100);
+    expect(estimateNetMonthly({ ...base, grossMonthly: 550000, socsoMonthly: 0, eisMonthly: 0 })).toBe(550000 - 60500 - 2750 - 1100);
+  });
+  test('wages above the ceiling stop adding SOCSO and EIS', () => {
+    expect(estimateSocso(1000000)).toBe(3000);
+    expect(estimateEis(1000000)).toBe(1200);
   });
   test('override wins when set', () => {
     expect(estimateNetMonthly({ ...base, netMonthlyOverride: 420000 })).toBe(420000);

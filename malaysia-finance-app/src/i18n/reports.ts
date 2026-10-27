@@ -13,7 +13,7 @@ export const reportsEn = {
   'reports.average': 'Average a month',
   'reports.busiest': 'Busiest month',
   'reports.biggest': 'Biggest spend',
-  'reports.count': 'Spendings logged',
+  'reports.count': 'Entries logged',
   'reports.exportTitle': 'Export',
   'reports.exportHint': 'This period, its category split and the monthly totals for {year}.',
   'reports.pdf': 'Share as PDF',
@@ -24,6 +24,7 @@ export const reportsEn = {
   'reports.next': 'Later period',
 
   'netWorth.title': 'Net worth',
+  'netWorth.addAssets': 'Cash and bank balances are not counted yet. Add them under Savings & investments (Bank, cash or other) to see your real net worth.',
   'netWorth.hint': 'EPF, savings and investments, less your tracked loans.',
   'netWorth.assets': 'What you own',
   'netWorth.liabilities': 'What you owe',
@@ -63,6 +64,7 @@ export const reportsMs: Record<keyof typeof reportsEn, string> = {
   'reports.next': 'Tempoh lebih lewat',
 
   'netWorth.title': 'Nilai bersih',
+  'netWorth.addAssets': 'Wang tunai dan baki bank belum dikira. Tambah di bawah Simpanan & pelaburan (Bank, tunai atau lain-lain) untuk lihat kekayaan bersih sebenar.',
   'netWorth.hint': 'KWSP, simpanan dan pelaburan, tolak pinjaman yang dijejaki.',
   'netWorth.assets': 'Yang anda miliki',
   'netWorth.liabilities': 'Yang anda hutang',

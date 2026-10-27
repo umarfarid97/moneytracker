@@ -28,6 +28,10 @@ export function Screen({ children, scroll = true, fab = false, compact = false, 
   const pad = compact ? space.gap : space.pad;
   const content = {
     padding: pad,
+    // On a desktop browser the content stays a readable width instead of stretching edge to edge.
+    width: '100%' as const,
+    maxWidth: 1000,
+    alignSelf: 'center' as const,
     gap: compact ? space.m - 2 : space.gap,
     paddingBottom: fab ? 100 : pad,
     ...(footer ? { flexGrow: 1 } : null),

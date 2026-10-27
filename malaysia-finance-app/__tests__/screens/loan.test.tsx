@@ -112,7 +112,7 @@ describe('Loan calculator', () => {
     await db.run("INSERT INTO commitments (name, amount, day_of_month, kind, active) VALUES ('Astro', 15000, 5, 'bill', 1)");
     await db.run("INSERT INTO commitments (name, amount, day_of_month, kind, active) VALUES ('Old', 99999, 5, 'bill', 0)");
     await renderWithData(db, <Loan />);
-    await waitFor(() => expect(screen.getByLabelText('Monthly take-home pay').props.value).toBe('5340.00'));
+    await waitFor(() => expect(screen.getByLabelText('Monthly take-home pay').props.value).toBe('5298.00'));
     expect(screen.getByLabelText('Monthly commitments').props.value).toBe('1350.00');
   });
 });
