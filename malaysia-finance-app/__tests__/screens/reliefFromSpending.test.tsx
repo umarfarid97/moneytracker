@@ -5,7 +5,7 @@ import Relief from '@/app/relief/[id]';
 import { freshDb, renderWithData } from './helpers';
 
 jest.mock('@/hooks/useToday', () => ({ useToday: () => '2025-12-01' }));
-jest.mock('@/receipts', () => ({ pickReceipt: jest.fn(), resolveReceiptUri: (u: string) => u }));
+jest.mock('@/receipts', () => ({ pickReceipt: jest.fn(), resolveReceiptUri: (u: string) => u, useReceiptVersion: () => 0 }));
 const { router, useLocalSearchParams } = jest.requireMock('expo-router');
 
 type TestDb = Awaited<ReturnType<typeof freshDb>>;

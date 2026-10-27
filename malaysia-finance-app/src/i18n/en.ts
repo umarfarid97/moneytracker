@@ -211,6 +211,7 @@ export const en = {
   'receipt.empty': 'No receipt yet. Snap one so it is ready at tax time.',
   'receipt.preview': 'Receipt, full screen',
   'receipt.view': 'View receipt',
+  'receipt.failed': 'Could not attach that photo. Try another one.',
   'receipt.tapToView': 'Tap the photo to see it full size.',
   'confirm.deleteSpending': 'Delete this spending?',
   'confirm.deleteSpendingBody': '{name}, {amount}, will be removed. This cannot be undone.',

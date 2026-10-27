@@ -4,7 +4,7 @@ import { addExpenseRow, CAT, freshDb, renderWithData, setBudgetRow } from './hel
 
 jest.mock('@/hooks/useToday', () => ({ useToday: () => '2026-10-24' }));
 jest.mock('@/notifications', () => ({ notifyBudgetAlert: jest.fn(async () => undefined) }));
-jest.mock('@/receipts', () => ({ pickReceipt: jest.fn(), resolveReceiptUri: (u: string) => u }));
+jest.mock('@/receipts', () => ({ pickReceipt: jest.fn(), resolveReceiptUri: (u: string) => u, useReceiptVersion: () => 0 }));
 const { notifyBudgetAlert } = jest.requireMock('@/notifications');
 const { router, useLocalSearchParams } = jest.requireMock('expo-router');
 

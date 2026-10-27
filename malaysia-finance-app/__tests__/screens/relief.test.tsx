@@ -4,7 +4,7 @@ import { freshDb, renderWithData } from './helpers';
 
 let mockToday = '2025-12-01';
 jest.mock('@/hooks/useToday', () => ({ useToday: () => mockToday }));
-jest.mock('@/receipts', () => ({ pickReceipt: jest.fn(), resolveReceiptUri: (u: string) => u }));
+jest.mock('@/receipts', () => ({ pickReceipt: jest.fn(), resolveReceiptUri: (u: string) => u, useReceiptVersion: () => 0 }));
 const { pickReceipt } = jest.requireMock('@/receipts');
 const { useLocalSearchParams } = jest.requireMock('expo-router');
 

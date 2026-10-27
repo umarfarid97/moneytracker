@@ -197,6 +197,7 @@ export const ms: Record<StringKey, string> = {
   'receipt.empty': 'Belum ada resit. Ambil gambar supaya sedia pada musim cukai.',
   'receipt.preview': 'Resit, skrin penuh',
   'receipt.view': 'Lihat resit',
+  'receipt.failed': 'Gambar itu tidak dapat dilampirkan. Cuba gambar lain.',
   'receipt.tapToView': 'Ketik gambar untuk melihat saiz penuh.',
   'confirm.deleteSpending': 'Padam perbelanjaan ini?',
   'confirm.deleteSpendingBody': '{name}, {amount}, akan dibuang. Tindakan ini tidak boleh dibatalkan.',

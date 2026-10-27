@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
-import { pickReceipt, resolveReceiptUri, type ReceiptSource } from '@/receipts';
+import { pickReceipt, resolveReceiptUri, useReceiptVersion, type ReceiptSource } from '@/receipts';
 import { t } from '@/i18n/t';
 import { AppText } from './AppText';
 import { Button } from './Button';
@@ -23,13 +23,18 @@ export function ReceiptField({ uri, onChange, compact = false, fill = false }: P
   const { c } = useTheme();
   const [busy, setBusy] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useReceiptVersion();
 
   async function pick(source: ReceiptSource) {
     if (busy) return;
     setBusy(true);
+    setError(null);
     try {
       const picked = await pickReceipt(source);
       if (picked) onChange(picked);
+    } catch {
+      setError(t('receipt.failed'));
     } finally {
       setBusy(false);
     }
@@ -45,6 +50,11 @@ export function ReceiptField({ uri, onChange, compact = false, fill = false }: P
       </View>
     </View>
   );
+  const errorText = error ? (
+    <AppText variant="small" tone="muted" accessibilityRole="alert">
+      {error}
+    </AppText>
+  ) : null;
   const preview = <ReceiptPreview uri={previewing && uri ? resolveReceiptUri(uri) : null} onClose={() => setPreviewing(false)} />;
 
   if (fill) {
@@ -90,6 +100,7 @@ export function ReceiptField({ uri, onChange, compact = false, fill = false }: P
               </AppText>
             </View>
             {buttons}
+            {errorText}
           </>
         )}
         {preview}
@@ -124,7 +135,10 @@ export function ReceiptField({ uri, onChange, compact = false, fill = false }: P
           <Button title={t('receipt.remove')} variant="secondary" compact={compact} onPress={() => onChange(null)} />
         </View>
       ) : (
-        buttons
+        <>
+          {buttons}
+          {errorText}
+        </>
       )}
       {preview}
     </View>

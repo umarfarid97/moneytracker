@@ -6,7 +6,7 @@ import { HOME_CURRENCY, rateToInput } from '@/domain/fx';
 import { formatRM, senToInput } from '@/domain/money';
 import type { Expense } from '@/domain/types';
 import { t } from '@/i18n/t';
-import { resolveReceiptUri } from '@/receipts';
+import { resolveReceiptUri, useReceiptVersion } from '@/receipts';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
@@ -35,6 +35,7 @@ type Props = {
 export function ExpenseDetails({ expense, categoryName, categoryIcon, methodName, reliefName, error, busy, onEdit, onDelete, onClose }: Props) {
   const { c } = useTheme();
   const [previewing, setPreviewing] = useState(false);
+  useReceiptVersion();
   const look = categoryLook(categoryName, categoryIcon);
   const year = expense.date.slice(0, 4);
 
