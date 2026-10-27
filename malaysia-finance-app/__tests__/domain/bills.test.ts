@@ -4,7 +4,7 @@ import type { Commitment, Expense } from '@/domain/types';
 
 const bill = (over: Partial<Commitment> = {}): Commitment => ({
   id: 1, name: 'Astro', amount: 8900, dayOfMonth: 5, kind: 'subscription', active: true,
-  categoryId: null, paymentMethodId: null, reliefId: null, autoRecord: false, startDate: '2026-01-01', lastAutoDue: null, variable: false, ...NO_LOAN,
+  categoryId: null, paymentMethodId: null, reliefId: null, autoRecord: false, startDate: '2026-01-01', lastAutoDue: null, variable: false, ...NO_LOAN, startsOn: null, endsOn: null,
   ...over,
 });
 
@@ -170,3 +170,42 @@ describe('billEstimate', () => {
   });
 });
 
+
+describe('bill start and end dates', () => {
+  const status = (c: Commitment, today: string, paid: string[] = []) => billStatus({ commitment: c, today, paidDueDates: paid });
+
+  test('before the start date the first due date is the first one on or after it, and nothing is overdue', () => {
+    const c = bill({ dayOfMonth: 5, startDate: '2026-01-01', startsOn: '2026-12-10' });
+    expect(status(c, '2026-10-24')).toEqual({ state: 'upcoming', dueDate: '2027-01-05', days: 73 });
+  });
+
+  test('a start date exactly on a due date makes that day the first due date', () => {
+    const c = bill({ dayOfMonth: 5, startDate: '2026-01-01', startsOn: '2026-12-05' });
+    expect(status(c, '2026-12-04').dueDate).toBe('2026-12-05');
+    expect(status(c, '2026-12-05')).toMatchObject({ state: 'due', dueDate: '2026-12-05' });
+  });
+
+  test('after the end date the bill is ended, not due or overdue', () => {
+    const c = bill({ dayOfMonth: 5, endsOn: '2026-12-25' });
+    expect(status(c, '2027-02-01', ['2026-12-05']).state).toBe('ended');
+    expect(status(c, '2026-12-26', ['2026-12-05']).state).toBe('ended');
+  });
+
+  test('the last due date before the end date is still due, then overdue, until it is paid', () => {
+    const c = bill({ dayOfMonth: 20, endsOn: '2026-12-25' });
+    expect(status(c, '2026-12-20')).toMatchObject({ state: 'due', dueDate: '2026-12-20' });
+    expect(status(c, '2027-02-01')).toMatchObject({ state: 'overdue', dueDate: '2026-12-20' });
+  });
+
+  test('the due date on the end date itself still counts; one day later it does not', () => {
+    const c = bill({ dayOfMonth: 25, endsOn: '2026-12-25' });
+    expect(status(c, '2026-12-01', ['2026-11-25']).dueDate).toBe('2026-12-25');
+    expect(status(bill({ dayOfMonth: 25, endsOn: '2026-12-24' }), '2026-12-01', ['2026-11-25']).state).toBe('ended');
+  });
+
+  test('auto-record never reaches before the start date or past the end date', () => {
+    const auto = bill({ autoRecord: true, dayOfMonth: 5, startDate: '2026-01-01', startsOn: '2026-09-10', endsOn: '2026-11-30' });
+    expect(missedDueDates(auto, '2026-10-24')).toEqual(['2026-10-05']);
+    expect(missedDueDates(auto, '2027-03-01')).toEqual(['2026-10-05', '2026-11-05']);
+  });
+});

@@ -1,5 +1,7 @@
 import { NO_LOAN } from '@/domain/loanTracker';
-import { daysUntil, monthlyCommitmentTotal, nextDueDate, nextReminder } from '@/domain/commitments';
+import {
+  daysUntil, dueDatesBetween, hasEnded, monthlyCommitmentTotal, nextDueDate, nextReminder, nextReminderFor, nextScheduledDue,
+} from '@/domain/commitments';
 import type { Commitment } from '@/domain/types';
 
 describe('nextDueDate', () => {
@@ -34,7 +36,7 @@ describe('daysUntil', () => {
 describe('monthlyCommitmentTotal', () => {
   const c = (amount: number, active: boolean): Commitment => ({
     id: 1, name: 'x', amount, dayOfMonth: 1, kind: 'bill', active,
-    categoryId: null, paymentMethodId: null, reliefId: null, autoRecord: false, startDate: null, lastAutoDue: null, variable: false, ...NO_LOAN,
+    categoryId: null, paymentMethodId: null, reliefId: null, autoRecord: false, startDate: null, lastAutoDue: null, variable: false, ...NO_LOAN, startsOn: null, endsOn: null,
   });
   test('sums active commitments only', () => {
     expect(monthlyCommitmentTotal([c(100, true), c(250, true), c(999, false)])).toBe(350);
@@ -92,5 +94,35 @@ describe('nextReminder lead time', () => {
     const r = nextReminder(24, new Date('2026-10-20T04:00:00Z'), 7);
     expect(r.dueDate).toBe('2026-11-24');
     expect(r.fireAt.toISOString()).toBe('2026-11-17T01:00:00.000Z');
+  });
+});
+
+describe('start and end dates', () => {
+  const w = (dayOfMonth: number, startsOn: string | null, endsOn: string | null) => ({ dayOfMonth, startsOn, endsOn });
+
+  test('nextScheduledDue clamps to the window', () => {
+    expect(nextScheduledDue(w(5, '2026-12-10', null), '2026-10-24')).toBe('2027-01-05');
+    expect(nextScheduledDue(w(5, null, '2026-11-30'), '2026-10-24')).toBe('2026-11-05');
+    expect(nextScheduledDue(w(5, null, '2026-11-04'), '2026-10-24')).toBeNull();
+    expect(nextScheduledDue(w(5, null, null), '2026-10-24')).toBe('2026-11-05');
+  });
+
+  test('dueDatesBetween lists only dates inside the window, ends included', () => {
+    expect(dueDatesBetween(w(1, null, null), '2026-10-01', '2026-12-31')).toEqual(['2026-10-01', '2026-11-01', '2026-12-01']);
+    expect(dueDatesBetween(w(1, '2026-11-01', '2026-12-01'), '2026-10-01', '2027-03-01')).toEqual(['2026-11-01', '2026-12-01']);
+    expect(dueDatesBetween(w(1, null, '2026-09-30'), '2026-10-01', '2026-12-31')).toEqual([]);
+  });
+
+  test('hasEnded is false on the end date and true the day after', () => {
+    expect(hasEnded({ endsOn: '2026-12-25' }, '2026-12-25')).toBe(false);
+    expect(hasEnded({ endsOn: '2026-12-25' }, '2026-12-26')).toBe(true);
+    expect(hasEnded({ endsOn: null }, '2030-01-01')).toBe(false);
+  });
+
+  test('reminders stop after the end date and wait for the start date', () => {
+    const now = new Date('2026-10-20T04:00:00Z');
+    expect(nextReminderFor(w(24, null, '2026-10-23'), now)).toBeNull();
+    expect(nextReminderFor(w(24, null, '2026-11-30'), now)?.dueDate).toBe('2026-10-24');
+    expect(nextReminderFor(w(24, '2026-12-01', null), now)?.dueDate).toBe('2026-12-24');
   });
 });

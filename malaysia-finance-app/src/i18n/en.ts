@@ -3,6 +3,7 @@ import { cloudEn } from './cloud';
 import { homeLayoutEn } from './homeLayout';
 import { loansBillers } from './loansBillers';
 import { lockRemindersEn } from './lockReminders';
+import { billDatesEn } from './billDates';
 import { statementImport } from './statementImport';
 import { reportsEn } from './reports';
 
@@ -695,6 +696,7 @@ export const en = {
 
   ...loansBillers,
   ...lockRemindersEn,
+  ...billDatesEn,
   ...statementImport,
   ...reportsEn,
   ...homeLayoutEn,

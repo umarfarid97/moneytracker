@@ -76,11 +76,15 @@ export type Commitment = {
   loanOriginal: Sen | null;
   /** Yearly interest in percent; null means none is charged on the balance. */
   loanRatePct: number | null;
+  /** First day the bill counts (YYYY-MM-DD); null means it has always applied. */
+  startsOn: string | null;
+  /** Last day the bill counts, e.g. when a subscription or plan ends; null means it never ends. */
+  endsOn: string | null;
 };
 
 type CommitmentExtras =
   | 'categoryId' | 'paymentMethodId' | 'reliefId' | 'autoRecord' | 'startDate' | 'lastAutoDue' | 'variable'
-  | 'loanType' | 'loanBalance' | 'loanBalanceDate' | 'loanOriginal' | 'loanRatePct';
+  | 'loanType' | 'loanBalance' | 'loanBalanceDate' | 'loanOriginal' | 'loanRatePct' | 'startsOn' | 'endsOn';
 export type NewCommitment = Omit<Commitment, 'id' | CommitmentExtras> & Partial<Pick<Commitment, CommitmentExtras>>;
 
 export function withCommitmentDefaults(input: NewCommitment): Omit<Commitment, 'id'> {
@@ -97,6 +101,8 @@ export function withCommitmentDefaults(input: NewCommitment): Omit<Commitment, '
     loanBalanceDate: null,
     loanOriginal: null,
     loanRatePct: null,
+    startsOn: null,
+    endsOn: null,
     ...input,
   };
 }

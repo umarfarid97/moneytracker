@@ -1,0 +1,48 @@
+/** Strings for bill start and end dates and the "bills still to pay" breakdown (merged into `en` and `ms`). */
+export const billDatesEn = {
+  'commitments.ended': 'Ended',
+  'bill.starts': 'Starts {date}',
+  'bill.ends': 'Ends {date}',
+  'bill.hasStart': 'Starts on a date',
+  'bill.hasEnd': 'Ends on a date',
+  'bill.startDate': 'Start date',
+  'bill.endDate': 'End date',
+  'bill.datesHint': 'Before the start date and after the end date this bill is not due, not counted in what is still to pay, and gets no reminders. Leave both off for a bill that always applies.',
+  'bill.endBeforeStart': 'The end date cannot be before the start date.',
+
+  'home.balanceUpcomingOpen': 'See which bills are still to pay',
+  'billsLeft.title': 'Bills still to pay',
+  'billsLeft.explainTitle': 'How this is worked out',
+  'billsLeft.explainLeft': 'Balance left = take-home pay ({income}) minus what you have spent so far this month ({spent}) = {left}.',
+  'billsLeft.explainFree': 'Free = balance left minus the bills and loan instalments below that are due before this budget period ends and are not paid yet = {free}.',
+  'billsLeft.explainDates': 'A bill only counts between its start and end dates, and a paused bill does not count.',
+  'billsLeft.total': 'Still to pay',
+  'billsLeft.estimate': 'estimate',
+  'billsLeft.empty': 'Nothing is left to pay this month.',
+  'billsLeft.overdue': 'was due {date}',
+  'billsLeft.due': 'due {date}',
+} as const;
+
+export const billDatesMs: Record<keyof typeof billDatesEn, string> = {
+  'commitments.ended': 'Tamat',
+  'bill.starts': 'Bermula {date}',
+  'bill.ends': 'Tamat {date}',
+  'bill.hasStart': 'Bermula pada tarikh tertentu',
+  'bill.hasEnd': 'Tamat pada tarikh tertentu',
+  'bill.startDate': 'Tarikh mula',
+  'bill.endDate': 'Tarikh tamat',
+  'bill.datesHint': 'Sebelum tarikh mula dan selepas tarikh tamat, bil ini tidak perlu dibayar, tidak dikira dalam baki bil dan tiada peringatan. Biarkan kosong untuk bil yang sentiasa terpakai.',
+  'bill.endBeforeStart': 'Tarikh tamat tidak boleh sebelum tarikh mula.',
+
+  'home.balanceUpcomingOpen': 'Lihat bil mana yang belum dibayar',
+  'billsLeft.title': 'Bil belum dibayar',
+  'billsLeft.explainTitle': 'Cara ia dikira',
+  'billsLeft.explainLeft': 'Baki = gaji bersih ({income}) tolak apa yang sudah dibelanjakan bulan ini ({spent}) = {left}.',
+  'billsLeft.explainFree': 'Boleh digunakan = baki tolak bil dan ansuran pinjaman di bawah yang perlu dibayar sebelum tempoh belanjawan ini tamat dan belum dibayar = {free}.',
+  'billsLeft.explainDates': 'Bil hanya dikira antara tarikh mula dan tarikh tamatnya, dan bil yang dijeda tidak dikira.',
+  'billsLeft.total': 'Belum dibayar',
+  'billsLeft.estimate': 'anggaran',
+  'billsLeft.empty': 'Tiada lagi bil untuk dibayar bulan ini.',
+  'billsLeft.overdue': 'sepatutnya dibayar {date}',
+  'billsLeft.due': 'perlu dibayar {date}',
+};

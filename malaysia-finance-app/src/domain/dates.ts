@@ -66,6 +66,12 @@ export function shortDate(date: string): string {
   return `${weekdayName(new Date(Date.UTC(y, m - 1, d)).getUTCDay())} ${d} ${shortMonthName(m)}`;
 }
 
+/** "25 Dec 2026". */
+export function longDate(date: string): string {
+  const [y, m, d] = parts(date);
+  return `${d} ${shortMonthName(m)} ${y}`;
+}
+
 /** "10 Jun". */
 export function dayMonth(date: string): string {
   const [, m, d] = parts(date);

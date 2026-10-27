@@ -1,4 +1,4 @@
-import { daysUntil, nextDueDate } from './commitments';
+import { daysUntil, nextScheduledDue } from './commitments';
 import { addDays, daysInMonth, monthKey } from './dates';
 import type { Commitment, Expense } from './types';
 
@@ -14,7 +14,7 @@ export function previousDueDate(dayOfMonth: number, today: string): string {
   return `${py}-${pad(pm)}-${pad(Math.min(dayOfMonth, daysInMonth(py, pm)))}`;
 }
 
-export type BillState = 'paused' | 'upcoming' | 'due' | 'overdue' | 'paid';
+export type BillState = 'paused' | 'upcoming' | 'due' | 'overdue' | 'paid' | 'ended';
 export type BillStatus = {
   state: BillState;
   /** The due date the state is about (the unpaid one for due/overdue, the next one otherwise). */
@@ -30,18 +30,21 @@ export type BillStatus = {
 export function billStatus(i: { commitment: Commitment; today: string; paidDueDates: Iterable<string> }): BillStatus {
   const { commitment: c, today } = i;
   const paid = new Set(i.paidDueDates);
-  const next = nextDueDate(c.dayOfMonth, addDays(today, 1));
-  const untilNext = daysUntil(next, today);
-  if (!c.active) return { state: 'paused', dueDate: next, days: untilNext };
+  // The next due date inside the bill's start and end dates; null once it has ended.
+  const next = nextScheduledDue(c, addDays(today, 1));
+  const untilNext = next === null ? 0 : daysUntil(next, today);
+  if (!c.active) return { state: 'paused', dueDate: next ?? c.endsOn ?? today, days: untilNext };
 
-  const prev = previousDueDate(c.dayOfMonth, today);
-  // Due dates before the bill was added never count; a bill with no start date has no history to judge.
-  const prevCounts = c.startDate !== null && prev >= c.startDate;
+  // After the end date the last due date is the one on or before it.
+  const prev = previousDueDate(c.dayOfMonth, c.endsOn !== null && c.endsOn < today ? c.endsOn : today);
+  // Due dates before the bill was added or started never count; a bill with no start date has no history to judge.
+  const prevCounts = c.startDate !== null && prev >= c.startDate && (c.startsOn === null || prev >= c.startsOn);
   if (prevCounts && !paid.has(prev)) {
     return prev === today
       ? { state: 'due', dueDate: prev, days: 0 }
       : { state: 'overdue', dueDate: prev, days: daysUntil(today, prev) };
   }
+  if (next === null) return { state: 'ended', dueDate: c.endsOn ?? today, days: 0 };
   if (paid.has(next) || (prevCounts && monthKey(prev) === monthKey(today))) {
     return { state: 'paid', dueDate: next, days: untilNext };
   }
@@ -79,9 +82,10 @@ export function paidDueDatesFor(commitmentId: number, expenses: Expense[]): stri
 export function missedDueDates(c: Commitment, today: string): string[] {
   const out: string[] = [];
   if (c.startDate === null) return out;
-  let cursor = previousDueDate(c.dayOfMonth, today);
+  // Nothing falls due after the end date, so look back from it once it has passed.
+  let cursor = previousDueDate(c.dayOfMonth, c.endsOn !== null && c.endsOn < today ? c.endsOn : today);
   for (let i = 0; i < 12; i++) {
-    if (cursor < c.startDate) break;
+    if (cursor < c.startDate || (c.startsOn !== null && cursor < c.startsOn)) break;
     if (c.lastAutoDue !== null && cursor <= c.lastAutoDue) break;
     out.unshift(cursor);
     cursor = previousDueDate(c.dayOfMonth, addDays(cursor, -1));

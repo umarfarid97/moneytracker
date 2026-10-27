@@ -1,11 +1,20 @@
 import { billEstimate, paidDueDatesFor } from './bills';
 import { periodEnd, periodKey, periodStart, DEFAULT_START_DAY } from './budgetPeriod';
-import { nextDueDate } from './commitments';
-import { addDays } from './dates';
+import { dueDatesBetween } from './commitments';
 import type { Sen } from './money';
 import { estimateNetMonthly } from './netpay';
 import type { IncomeEntry } from './income';
 import type { Commitment, Expense, Profile } from './types';
+
+export type UpcomingBill = {
+  commitmentId: number;
+  name: string;
+  kind: Commitment['kind'];
+  dueDate: string;
+  amount: Sen;
+  /** The amount is an estimate because the bill changes every month. */
+  variable: boolean;
+};
 
 export type BalanceLeft = {
   /** Monthly take-home pay from the profile (see netpay). */
@@ -16,27 +25,32 @@ export type BalanceLeft = {
   spent: Sen;
   /** Active bills and loan payments due later in the period that are not paid yet. */
   upcoming: Sen;
+  /** The unpaid bills and loan payments `upcoming` adds up, soonest first. */
+  upcomingItems: UpcomingBill[];
   /** income - spent; negative when more has gone out than came in. */
   left: Sen;
   /** left - upcoming: what is really free once the unpaid bills are covered. */
   afterBills: Sen;
 };
 
-/** Unpaid due dates of active bills that fall inside the period, from the day the bill was added. */
-function upcomingBills(commitments: Commitment[], expenses: Expense[], key: string, startDay: number): Sen {
+/**
+ * Unpaid due dates of active bills that fall inside the period, from the day the bill was added.
+ * Dates before a bill's start date or after its end date never count.
+ */
+export function upcomingBills(commitments: Commitment[], expenses: Expense[], key: string, startDay: number): UpcomingBill[] {
   const start = periodStart(key, startDay);
   const end = periodEnd(key, startDay);
-  let total = 0;
+  const out: UpcomingBill[] = [];
   for (const c of commitments) {
     if (!c.active) continue;
     const paid = new Set(paidDueDatesFor(c.id, expenses));
-    const estimate = billEstimate(c, expenses);
+    const amount = billEstimate(c, expenses);
     const from = c.startDate !== null && c.startDate > start ? c.startDate : start;
-    for (let due = nextDueDate(c.dayOfMonth, from); due <= end; due = nextDueDate(c.dayOfMonth, addDays(due, 1))) {
-      if (!paid.has(due)) total += estimate;
+    for (const due of dueDatesBetween(c, from, end)) {
+      if (!paid.has(due)) out.push({ commitmentId: c.id, name: c.name, kind: c.kind, dueDate: due, amount, variable: c.variable });
     }
   }
-  return total;
+  return out.sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.name.localeCompare(b.name));
 }
 
 /**
@@ -61,7 +75,8 @@ export function balanceLeft(i: {
   const income = estimateNetMonthly(i.profile, i.estimatedPcb) + extra;
   if (income <= 0) return null;
   const spent = i.expenses.filter((e) => periodKey(e.date, startDay) === key).reduce((s, e) => s + e.amount, 0);
-  const upcoming = upcomingBills(i.commitments, i.expenses, key, startDay);
+  const upcomingItems = upcomingBills(i.commitments, i.expenses, key, startDay);
+  const upcoming = upcomingItems.reduce((s, b) => s + b.amount, 0);
   const left = income - spent;
-  return { income, extra, spent, upcoming, left, afterBills: left - upcoming };
+  return { income, extra, spent, upcoming, upcomingItems, left, afterBills: left - upcoming };
 }

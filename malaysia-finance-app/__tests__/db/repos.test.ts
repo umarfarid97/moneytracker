@@ -151,3 +151,20 @@ describe('profile', () => {
     expect((await getProfile(db)).reminderDays).toBe(3);
   });
 });
+
+describe('bill start and end dates', () => {
+  test('are saved, updated and cleared', async () => {
+    const c = await addCommitment(db, { name: 'Gym', amount: 9000, dayOfMonth: 3, kind: 'subscription', active: true, startsOn: '2026-11-01', endsOn: '2026-12-25' });
+    expect((await listCommitments(db))[0]).toMatchObject({ startsOn: '2026-11-01', endsOn: '2026-12-25' });
+    await updateCommitment(db, { ...c, endsOn: null });
+    expect((await listCommitments(db))[0]).toMatchObject({ startsOn: '2026-11-01', endsOn: null });
+  });
+
+  test('bills saved before the dates existed have no limits', async () => {
+    const old = await createTestDb();
+    await migrate(old, MIGRATIONS.slice(0, MIGRATIONS.length - 1));
+    await old.run("INSERT INTO commitments (name, amount, day_of_month, kind) VALUES ('Astro', 8900, 5, 'subscription')");
+    await migrate(old);
+    expect((await listCommitments(old))[0]).toMatchObject({ name: 'Astro', startsOn: null, endsOn: null });
+  });
+});

@@ -15,6 +15,7 @@ import { useCommitments } from '@/hooks/useCommitments';
 import { useExpenses } from '@/hooks/useExpenses';
 import { useData } from '@/hooks/DataProvider';
 import { useEstimatedPcb } from '@/hooks/useEstimatedPcb';
+import { BillsLeftSheet } from '@/features/home/BillsLeftSheet';
 import { OPTIONAL_WIDGETS } from '@/features/home/widgets';
 import { useProfile } from '@/hooks/useProfile';
 import { useToday } from '@/hooks/useToday';
@@ -49,6 +50,7 @@ export default function Home() {
     [profile, expenses, commitments, today, incomeEntries, estimatedPcb],
   );
   const [hidden, setHidden] = useState(loadHideBalance);
+  const [billsOpen, setBillsOpen] = useState(false);
   const toggleHidden = () => {
     saveHideBalance(!hidden);
     setHidden(!hidden);
@@ -118,9 +120,18 @@ export default function Home() {
               : t('home.balanceDetail', { income: money(balance.income), spent: money(balance.spent) })}
           </AppText>
           {balance.upcoming > 0 ? (
-            <AppText variant="small" color={onHero.soft}>
-              {t('home.balanceUpcoming', { upcoming: money(balance.upcoming), free: money(Math.max(0, balance.afterBills)) })}
-            </AppText>
+            <Pressable
+              onPress={() => setBillsOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t('home.balanceUpcomingOpen')}
+              hitSlop={8}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            >
+              <AppText variant="small" color={onHero.soft} style={{ flexShrink: 1 }}>
+                {t('home.balanceUpcoming', { upcoming: money(balance.upcoming), free: money(Math.max(0, balance.afterBills)) })}
+              </AppText>
+              <Ionicons name="information-circle-outline" size={16} color={onHero.soft} />
+            </Pressable>
           ) : null}
         </View>
       ) : (
@@ -213,6 +224,7 @@ export default function Home() {
         </Pressable>
       </View>
       {nodes}
+      {balance ? <BillsLeftSheet visible={billsOpen} balance={balance} today={today} hidden={hidden} onClose={() => setBillsOpen(false)} /> : null}
     </Screen>
   );
 }

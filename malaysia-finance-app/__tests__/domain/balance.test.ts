@@ -11,7 +11,7 @@ const spend = (amount: number, date: string, extra: Partial<Expense> = {}): Expe
 const bill = (extra: Partial<Commitment> = {}): Commitment => ({
   id: 7, name: 'Rent', amount: 100000, dayOfMonth: 28, kind: 'bill', active: true, categoryId: null,
   paymentMethodId: null, reliefId: null, autoRecord: false, startDate: '2026-01-01', lastAutoDue: null,
-  variable: false, loanType: null, loanBalance: null, loanBalanceDate: null, loanOriginal: null, loanRatePct: null,
+  variable: false, loanType: null, loanBalance: null, loanBalanceDate: null, loanOriginal: null, loanRatePct: null, startsOn: null, endsOn: null,
   ...extra,
 });
 
@@ -71,5 +71,48 @@ describe('balanceLeft', () => {
       today: '2026-10-27',
     })!;
     expect(r.spent).toBe(40000);
+  });
+});
+
+describe('bills still to pay and their dates', () => {
+  const run = (commitments: Commitment[], today = '2026-10-10') => balanceLeft({ profile, expenses: [], commitments, today })!;
+
+  test('lists each unpaid bill with its due date, soonest first', () => {
+    const r = run([bill({ id: 1, name: 'Rent', dayOfMonth: 28 }), bill({ id: 2, name: 'Netflix', dayOfMonth: 15, amount: 5500 })]);
+    expect(r.upcomingItems.map((b) => [b.name, b.dueDate, b.amount])).toEqual([
+      ['Netflix', '2026-10-15', 5500], ['Rent', '2026-10-28', 100000],
+    ]);
+    expect(r.upcoming).toBe(105500);
+  });
+
+  test('a bill that ends before this period does not count', () => {
+    expect(run([bill({ endsOn: '2026-09-30' })]).upcoming).toBe(0);
+  });
+
+  test('a bill that ends before its due date this period does not count, one ending on it does', () => {
+    expect(run([bill({ dayOfMonth: 28, endsOn: '2026-10-27' })]).upcoming).toBe(0);
+    expect(run([bill({ dayOfMonth: 28, endsOn: '2026-10-28' })]).upcoming).toBe(100000);
+  });
+
+  test('a bill that has not started yet does not count, and counts once its start date is reached', () => {
+    expect(run([bill({ startsOn: '2026-11-01' })]).upcoming).toBe(0);
+    expect(run([bill({ startsOn: '2026-10-28' })]).upcoming).toBe(100000);
+  });
+
+  test('a paused bill and a paid due date are left out', () => {
+    expect(run([bill({ active: false })]).upcomingItems).toEqual([]);
+    const r = balanceLeft({
+      profile, commitments: [bill()], today: '2026-10-10',
+      expenses: [spend(100000, '2026-10-05', { commitmentId: 7, dueDate: '2026-10-28' })],
+    })!;
+    expect(r.upcomingItems).toEqual([]);
+  });
+
+  test('with a payday period, the end date decides whether next month\'s due date counts', () => {
+    const payday = { ...profile, budgetStartDay: 25 };
+    const items = (endsOn: string) =>
+      balanceLeft({ profile: payday, expenses: [], commitments: [bill({ dayOfMonth: 5, endsOn })], today: '2026-10-26' })!.upcomingItems.map((b) => b.dueDate);
+    expect(items('2026-11-04')).toEqual([]);
+    expect(items('2026-11-05')).toEqual(['2026-11-05']);
   });
 });
