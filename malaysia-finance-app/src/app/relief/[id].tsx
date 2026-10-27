@@ -2,10 +2,12 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 import { dayMonth } from '@/domain/dates';
+import { estimateSocso } from '@/domain/netpay';
 import { formatRM, parseRM } from '@/domain/money';
 import { capReliefClaims } from '@/domain/reliefs';
 import { useAllReliefClaims } from '@/hooks/useAllReliefClaims';
 import { useExpenses } from '@/hooks/useExpenses';
+import { useProfile } from '@/hooks/useProfile';
 import { useTaxYear } from '@/hooks/useTaxYear';
 import { reliefLabel } from '@/i18n/content';
 import { t } from '@/i18n/t';
@@ -27,6 +29,7 @@ export default function ReliefPage() {
   const def = data.reliefs.find((r) => r.id === id);
   const { data: allClaims, manual, add, remove } = useAllReliefClaims(year);
   const { data: expenses } = useExpenses();
+  const { data: profile } = useProfile();
   const summary = useMemo(() => capReliefClaims(allClaims, data.reliefs), [allClaims, data]);
 
   const [amountText, setAmountText] = useState('');
@@ -52,6 +55,27 @@ export default function ReliefPage() {
   const surplus = entry ? entry.claimed - entry.allowed : 0;
   const amount = parseRM(amountText);
   const warn = statusStyle('tight', scheme);
+  // With a salary on file and nothing claimed yet, offer the year's EPF or SOCSO as a one-tap claim.
+  const fromSalary =
+    def.id === 'epf'
+      ? Math.round(profile.grossMonthly * profile.epfRate) * 12
+      : def.id === 'socso'
+        ? (profile.socsoMonthly > 0 ? profile.socsoMonthly : estimateSocso(profile.grossMonthly)) * 12
+        : 0;
+  const suggested = !entry && manualClaims.length === 0 ? Math.min(fromSalary, def.limit) : 0;
+
+  async function addSuggested() {
+    if (!def || suggested <= 0 || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await add({ reliefId: def.id, year, amount: suggested, receiptUri: null, note: t('tax.fromSalaryNote') });
+    } catch {
+      setError(t('common.saveFailed'));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function addClaim() {
     if (!def || amount === null || amount <= 0 || busy) return;
@@ -106,7 +130,8 @@ export default function ReliefPage() {
         <AppText variant="small" tone="muted">
           {t('tax.claims')}
         </AppText>
-        <AppText variant="kpi">
+        <AppText variant="kpi">{formatRM(entry?.allowed ?? 0)}</AppText>
+        <AppText variant="small" tone="muted">
           {t('tax.claimedOf', { claimed: formatRM(entry?.allowed ?? 0), limit: formatRM(def.limit) })}
         </AppText>
         {surplus > 0 ? (
@@ -115,6 +140,14 @@ export default function ReliefPage() {
           </AppText>
         ) : null}
       </Card>
+
+      {suggested > 0 ? (
+        <Card style={{ gap: 8 }}>
+          <AppText variant="bodyStrong">{t('tax.fromSalary', { amount: formatRM(suggested) })}</AppText>
+          <AppText variant="small" tone="muted">{t('tax.fromSalaryHint')}</AppText>
+          <Button title={t('tax.fromSalaryUse')} onPress={addSuggested} disabled={busy} />
+        </Card>
+      ) : null}
 
       {spendingRows.length === 0 && manualClaims.length === 0 ? (
         <AppText variant="body" tone="muted">

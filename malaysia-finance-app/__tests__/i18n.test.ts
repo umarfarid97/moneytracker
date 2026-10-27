@@ -16,7 +16,7 @@ describe('i18n', () => {
   it('switches to Bahasa Malaysia and fills placeholders', () => {
     setLanguage('ms');
     expect(t('tab.home')).toBe('Utama');
-    expect(t('home.left', { amount: 'RM 5' })).toBe('RM 5 berbaki');
+    expect(t('home.left', { amount: 'RM 5' })).toBe('Baki RM 5');
   });
 
   it('keeps the same placeholders in every translation', () => {

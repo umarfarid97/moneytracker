@@ -84,5 +84,20 @@ describe('merge and save', () => {
 });
 
 test('tidyDescription removes long reference numbers and softens capitals', () => {
-  expect(tidyDescription('POS DEBIT STARBUCKS KLCC 12345678')).toBe('Starbucks Klcc');
+  expect(tidyDescription('POS DEBIT STARBUCKS KLCC 12345678')).toBe('Starbucks KLCC');
+});
+
+describe('wallet top-ups', () => {
+  const ctx = { categories: [{ id: 1, name: 'Lain-lain', icon: 'x', sortOrder: 1 }] as never, methods: [], existing: [], source: 'maybank.csv', sourceText: 'Date,Description,Debit' };
+  test('a Touch n Go reload is left unticked and flagged', () => {
+    const { items } = buildImportItems(
+      [{ date: '2026-10-24', description: 'TNG EWALLET RELOAD', amount: 5000, direction: 'out' }, { date: '2026-10-25', description: 'MYDIN SUBANG', amount: 14230, direction: 'out' }] as never,
+      ctx,
+    );
+    expect(items[0]).toMatchObject({ topUp: true, selected: false });
+    expect(items[1]).toMatchObject({ topUp: false, selected: true });
+  });
+  test('keeps place names such as KLCC and PJ in capitals', () => {
+    expect(tidyDescription('PETRONAS KLCC PJ')).toBe('Petronas KLCC PJ');
+  });
 });

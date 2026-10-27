@@ -5,7 +5,7 @@ export const loansBillers = {
   'billers.group.utilities': 'Utilities',
   'billers.group.internet': 'Internet',
   'billers.group.mobile': 'Mobile',
-  'billers.group.tv': 'TV and streaming',
+  'billers.group.tv': 'TV (Astro)',
   'billers.group.insurance': 'Insurance',
   'billers.group.home': 'Home',
   'subscriptions.pick': 'Pick a subscription',

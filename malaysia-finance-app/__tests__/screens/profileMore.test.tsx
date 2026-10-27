@@ -94,7 +94,7 @@ describe('Income profile', () => {
     await waitFor(() => expect(screen.getByLabelText('Monthly salary before deductions').props.value).toBe('5000.00'));
     expect(screen.getByLabelText('EPF rate you pay (%)').props.value).toBe('11');
     // 5000 - 550 EPF - 10 SOCSO - 4 EIS
-    expect(screen.getByText('Estimated take-home RM 4,436.00')).toBeTruthy();
+    expect(screen.getByText('Estimated take-home RM 4,436.00, before income tax (PCB)')).toBeTruthy();
   });
 
   test('saves salary, deductions and an optional take-home override in sen', async () => {

@@ -53,6 +53,7 @@ export default function Owed() {
     <Screen>
       <BackButton />
       <AppText variant="title">{t('owed.title')}</AppText>
+      <AppText variant="small" tone="muted">{t('owed.about')}</AppText>
       <HeroCard style={{ gap: 12 }}>
         <View style={{ gap: 4 }}>
           <AppText variant="eyebrow" color={onHero.soft}>{t('owed.owedToMe')}</AppText>

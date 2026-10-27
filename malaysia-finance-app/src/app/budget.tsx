@@ -127,7 +127,7 @@ export default function Budget() {
             placeholder={t('budget.startDay.day')}
             placeholderTextColor={c.muted}
             style={{
-              flex: 1, height: controlHeight, borderRadius: radius.control, backgroundColor: c.surface,
+              flex: 1, minWidth: 0, height: controlHeight, borderRadius: radius.control, backgroundColor: c.surface,
               borderWidth: 1, borderColor: dayText !== '' && parseStartDay(dayText) === null ? c.negative : c.control,
               paddingHorizontal: 14, color: c.text, fontFamily: fontFamily.medium, fontSize: 16,
             }}

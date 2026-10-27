@@ -41,7 +41,7 @@ describe('Home', () => {
     await addExpenseRow(db, CAT.Makan, 8000, '2026-10-24');
     await renderWithData(db, <Home />);
     // 24000 over 8 days = 3000 a day; 8000 spent today -> RM 50.00 over
-    await waitFor(() => expect(screen.getByText('RM 50.00 over for today')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("RM 50.00 above today's share")).toBeTruthy());
   });
 
   test('without budgets it asks to set one and opens the budget screen', async () => {

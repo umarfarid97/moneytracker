@@ -64,7 +64,7 @@ describe('Commitments screen', () => {
   test('empty state invites adding a first commitment', async () => {
     const db = await freshDb();
     await renderWithData(db, <Commitments />);
-    await waitFor(() => expect(screen.getByText('No commitments yet')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('No bills or loans yet')).toBeTruthy());
   });
 
   test('add: fill the sheet and save', async () => {
@@ -121,7 +121,7 @@ describe('Commitments screen', () => {
 
     await fireEvent.press(screen.getByText('Astro'));
     await fireEvent.press(screen.getByRole('button', { name: 'Delete' }));
-    await waitFor(() => expect(screen.getByText('No commitments yet')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('No bills or loans yet')).toBeTruthy());
     expect(await db.get('SELECT id FROM commitments')).toBeNull();
   });
 });

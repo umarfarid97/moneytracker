@@ -47,7 +47,7 @@ export function Tile({ title, leftText, status, detail, tintName, icon, onPress 
       <View style={{ gap: 8 }}>
         <AppText
           variant="section"
-          numberOfLines={1}
+          numberOfLines={2}
           adjustsFontSizeToFit
           minimumFontScale={0.7}
           style={{ fontSize: 17, lineHeight: 22 }}

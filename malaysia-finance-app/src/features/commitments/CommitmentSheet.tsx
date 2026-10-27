@@ -346,6 +346,11 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
             {error}
           </AppText>
         ) : null}
+        {!valid && loanValid ? (
+          <AppText variant="small" tone="muted">
+            {name.trim() === '' ? t('commitments.need.name') : amount === null || amount <= 0 ? t('commitments.need.amount') : t('commitments.need.day')}
+          </AppText>
+        ) : null}
         <Button
           title={t('common.save')}
           disabled={!valid || busy}
