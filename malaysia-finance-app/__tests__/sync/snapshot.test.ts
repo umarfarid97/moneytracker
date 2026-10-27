@@ -7,6 +7,7 @@ import { addCategory, deleteCategory, listCategories, renameCategory } from '@/d
 import { addCommitment } from '@/db/repos/commitments';
 import { setBudget, listAllBudgets, deleteBudget } from '@/db/repos/budgets';
 import { getProfile, saveProfile } from '@/db/repos/profile';
+import { getSetting, setSetting } from '@/db/repos/appSettings';
 import type { Db } from '@/db/types';
 import { mergeSnapshots } from '@/sync/merge';
 import { ENTITY_TABLES, applySnapshot, canonical, exportSnapshot, isSnapshot, restoreSnapshot, withAllTables } from '@/sync/snapshot';
@@ -431,5 +432,42 @@ describe('backup coverage', () => {
       if (cols.some((c) => c.name === 'uid')) tracked.push(name);
     }
     expect(tracked.filter((n) => n !== 'sync_deleted').sort()).toEqual([...ENTITY_TABLES].sort());
+  });
+});
+
+describe('Home layout sync', () => {
+  const layout = (categoryOrder: number[], categoryHidden: number[] = []) =>
+    JSON.stringify({ order: ['balance', 'today'], visible: { recent: true }, categoryOrder, categoryHidden });
+
+  it('carries the layout to another phone, mapping categories by uid', async () => {
+    const a = await freshDb();
+    const b = await freshDb();
+    await setSetting(a, 'homeLayout', layout([CAT.Makan, CAT.Lain], [CAT.Lain]));
+    await setSetting(a, 'homeLayoutAt', '1000');
+    const snap = await exportSnapshot(a);
+    expect(snap.homeLayout!.updatedAt).toBe(1000);
+    expect(snap.homeLayout!.categoryOrder.every((u) => typeof u === 'string')).toBe(true);
+    await applySnapshot(b, mergeSnapshots(await exportSnapshot(b), snap));
+    const got = JSON.parse((await getSetting(b, 'homeLayout'))!);
+    expect(got.order).toEqual(['balance', 'today']);
+    expect(got.categoryOrder).toEqual([CAT.Makan, CAT.Lain]);
+    expect(got.categoryHidden).toEqual([CAT.Lain]);
+  });
+
+  it('keeps the newest layout and tolerates snapshots without one', async () => {
+    const a = await freshDb();
+    const b = await freshDb();
+    await setSetting(a, 'homeLayout', layout([CAT.Makan]));
+    await setSetting(a, 'homeLayoutAt', '1000');
+    await setSetting(b, 'homeLayout', layout([CAT.Lain]));
+    await setSetting(b, 'homeLayoutAt', '2000');
+    const merged = mergeSnapshots(await exportSnapshot(a), await exportSnapshot(b));
+    expect(merged.homeLayout!.updatedAt).toBe(2000);
+    const old = await exportSnapshot(a);
+    delete old.homeLayout;
+    expect(isSnapshot(old)).toBe(true);
+    expect(mergeSnapshots(await exportSnapshot(b), old).homeLayout!.updatedAt).toBe(2000);
+    await applySnapshot(b, old);
+    expect(await getSetting(b, 'homeLayout')).toBe(layout([CAT.Lain]));
   });
 });

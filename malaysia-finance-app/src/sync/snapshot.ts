@@ -2,6 +2,8 @@ import { DEFAULT_PROJECT_UID } from '@/db/migrations';
 import type { Db, SqlParam } from '@/db/types';
 import { FALLBACK_CATEGORY } from '@/db/repos/categories';
 import { demoUids, realProfile } from '@/db/repos/demo';
+import { getSetting, setSetting } from '@/db/repos/appSettings';
+import { HOME_LAYOUT_KEY, HOME_LAYOUT_AT_KEY, parseHomeLayout } from '@/domain/homeLayout';
 
 /**
  * A copy of all the user's data that does not depend on this phone's row ids, so it can be merged with
@@ -39,6 +41,18 @@ export const REFS: Record<EntityTable, Partial<Record<string, Parent>>> = {
 /** A deleted row. `mergedInto` is set when a duplicate was folded into another row (see merge.ts). */
 export type Tombstone = { tbl: string; uid: string; deletedAt: number; mergedInto: string | null };
 
+/**
+ * How Home is arranged (cards, category order and hidden categories), edited as one piece: the newest
+ * copy wins. Categories are named by uid here, since row ids differ between phones.
+ */
+export type HomeLayoutSync = {
+  updatedAt: number;
+  order: string[];
+  visible: Record<string, boolean>;
+  categoryOrder: string[];
+  categoryHidden: string[];
+};
+
 export type Snapshot = {
   app: 'duit';
   format: 1;
@@ -47,6 +61,8 @@ export type Snapshot = {
   exportedAt: number;
   tables: Record<EntityTable, Row[]> & { budgets: Row[] };
   profile: Row | null;
+  /** Missing in snapshots written before the Home layout was synced; then each phone keeps its own. */
+  homeLayout?: HomeLayoutSync | null;
   deleted: Tombstone[];
 };
 
@@ -83,10 +99,26 @@ export async function exportSnapshot(db: Db, now: number = Date.now()): Promise<
   const currentProfile = await db.get<Row>('SELECT * FROM profile WHERE id = 1');
   const profileRow = currentProfile ? await realProfile(db, currentProfile) : null;
   const { id: _id, ...profile } = profileRow ?? {};
+  const homeLayout = await exportHomeLayout(db, uidOf.categories);
   const deleted = await db.all<Tombstone>(
     'SELECT tbl, uid, deleted_at AS deletedAt, merged_into AS mergedInto FROM sync_deleted',
   );
-  return { app: 'duit', format: 1, schema: await schemaVersion(db), exportedAt: now, tables, profile: profileRow ? profile : null, deleted };
+  return { app: 'duit', format: 1, schema: await schemaVersion(db), exportedAt: now, tables, profile: profileRow ? profile : null, homeLayout, deleted };
+}
+
+/** The saved Home layout with category ids turned into uids; null if it was never changed. */
+async function exportHomeLayout(db: Db, categoryUids: Map<number, string>): Promise<HomeLayoutSync | null> {
+  const raw = await getSetting(db, HOME_LAYOUT_KEY);
+  if (raw === null) return null;
+  const prefs = parseHomeLayout(raw);
+  const uids = (ids: number[]) => ids.flatMap((id) => categoryUids.get(id) ?? []);
+  return {
+    updatedAt: Number(await getSetting(db, HOME_LAYOUT_AT_KEY)) || 0,
+    order: prefs.order,
+    visible: prefs.visible,
+    categoryOrder: uids(prefs.categoryOrder),
+    categoryHidden: uids(prefs.categoryHidden),
+  };
 }
 
 /** Same data in a fixed order and without the export time, for "did anything change?" checks. */
@@ -101,6 +133,7 @@ export function canonical(s: Snapshot): string {
     schema: s.schema,
     tables: Object.fromEntries(Object.entries(tables).map(([t, rows]) => [t, rows.map(sortKeys)])),
     profile: sortKeys(s.profile),
+    homeLayout: s.homeLayout ?? null,
     deleted,
   });
 }
@@ -108,12 +141,22 @@ export function canonical(s: Snapshot): string {
 /** Tables every snapshot has had since the first version; later ones may be missing from older files. */
 const ORIGINAL_TABLES = ['categories', 'payment_methods', 'commitments', 'expenses', 'relief_claims', 'budgets'] as const;
 
+function isHomeLayoutSync(v: unknown): v is HomeLayoutSync {
+  const h = v as HomeLayoutSync;
+  const strings = (x: unknown) => Array.isArray(x) && x.every((i) => typeof i === 'string');
+  return (
+    typeof h === 'object' && typeof h.updatedAt === 'number' && strings(h.order) && strings(h.categoryOrder) &&
+    strings(h.categoryHidden) && !!h.visible && typeof h.visible === 'object'
+  );
+}
+
 /** Checks that parsed JSON is a snapshot (a backup file or the Drive copy). Run `withAllTables` on it before use. */
 export function isSnapshot(value: unknown): value is Snapshot {
   const s = value as Snapshot | null;
   return (
     !!s && s.app === 'duit' && s.format === 1 && typeof s.schema === 'number' && !!s.tables &&
-    ORIGINAL_TABLES.every((t) => Array.isArray(s.tables[t])) && Array.isArray(s.deleted)
+    ORIGINAL_TABLES.every((t) => Array.isArray(s.tables[t])) && Array.isArray(s.deleted) &&
+    (s.homeLayout == null || isHomeLayoutSync(s.homeLayout))
   );
 }
 
@@ -207,6 +250,14 @@ export async function applySnapshot(db: Db, snap: Snapshot): Promise<void> {
       }
     }
 
+    if (snap.homeLayout) {
+      const h = snap.homeLayout;
+      const ids = (uids: string[]) => uids.flatMap((u) => idOf.categories.get(u) ?? []);
+      const prefs = { order: h.order, visible: h.visible, categoryOrder: ids(h.categoryOrder), categoryHidden: ids(h.categoryHidden) };
+      await setSetting(db, HOME_LAYOUT_KEY, JSON.stringify(prefs));
+      await setSetting(db, HOME_LAYOUT_AT_KEY, String(h.updatedAt));
+    }
+
     await db.run('DELETE FROM sync_deleted');
     for (const d of snap.deleted) {
       await db.run('INSERT OR REPLACE INTO sync_deleted (tbl, uid, deleted_at, merged_into) VALUES (?, ?, ?, ?)', [
@@ -250,6 +301,7 @@ export async function restoreSnapshot(db: Db, backup: Snapshot, now: number = Da
     ...backup,
     tables,
     profile: backup.profile ? { ...backup.profile, updated_at: now } : current.profile,
+    homeLayout: backup.homeLayout ? { ...backup.homeLayout, updatedAt: now } : current.homeLayout,
     deleted,
   });
 }
