@@ -121,6 +121,15 @@ describe('Bills: mark paid', () => {
     expect(screen.getByRole('button', { name: 'Payment date' }).props.accessibilityValue).toEqual({ text: '2026-10-24' });
   });
 
+  test('the Mark paid sheet does not grab the keyboard', async () => {
+    const db = await freshDb();
+    await bill(db, { name: 'Bill', amount: 3000, day: 24 });
+    await renderWithData(db, <Commitments />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Mark paid Bill' })).toBeTruthy());
+    await fireEvent.press(screen.getByRole('button', { name: 'Mark paid Bill' }));
+    expect(screen.getByLabelText('Amount').props.autoFocus).toBeFalsy();
+  });
+
   test('the amount must be valid before confirming', async () => {
     const db = await freshDb();
     await bill(db, { name: 'Bill', amount: 3000, day: 24 });

@@ -132,7 +132,7 @@ export function SplitSheet({ people, categories, existing = null, onClose, onSav
   return (
     <Sheet visible title={t(old ? 'bill.editTitle' : 'split.title')} onClose={onClose}>
       <View style={{ gap: 16 }}>
-        <AmountInput label={t('split.total')} value={total} onChange={setTotal} compact autoFocus />
+        <AmountInput label={t('split.total')} value={total} onChange={setTotal} compact autoFocus={!old} />
         <TextField label={t('split.note')} value={note} onChange={setNote} maxLength={80} />
         <View style={{ gap: 8 }}>
           <AppText variant="eyebrow" tone="muted">{t('split.billType')}</AppText>
