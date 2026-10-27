@@ -1,0 +1,70 @@
+import 'fake-indexeddb/auto';
+import { pickReceipt, resolveReceiptUri, storeReceipt, loadReceipts } from '@/receipts.web';
+
+class FakeInput extends EventTarget {
+  type = '';
+  accept = '';
+  files: File[] | null = null;
+  private attrs: Record<string, string> = {};
+  style: Record<string, string> = {};
+  setAttribute(k: string, v: string) { this.attrs[k] = v; }
+  getAttribute(k: string) { return this.attrs[k] ?? null; }
+  click() {}
+  remove() {}
+}
+const inputs: FakeInput[] = [];
+
+beforeAll(() => {
+  Object.assign(globalThis, {
+    document: {
+      createElement: () => {
+        const i = new FakeInput();
+        inputs.push(i);
+        return i;
+      },
+      body: { appendChild: () => {} },
+    },
+  });
+  let n = 0;
+  (URL as unknown as { createObjectURL: (b: Blob) => string }).createObjectURL = () => `blob:test/${++n}`;
+});
+
+describe('web receipts', () => {
+  it('stores a picture and resolves it to a displayable uri', async () => {
+    const key = await storeReceipt(new Blob(['x'], { type: 'image/png' }), 1);
+    expect(key).toBe('receipts/receipt-1.png');
+    expect(resolveReceiptUri(key)).toMatch(/^blob:/);
+  });
+
+  it('passes absolute uris through and gives nothing for an unknown key', async () => {
+    await loadReceipts();
+    expect(resolveReceiptUri('https://x/y.jpg')).toBe('https://x/y.jpg');
+    expect(resolveReceiptUri('receipts/missing.jpg')).toBe('');
+  });
+
+  it('picks a chosen file and stores it', async () => {
+    const file = new File(['x'], 'r.png', { type: 'image/png' });
+    inputs.length = 0;
+    const pending = pickReceipt('library', 2);
+    const input = inputs[0];
+    expect(input.accept).toBe('image/*');
+    input.files = [file];
+    input.dispatchEvent(new Event('change'));
+    expect(await pending).toBe('receipts/receipt-2.png');
+  });
+
+  it('returns null when the chooser is cancelled and rejects a non-picture', async () => {
+    inputs.length = 0;
+    const cancelled = pickReceipt('camera');
+    const input = inputs[0];
+    expect(input.getAttribute('capture')).toBe('environment');
+    input.dispatchEvent(new Event('cancel'));
+    expect(await cancelled).toBeNull();
+    inputs.length = 0;
+    const bad = pickReceipt('library');
+    const input2 = inputs[0];
+    input2.files = [new File(['x'], 'a.txt', { type: 'text/plain' })];
+    input2.dispatchEvent(new Event('change'));
+    await expect(bad).rejects.toThrow();
+  });
+});

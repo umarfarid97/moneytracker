@@ -3,7 +3,7 @@ import AddExpense from '@/app/add-expense';
 import { freshDb, renderWithData } from './helpers';
 
 jest.mock('@/hooks/useToday', () => ({ useToday: () => '2026-10-24' }));
-jest.mock('@/receipts', () => ({ pickReceipt: jest.fn(), resolveReceiptUri: (u: string) => u }));
+jest.mock('@/receipts', () => ({ pickReceipt: jest.fn(), resolveReceiptUri: (u: string) => u, useReceiptVersion: () => 0 }));
 jest.mock('@/receiptScan', () => ({ scanReceipt: jest.fn().mockResolvedValue(null) }));
 const { router, useLocalSearchParams } = jest.requireMock('expo-router');
 

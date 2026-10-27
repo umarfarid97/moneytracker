@@ -4,7 +4,7 @@ import Tax from '@/app/tax';
 import TaxPack from '@/app/tax-pack';
 import { freshDb, renderWithData } from './helpers';
 
-jest.mock('@/receipts', () => ({ pickReceipt: jest.fn(), resolveReceiptUri: (u: string) => u }));
+jest.mock('@/receipts', () => ({ pickReceipt: jest.fn(), resolveReceiptUri: (u: string) => u, useReceiptVersion: () => 0 }));
 jest.mock('@/hooks/useToday', () => ({ useToday: () => '2025-12-01' }));
 const { router } = jest.requireMock('expo-router');
 

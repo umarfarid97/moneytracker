@@ -1,6 +1,9 @@
 import { Directory, File, Paths } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 
+/** Native pictures are plain files, so nothing needs reloading when the screen shows them. */
+export const useReceiptVersion = (): number => 0;
+
 export type ReceiptSource = 'camera' | 'library';
 
 const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'heic', 'webp']);

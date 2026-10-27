@@ -51,7 +51,14 @@ export default function TaxPack() {
 
   /** Links a receipt photo to a claim that has none, so it counts as ready for filing. */
   async function linkReceipt(item: PackItem) {
-    const uri = await pickReceipt('library');
+    setError(null);
+    let uri: string | null;
+    try {
+      uri = await pickReceipt('library');
+    } catch {
+      setError(t('receipt.failed'));
+      return;
+    }
     if (!uri) return;
     if (item.source === 'spending') {
       const e = expenses.find((x) => x.id === item.id);
