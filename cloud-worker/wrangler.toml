@@ -14,3 +14,8 @@ database_name = "duit-cloud"
 # Created in the Cloudflare account; schema from migrations/0001_init.sql is already applied.
 database_id = "26ff5993-5119-4b26-b645-09db333bbfca"
 migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "RECEIPTS"
+# Private bucket, only reachable through the Worker. The deploy workflow creates it if missing.
+bucket_name = "duit-receipts"

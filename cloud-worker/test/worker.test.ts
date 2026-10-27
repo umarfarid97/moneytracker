@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import worker, { type Env } from '../src/index';
-import { createFakeD1, migration } from './fakeD1';
+import { createFakeD1, createFakeR2, migration } from './fakeD1';
 
 let env: Env;
 let mails: { to: string; code: string }[];
@@ -10,6 +10,7 @@ beforeEach(async () => {
   mails = [];
   env = {
     DB: await createFakeD1(migration()),
+    RECEIPTS: createFakeR2(),
     PEPPER: 'test-pepper',
     MAIL_FROM: 'Duit <login@example.com>',
     ALLOWED_ORIGINS: ORIGIN,
@@ -188,6 +189,42 @@ describe('receipts', () => {
     expect(new Uint8Array(await got.arrayBuffer())).toEqual(data);
     expect((await call('GET', '/receipts/missing.enc', { token: a.token })).status).toBe(404);
   });
+  it('keeps the bytes in R2, not D1, and deletes them', async () => {
+    const a = await signIn();
+    await call('PUT', '/receipts/r.enc', { token: a.token, body: bytes(7) });
+    const r2 = env.RECEIPTS as unknown as { map: Map<string, Uint8Array> };
+    expect([...r2.map.keys()]).toEqual([`${a.accountId}/r.enc`]);
+    expect((await env.DB.prepare('SELECT COUNT(*) AS n FROM blob_chunks').first<{ n: number }>())?.n).toBe(0);
+    expect((await call('DELETE', '/receipts/r.enc', { token: a.token })).status).toBe(204);
+    expect(r2.map.size).toBe(0);
+    expect((await call('GET', '/receipts/r.enc', { token: a.token })).status).toBe(404);
+  });
+  it('enforces the per-account quota', async () => {
+    const a = await signIn();
+    for (let i = 0; i < 50; i++) await env.DB.prepare('INSERT INTO receipts (account_id, name, size, updated_at, in_r2) VALUES (?, ?, ?, 0, 1)').bind(a.accountId, `f${i}.enc`, 3 * 1024 * 1024).run();
+    const res = await call('PUT', '/receipts/new.enc', { token: a.token, body: bytes(5) });
+    expect(res.status).toBe(413);
+    expect(await res.json()).toEqual({ error: 'quota' });
+  });
+  it('moves old D1 receipts to R2 when read, and on list, without losing any', async () => {
+    const a = await signIn();
+    const old = async (name: string, fill: number) => {
+      await env.DB.batch([
+        env.DB.prepare('INSERT INTO blob_chunks (account_id, upload_id, idx, data) VALUES (?, ?, 0, ?)').bind(a.accountId, `rcpt:${name}`, bytes(4, fill)),
+        env.DB.prepare('INSERT INTO receipts (account_id, name, size, updated_at) VALUES (?, ?, 4, 0)').bind(a.accountId, name),
+      ]);
+    };
+    await old('a.enc', 1);
+    await old('b.enc', 2);
+    const got = await call('GET', '/receipts/a.enc', { token: a.token });
+    expect(new Uint8Array(await got.arrayBuffer())).toEqual(bytes(4, 1));
+    expect((env.RECEIPTS as unknown as { map: Map<string, unknown> }).map.has(`${a.accountId}/a.enc`)).toBe(true);
+    const list = (await (await call('GET', '/receipts', { token: a.token })).json()) as { receipts: unknown[] };
+    expect(list.receipts).toHaveLength(2);
+    expect((await env.DB.prepare('SELECT COUNT(*) AS n FROM blob_chunks').first<{ n: number }>())?.n).toBe(0);
+    const again = await call('GET', '/receipts/b.enc', { token: a.token });
+    expect(new Uint8Array(await again.arrayBuffer())).toEqual(bytes(4, 2));
+  });
   it('rejects bad names and big files', async () => {
     const a = await signIn();
     expect((await call('PUT', '/receipts/..%2Fx', { token: a.token, body: bytes(3) })).status).toBe(400);
@@ -211,6 +248,7 @@ describe('account', () => {
       const row = await env.DB.prepare(`SELECT COUNT(*) AS n FROM ${t}`).first<{ n: number }>();
       expect(row?.n, t).toBe(0);
     }
+    expect((env.RECEIPTS as unknown as { map: Map<string, unknown> }).map.size).toBe(0);
   });
 });
 

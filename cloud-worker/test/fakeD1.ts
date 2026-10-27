@@ -1,5 +1,5 @@
 import initSqlJs, { type Database, type SqlValue } from 'sql.js';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /** Just enough of D1's API, on top of sql.js, to run the Worker in tests. */
@@ -50,4 +50,31 @@ export async function createFakeD1(migrationSql: string) {
   } as unknown as D1Database;
 }
 
-export const migration = () => readFileSync(join(import.meta.dirname, '../migrations/0001_init.sql'), 'utf8');
+export const migration = (upTo = 99) =>
+  readdirSync(join(import.meta.dirname, '../migrations'))
+    .filter((f) => f.endsWith('.sql') && Number(f.slice(0, 4)) <= upTo)
+    .sort()
+    .map((f) => readFileSync(join(import.meta.dirname, '../migrations', f), 'utf8'))
+    .join('\n');
+
+/** Just enough of R2's API (an in-memory map) to run the Worker in tests. */
+export function createFakeR2() {
+  const map = new Map<string, Uint8Array>();
+  const bucket = {
+    map,
+    async put(key: string, value: ArrayBuffer | Uint8Array) {
+      map.set(key, new Uint8Array(value as ArrayBuffer).slice());
+    },
+    async get(key: string) {
+      const v = map.get(key);
+      return v ? { body: new Blob([v]).stream() } : null;
+    },
+    async delete(keys: string | string[]) {
+      for (const k of Array.isArray(keys) ? keys : [keys]) map.delete(k);
+    },
+    async list({ prefix = '' }: { prefix?: string; cursor?: string } = {}) {
+      return { objects: [...map.keys()].filter((k) => k.startsWith(prefix)).map((key) => ({ key })), truncated: false };
+    },
+  };
+  return bucket as unknown as R2Bucket & { map: Map<string, Uint8Array> };
+}
