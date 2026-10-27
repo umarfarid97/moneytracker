@@ -4,11 +4,10 @@ import { Pressable, View } from 'react-native';
 import {
   applyBillChange, billEstimate, billStatus, lastPaidFor, paidDueDatesFor, payMode, type BillState, type BillStatus,
 } from '@/domain/bills';
-import { billerFor } from '@/domain/billers';
-import { subscriptionFor } from '@/domain/subscriptions';
+import { brandForBill } from '@/domain/brandLookup';
 import { longDate, monthLabel, shortDate } from '@/domain/dates';
 import {
-  activeMonthly, bnplFor, isPaidOff, loanBalance, loanProgress, nextPayment, totalOwed, type LoanProgress,
+  activeMonthly, isPaidOff, loanBalance, loanProgress, nextPayment, totalOwed, type LoanProgress,
 } from '@/domain/loanTracker';
 import { formatRM } from '@/domain/money';
 import type { Commitment, CommitmentKind } from '@/domain/types';
@@ -46,8 +45,7 @@ const RANK: Record<BillState, number> = { overdue: 0, due: 1, upcoming: 2, paid:
 
 /** The brand mark for a biller or pay later provider, or null to use the plain icon of its kind. */
 function brandOf(item: Commitment) {
-  if (item.kind === 'loan') return bnplFor(item.name) ?? null;
-  return (item.kind === 'subscription' ? subscriptionFor(item.name) : null) ?? billerFor(item.name) ?? null;
+  return brandForBill(item.name, item.kind);
 }
 
 function loanLine(p: LoanProgress): string {

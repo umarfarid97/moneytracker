@@ -1,9 +1,11 @@
 import { View } from 'react-native';
 import type { BalanceLeft } from '@/domain/balance';
+import { brandForBill } from '@/domain/brandLookup';
 import { shortDate } from '@/domain/dates';
 import { formatRM } from '@/domain/money';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
+import { BrandBadge } from '@/ui/BrandBadge';
 import { Sheet } from '@/ui/Sheet';
 import { useTheme } from '@/ui/useTheme';
 
@@ -28,7 +30,8 @@ export function BillsLeftSheet({ visible, balance, today, hidden, onClose }: Pro
         ) : (
           <View style={{ gap: 12 }}>
             {balance.upcomingItems.map((b) => (
-              <View key={`${b.commitmentId}-${b.dueDate}`} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+              <View key={`${b.commitmentId}-${b.dueDate}`} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                {brandForBill(b.name) ? <BrandBadge {...brandForBill(b.name)!} size={32} /> : null}
                 <View style={{ flex: 1 }}>
                   <AppText variant="bodyStrong" numberOfLines={1}>{b.name}</AppText>
                   <AppText variant="small" tone={b.dueDate < today ? 'negative' : 'muted'}>

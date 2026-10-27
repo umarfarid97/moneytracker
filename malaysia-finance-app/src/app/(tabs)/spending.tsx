@@ -7,6 +7,7 @@ import { dayLabel, shortDate, monthKey, monthLabel, shiftMonth } from '@/domain/
 import { billEstimate, lastPaidFor } from '@/domain/bills';
 import { loanBalance, nextPayment } from '@/domain/loanTracker';
 import { formatRM } from '@/domain/money';
+import { brandForBill, brandForNote } from '@/domain/brandLookup';
 import { pendingBills, type PendingBill } from '@/domain/pendingBills';
 import {
   activeFilterCount, EMPTY_FILTERS, filterExpenses, totalsByMethod, type SpendingFilters,
@@ -31,6 +32,7 @@ import { MethodBadge } from '@/ui/MethodBadge';
 import { confirmDelete } from '@/ui/confirm';
 import { EmptyState } from '@/ui/EmptyState';
 import { HeroCard, onHero } from '@/ui/HeroCard';
+import { BrandBadge } from '@/ui/BrandBadge';
 import { IconBadge } from '@/ui/IconBadge';
 import { Screen } from '@/ui/Screen';
 import { Sheet } from '@/ui/Sheet';
@@ -49,6 +51,7 @@ const RELIEFS = LATEST_TAX_YEAR.reliefs;
 const PendingRow = memo(function PendingRow({ bill, amount, onPay }: { bill: PendingBill; amount: number; onPay: (b: PendingBill) => void }) {
   const { c } = useTheme();
   const { commitment: item } = bill;
+  const brand = brandForBill(item.name, item.kind);
   return (
     <View
       testID="pending-row"
@@ -58,7 +61,7 @@ const PendingRow = memo(function PendingRow({ bill, amount, onPay }: { bill: Pen
         borderWidth: 1, borderStyle: 'dashed', borderColor: c.border,
       }}
     >
-      <IconBadge icon="time-outline" color={c.muted} size={42} />
+      {brand ? <BrandBadge {...brand} size={42} testID={`brand-${brand.id}`} /> : <IconBadge icon="time-outline" color={c.muted} size={42} />}
       <View style={{ flex: 1, gap: 4 }}>
         <AppText testID="pending-name" variant="bodyStrong" numberOfLines={1}>{item.name}</AppText>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
@@ -99,6 +102,7 @@ const Row = memo(function Row({
   const name = category?.name ?? '';
   const tint = categoryTint(name, scheme);
   const look = categoryLook(name, category?.icon);
+  const brand = useMemo(() => brandForNote(expense.note), [expense.note]);
   const accent = { bg: c.accentSoft, ink: c.accentInk };
   const warn = statusStyle('tight', scheme);
   const tagged = expense.reliefId !== null;
@@ -127,7 +131,7 @@ const Row = memo(function Row({
           gap: 12,
         }}
       >
-        <IconBadge icon={look.icon} color={look.color} size={42} />
+        {brand ? <BrandBadge {...brand} size={42} testID={`brand-${brand.id}`} /> : <IconBadge icon={look.icon} color={look.color} size={42} />}
         <View style={{ flex: 1, gap: 6 }}>
           <AppText testID="spending-note" variant="bodyStrong" numberOfLines={1}>
             {expense.note || name}

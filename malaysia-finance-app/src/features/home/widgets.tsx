@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMemo, type ReactNode } from 'react';
 import { View } from 'react-native';
+import { brandForBill, brandForNote, type BillBrand } from '@/domain/brandLookup';
 import { billEstimate, billStatus, paidDueDatesFor } from '@/domain/bills';
 import { periodKey } from '@/domain/budgetPeriod';
 import { dayLabel } from '@/domain/dates';
@@ -26,6 +27,7 @@ import { useToday } from '@/hooks/useToday';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
 import { BarChart } from '@/ui/BarChart';
+import { BrandBadge } from '@/ui/BrandBadge';
 import { Card } from '@/ui/Card';
 import { PressableScale } from '@/ui/PressableScale';
 import { ProgressBar } from '@/ui/ProgressBar';
@@ -51,9 +53,10 @@ function WidgetCard({ title, path, children }: { title: string; path: Path; chil
   );
 }
 
-function Row({ left, right, sub }: { left: string; right: string; sub?: string }) {
+function Row({ left, right, sub, brand }: { left: string; right: string; sub?: string; brand?: BillBrand | null }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+      {brand ? <BrandBadge {...brand} size={28} /> : null}
       <View style={{ flex: 1 }}>
         <AppText variant="body" numberOfLines={1}>{left}</AppText>
         {sub ? <AppText variant="small" tone="muted" numberOfLines={1}>{sub}</AppText> : null}
@@ -83,6 +86,7 @@ function UpcomingBills() {
       .map((r) => ({
         id: r.c.id,
         name: r.c.name,
+        brand: brandForBill(r.c.name, r.c.kind),
         amount: formatRM(billEstimate(r.c, expenses)),
         when:
           r.status.state === 'due' ? t('commitments.dueToday')
@@ -93,7 +97,7 @@ function UpcomingBills() {
   }, [commitments, expenses, today]);
   return (
     <WidgetCard title={t('widget.upcomingBills')} path="/commitments">
-      {rows.length === 0 ? <Note>{t('widgets.upcoming.none')}</Note> : rows.map((r) => <Row key={r.id} left={r.name} sub={r.when} right={r.amount} />)}
+      {rows.length === 0 ? <Note>{t('widgets.upcoming.none')}</Note> : rows.map((r) => <Row key={r.id} left={r.name} sub={r.when} right={r.amount} brand={r.brand} />)}
     </WidgetCard>
   );
 }
@@ -107,7 +111,7 @@ function Recent() {
   return (
     <WidgetCard title={t('widget.recent')} path="/spending">
       {latest.length === 0 ? <Note>{t('widgets.recent.none')}</Note> : latest.map((e) => (
-        <Row key={e.id} left={e.note.trim() || name.get(e.categoryId) || ''} sub={`${name.get(e.categoryId) ?? ''} · ${dayLabel(e.date, today)}`} right={formatRM(e.amount)} />
+        <Row key={e.id} left={e.note.trim() || name.get(e.categoryId) || ''} sub={`${name.get(e.categoryId) ?? ''} · ${dayLabel(e.date, today)}`} right={formatRM(e.amount)} brand={brandForNote(e.note)} />
       ))}
     </WidgetCard>
   );
