@@ -60,14 +60,15 @@ Send the server address to Claude in the project chat. It goes into `malaysia-fi
 
 You can also do it yourself: set `CLOUD_API_URL` in that file and rebuild.
 
-## 5. Optional: deploy from GitHub
+## 5. Deploy from GitHub (no terminal)
 
-The workflow **Deploy cloud server** (Actions tab > Run workflow) runs the same `wrangler deploy`. It needs two repository secrets (Settings > Secrets and variables > Actions):
+Use this if you do not want to run commands on your computer. Actions tab > **Deploy cloud server** > Run workflow. It needs three repository secrets (Settings > Secrets and variables > Actions > New repository secret):
 
-- `CLOUDFLARE_API_TOKEN`: Cloudflare > My Profile > API Tokens > *Edit Cloudflare Workers* template.
+- `CLOUDFLARE_API_TOKEN`: Cloudflare dashboard > My Profile > API Tokens > Create Token > the *Edit Cloudflare Workers* template.
 - `CLOUDFLARE_ACCOUNT_ID`: shown on the right of the Cloudflare dashboard home.
+- `RESEND_API_KEY`: your Resend key (`re_...`).
 
-The D1 id (in `wrangler.toml`), `PEPPER` and `RESEND_API_KEY` still come from step 3. Secrets set with `wrangler secret put` stay on Cloudflare between deploys.
+The workflow runs the tests, applies the database migrations, deploys, stores the Resend key on Cloudflare and makes the `PEPPER` secret once. Afterwards the server address is in the Cloudflare dashboard under Workers & Pages > duit-cloud.
 
 ## Using it
 
