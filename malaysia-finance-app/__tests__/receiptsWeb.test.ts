@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { pickReceipt, resolveReceiptUri, storeReceipt, loadReceipts } from '@/receipts.web';
+import { hasReceipt, pickReceipt, readReceiptBlob, receiptPending, resolveReceiptUri, saveReceiptBlob, storeReceipt, loadReceipts } from '@/receipts.web';
 
 class FakeInput extends EventTarget {
   type = '';
@@ -40,6 +40,15 @@ describe('web receipts', () => {
     await loadReceipts();
     expect(resolveReceiptUri('https://x/y.jpg')).toBe('https://x/y.jpg');
     expect(resolveReceiptUri('receipts/missing.jpg')).toBe('');
+  });
+
+  it('keeps a photo that arrived from sync and can read it back', async () => {
+    await saveReceiptBlob('receipts/from-cloud.jpg', new Blob(['abc'], { type: 'image/jpeg' }));
+    expect(hasReceipt('receipts/from-cloud.jpg')).toBe(true);
+    expect(resolveReceiptUri('receipts/from-cloud.jpg')).toMatch(/^blob:/);
+    expect(await readReceiptBlob('receipts/from-cloud.jpg')).not.toBeNull();
+    expect(await readReceiptBlob('receipts/nope.jpg')).toBeNull();
+    expect(receiptPending('receipts/nope.jpg')).toBe(false);
   });
 
   it('picks a chosen file and stores it', async () => {

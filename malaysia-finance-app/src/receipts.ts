@@ -4,6 +4,9 @@ import * as ImagePicker from 'expo-image-picker';
 /** Native pictures are plain files, so nothing needs reloading when the screen shows them. */
 export const useReceiptVersion = (): number => 0;
 
+/** True while a stored receipt may still be loading. Phone receipts are files, so never. */
+export const receiptPending = (_stored: string): boolean => false;
+
 export type ReceiptSource = 'camera' | 'library';
 
 const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'heic', 'webp']);
@@ -31,7 +34,9 @@ export async function storeReceipt(sourceUri: string, now: number = Date.now()):
 /** Full uri for a stored receipt path; uris saved by earlier versions (already absolute) pass through. */
 export function resolveReceiptUri(stored: string): string {
   if (/^[a-z][a-z0-9+.-]*:/i.test(stored)) return stored;
-  return new File(Paths.document, stored).uri;
+  const file = new File(Paths.document, stored);
+  // A receipt added on another device is not here until sync brings it over; '' lets the screen say so.
+  return file.exists ? file.uri : '';
 }
 
 /** Takes a photo or chooses one, stores it, and returns its uri. Null when cancelled, refused or failed. */

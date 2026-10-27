@@ -4,7 +4,7 @@ import { DriveAuthError, listFiles, readText, writeJson, type DriveFile } from '
 import { mergeSnapshots } from './merge';
 import { DemoLoadedError, SyncTooNewError } from './syncErrors';
 import {
-  downloadReceipt, isStoredReceipt, RECEIPT_FILES, receiptExists, uploadReceipt,
+  downloadReceipt, isStoredReceipt, prepareReceipts, RECEIPT_FILES, receiptExists, uploadReceipt,
 } from './receiptFiles';
 import { applySnapshot, canonical, exportSnapshot, isSnapshot, schemaVersion, withAllTables, type Snapshot } from './snapshot';
 
@@ -42,7 +42,10 @@ export async function syncWithDrive(db: Db, token: string): Promise<{ changedLoc
   if (!remote || canonical(result) !== canonical(remote)) {
     await writeJson(token, SYNC_FILE, JSON.stringify(result), dataFile?.id);
   }
-  if (RECEIPT_FILES) await syncReceipts(token, result, files);
+  if (RECEIPT_FILES) {
+    await prepareReceipts();
+    await syncReceipts(token, result, files);
+  }
   return { changedLocal };
 }
 

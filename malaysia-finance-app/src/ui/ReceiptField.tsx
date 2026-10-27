@@ -1,13 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
-import { pickReceipt, resolveReceiptUri, useReceiptVersion, type ReceiptSource } from '@/receipts';
+import { pickReceipt, type ReceiptSource } from '@/receipts';
 import { t } from '@/i18n/t';
 import { AppText } from './AppText';
 import { Button } from './Button';
 import { ReceiptPreview } from './ReceiptPreview';
 import { radius } from './theme';
 import { useTheme } from './useTheme';
+import { ReceiptMissing, useReceipt } from './useReceipt';
 
 type Props = {
   /** Stored picture uri, or null when none. */
@@ -24,7 +25,7 @@ export function ReceiptField({ uri, onChange, compact = false, fill = false }: P
   const [busy, setBusy] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  useReceiptVersion();
+  const receipt = useReceipt(uri);
 
   async function pick(source: ReceiptSource) {
     if (busy) return;
@@ -55,7 +56,7 @@ export function ReceiptField({ uri, onChange, compact = false, fill = false }: P
       {error}
     </AppText>
   ) : null;
-  const preview = <ReceiptPreview uri={previewing && uri ? resolveReceiptUri(uri) : null} onClose={() => setPreviewing(false)} />;
+  const preview = <ReceiptPreview uri={previewing && receipt.uri ? receipt.uri : null} onClose={() => setPreviewing(false)} />;
 
   if (fill) {
     return (
@@ -63,24 +64,30 @@ export function ReceiptField({ uri, onChange, compact = false, fill = false }: P
         <AppText variant="eyebrow" tone="muted">{t('expense.receipt')}</AppText>
         {uri ? (
           <>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t('receipt.view')}
-              onPress={() => setPreviewing(true)}
-              style={{ flexGrow: 1, minHeight: compact ? 140 : 200, borderRadius: radius.control, backgroundColor: c.ground, overflow: 'hidden' }}
-            >
-              <Image
-                source={{ uri: resolveReceiptUri(uri) }}
-                accessibilityLabel={t('expense.receipt')}
-                resizeMode="contain"
-                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-              />
-            </Pressable>
+            {receipt.uri ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('receipt.view')}
+                onPress={() => setPreviewing(true)}
+                style={{ flexGrow: 1, minHeight: compact ? 140 : 200, borderRadius: radius.control, backgroundColor: c.ground, overflow: 'hidden' }}
+              >
+                <Image
+                  source={{ uri: receipt.uri }}
+                  accessibilityLabel={t('expense.receipt')}
+                  resizeMode="contain"
+                  style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+                />
+              </Pressable>
+            ) : (
+              <View style={{ flexGrow: 1, minHeight: compact ? 140 : 200, flexDirection: 'row' }}>
+                {receipt.missing ? <ReceiptMissing compact={compact} /> : null}
+              </View>
+            )}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <View style={{ flex: 1 }}>
                 <AppText variant="bodyStrong">{t('receipt.attached')}</AppText>
                 <AppText variant="small" tone="muted">
-                  {t('receipt.tapToView')}
+                  {receipt.missing ? t('receipt.elsewhereHint') : t('receipt.tapToView')}
                 </AppText>
               </View>
               <Button title={t('receipt.remove')} variant="secondary" compact={compact} onPress={() => onChange(null)} />
@@ -117,18 +124,25 @@ export function ReceiptField({ uri, onChange, compact = false, fill = false }: P
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t('receipt.view')}
+            disabled={!receipt.uri}
             onPress={() => setPreviewing(true)}
             style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}
           >
-            <Image
-              source={{ uri: resolveReceiptUri(uri) }}
-              accessibilityLabel={t('expense.receipt')}
-              style={{ width: compact ? 44 : 64, height: compact ? 44 : 64, borderRadius: radius.sm }}
-            />
+            {receipt.uri ? (
+              <Image
+                source={{ uri: receipt.uri }}
+                accessibilityLabel={t('expense.receipt')}
+                style={{ width: compact ? 44 : 64, height: compact ? 44 : 64, borderRadius: radius.sm }}
+              />
+            ) : (
+              <View style={{ width: compact ? 44 : 64, height: compact ? 44 : 64 }}>
+                {receipt.missing ? <ReceiptMissing compact /> : null}
+              </View>
+            )}
             <View style={{ flex: 1 }}>
               <AppText variant="bodyStrong">{t('receipt.attached')}</AppText>
-              <AppText variant="small" tone="accent">
-                {t('receipt.view')}
+              <AppText variant="small" tone={receipt.missing ? 'muted' : 'accent'}>
+                {receipt.missing ? t('receipt.elsewhere') : t('receipt.view')}
               </AppText>
             </View>
           </Pressable>

@@ -5,6 +5,7 @@ import { syncWithDrive, SYNC_FILE, SyncTooNewError } from '@/sync/driveSync';
 
 jest.mock('@/sync/receiptFiles', () => ({
   RECEIPT_FILES: true,
+  prepareReceipts: jest.fn(async () => {}),
   isStoredReceipt: (s: string | null) => !!s && s.startsWith('receipts/'),
   receiptExists: jest.fn((s: string) => s === 'receipts/here.jpg'),
   uploadReceipt: jest.fn(async () => {}),

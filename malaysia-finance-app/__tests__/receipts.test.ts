@@ -23,6 +23,9 @@ jest.mock('expo-file-system', () => {
     get name() {
       return this.uri.split('/').pop() as string;
     }
+    get exists() {
+      return !this.uri.includes('missing');
+    }
     async copy(dest: { uri: string }) {
       copies.push({ from: this.uri, to: dest.uri });
     }
@@ -65,6 +68,9 @@ describe('storeReceipt', () => {
 describe('resolveReceiptUri', () => {
   test('turns a stored relative path into a full uri under the current documents folder', () => {
     expect(resolveReceiptUri('receipts/receipt-5.jpg')).toBe('file:///docs/receipts/receipt-5.jpg');
+  });
+  test('gives an empty uri for a photo that is not on this device', () => {
+    expect(resolveReceiptUri('receipts/missing-9.jpg')).toBe('');
   });
   test('leaves full uris from older saves untouched', () => {
     expect(resolveReceiptUri('file:///old/container/receipts/a.jpg')).toBe('file:///old/container/receipts/a.jpg');
