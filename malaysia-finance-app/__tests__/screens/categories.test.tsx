@@ -7,7 +7,20 @@ beforeEach(() => jest.clearAllMocks());
 const names = (db: Awaited<ReturnType<typeof freshDb>>) =>
   db.all<{ name: string }>('SELECT name FROM categories ORDER BY sort_order, id').then((rows) => rows.map((r) => r.name));
 
+const mockPush = jest.fn();
+jest.mock('expo-router', () => ({ ...jest.requireActual('expo-router'), useRouter: () => ({ push: mockPush, back: jest.fn() }) }));
+
 describe('Categories screen', () => {
+  test('shows only the list and an Add new button, which opens the add page', async () => {
+    const db = await freshDb();
+    await renderWithData(db, <Categories />);
+    await waitFor(() => expect(screen.getByText('Makan')).toBeTruthy());
+    expect(screen.queryByLabelText('New category name')).toBeNull();
+    expect(screen.queryByText('Suggestions')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Add new' }));
+    expect(mockPush).toHaveBeenCalledWith('/category-new');
+  });
+
   test('lists every category; Lain-lain, the fallback, can be neither renamed nor deleted', async () => {
     const db = await freshDb();
     await renderWithData(db, <Categories />);
@@ -16,40 +29,6 @@ describe('Categories screen', () => {
     expect(screen.getByRole('button', { name: 'Rename Makan' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Rename Lain-lain' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Delete Lain-lain' })).toBeNull();
-  });
-
-  test('adds a category', async () => {
-    const db = await freshDb();
-    await renderWithData(db, <Categories />);
-    await waitFor(() => expect(screen.getByLabelText('New category name')).toBeTruthy());
-    expect(screen.getByRole('button', { name: 'Add category' })).toBeDisabled();
-    await fireEvent.changeText(screen.getByLabelText('New category name'), '  Kucing ');
-    await fireEvent.press(screen.getByRole('button', { name: 'Add category' }));
-    await waitFor(() => expect(screen.getByText('Kucing')).toBeTruthy());
-    expect((await names(db)).includes('Kucing')).toBe(true);
-    expect(screen.getByLabelText('New category name').props.value).toBe('');
-  });
-
-  test('adds a suggested Malaysian category with one tap and stops suggesting it', async () => {
-    const db = await freshDb();
-    await renderWithData(db, <Categories />);
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Add Petrol' })).toBeTruthy());
-    await fireEvent.press(screen.getByRole('button', { name: 'Add Petrol' }));
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Add Petrol' })).toBeNull());
-    expect((await names(db)).includes('Petrol')).toBe(true);
-  });
-
-  test('adds a category with a chosen icon', async () => {
-    const db = await freshDb();
-    await renderWithData(db, <Categories />);
-    await waitFor(() => expect(screen.getByLabelText('New category name')).toBeTruthy());
-    await fireEvent.press(screen.getByRole('button', { name: 'Choose an icon' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'paw icon' }));
-    await fireEvent.changeText(screen.getByLabelText('New category name'), 'Kucing');
-    await fireEvent.press(screen.getByRole('button', { name: 'Add category' }));
-    await waitFor(() => expect(screen.getByText('Kucing')).toBeTruthy());
-    const row = await db.get<{ icon: string }>("SELECT icon FROM categories WHERE name = 'Kucing'");
-    expect(row?.icon).toBe('paw-outline');
   });
 
   test('changes the icon of an existing category', async () => {
@@ -64,15 +43,6 @@ describe('Categories screen', () => {
       expect(row?.icon).toBe('pizza-outline');
     });
     expect(screen.queryByRole('button', { name: 'pizza icon' })).toBeNull();
-  });
-
-  test('refuses a name that is already used, ignoring case', async () => {
-    const db = await freshDb();
-    await renderWithData(db, <Categories />);
-    await waitFor(() => expect(screen.getByLabelText('New category name')).toBeTruthy());
-    await fireEvent.changeText(screen.getByLabelText('New category name'), 'makan');
-    expect(screen.getByText('That name is already used')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Add category' })).toBeDisabled();
   });
 
   test('renames a category', async () => {
