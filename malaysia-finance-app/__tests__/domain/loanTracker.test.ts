@@ -1,5 +1,5 @@
 import {
-  addMonthsToDue, bnplFor, isPaidOff, loanBalance, loanProgress, NO_LOAN, nextPayment, paymentsLeft, totalOwed,
+  addMonthsToDue, bnplFor, instalmentNumber, isPaidOff, loanBalance, loanProgress, NO_LOAN, nextPayment, paymentsLeft, startFromCycle, totalOwed,
 } from '@/domain/loanTracker';
 import type { Commitment, Expense } from '@/domain/types';
 
@@ -84,5 +84,24 @@ describe('pay later providers', () => {
     expect(bnplFor('SPayLater iPhone')?.id).toBe('spaylater');
     expect(bnplFor('Grab PayLater')?.id).toBe('grab');
     expect(bnplFor('Car loan')).toBeNull();
+  });
+});
+
+describe('loan start and current cycle', () => {
+  it('counts the instalment on the start date as number 1', () => {
+    expect(instalmentNumber({ loanStart: '2026-01-15' }, '2026-01-20')).toBe(1);
+    expect(instalmentNumber({ loanStart: '2026-01-15' }, '2026-10-28')).toBe(10);
+  });
+
+  it('has no number when the start is unknown or still ahead', () => {
+    expect(instalmentNumber({ loanStart: null }, '2026-10-28')).toBeNull();
+    expect(instalmentNumber({ loanStart: '2026-12-15' }, '2026-10-28')).toBeNull();
+  });
+
+  it('works out the start date from the current cycle and back', () => {
+    const start = startFromCycle(14, 15, '2026-10-28');
+    expect(start).toBe('2025-09-15');
+    expect(instalmentNumber({ loanStart: start }, '2026-10-28')).toBe(14);
+    expect(startFromCycle(1, 31, '2026-02-10')).toBe('2026-02-28');
   });
 });

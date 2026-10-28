@@ -170,6 +170,10 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE commitments ADD COLUMN starts_on TEXT;
   ALTER TABLE commitments ADD COLUMN ends_on TEXT;
   `,
+  // 19: loans: date of the first instalment, so the current instalment number is known; NULL for existing loans
+  `
+  ALTER TABLE commitments ADD COLUMN loan_start TEXT;
+  `,
 ];
 
 function projectsMigration(): string {

@@ -7,7 +7,7 @@ import {
 import { brandForBill } from '@/domain/brandLookup';
 import { longDate, monthLabel, shortDate } from '@/domain/dates';
 import {
-  activeMonthly, isPaidOff, loanBalance, loanProgress, nextPayment, totalOwed, type LoanProgress,
+  activeMonthly, instalmentNumber, isPaidOff, loanBalance, loanProgress, nextPayment, totalOwed, type LoanProgress,
 } from '@/domain/loanTracker';
 import { formatRM } from '@/domain/money';
 import type { Commitment, CommitmentKind } from '@/domain/types';
@@ -32,7 +32,7 @@ import { Screen } from '@/ui/Screen';
 import { elevation, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
-const LOAN_ICON = { home: 'home', car: 'car', ptptn: 'school', personal: 'cash', bnpl: 'card' } as const;
+const LOAN_ICON = { home: 'home', car: 'car', ptptn: 'school', personal: 'cash', bnpl: 'card', installment: 'receipt' } as const;
 
 const KIND_LOOK: Record<CommitmentKind, { icon: 'flash' | 'business' | 'repeat'; color: string }> = {
   bill: { icon: 'flash', color: '#d97706' },
@@ -179,6 +179,9 @@ export default function Commitments() {
                   ) : null}
                   {item.endsOn !== null ? (
                     <AppText variant="small" tone="muted">{t('bill.ends', { date: longDate(item.endsOn) })}</AppText>
+                  ) : null}
+                  {item.kind === 'loan' && instalmentNumber(item, today) !== null ? (
+                    <AppText testID="loan-instalment" variant="small" tone="muted">{t('loans.instalmentNo', { n: instalmentNumber(item, today)! })}</AppText>
                   ) : null}
                   {loan && !loan.paidOff ? (
                     <View style={{ gap: 4 }}>

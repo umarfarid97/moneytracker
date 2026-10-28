@@ -11,7 +11,7 @@ const spend = (amount: number, date: string, extra: Partial<Expense> = {}): Expe
 const bill = (extra: Partial<Commitment> = {}): Commitment => ({
   id: 7, name: 'Rent', amount: 100000, dayOfMonth: 28, kind: 'bill', active: true, categoryId: null,
   paymentMethodId: null, reliefId: null, autoRecord: false, startDate: '2026-01-01', lastAutoDue: null,
-  variable: false, loanType: null, loanBalance: null, loanBalanceDate: null, loanOriginal: null, loanRatePct: null, startsOn: null, endsOn: null,
+  variable: false, loanType: null, loanBalance: null, loanBalanceDate: null, loanOriginal: null, loanRatePct: null, loanStart: null, startsOn: null, endsOn: null,
   ...extra,
 });
 
