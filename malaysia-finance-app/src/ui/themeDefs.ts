@@ -1,13 +1,13 @@
 /**
- * The app themes: Classic (the original look), Dark green and Pastel dark. A theme changes colours, fonts, the wallpaper and how cards are outlined; it never
+ * The app themes: Classic (the original look), Dark green, Pastel dark and Mint dark. A theme changes colours, fonts, the wallpaper and how cards are outlined; it never
  * changes layout, sizes or components. Each theme defines its own light and dark palette, so More > Appearance
  * (Light / Dark / Match device) keeps working inside every theme.
  */
 import type { Status } from '@/domain/budget';
 
 export type Scheme = 'light' | 'dark';
-export type ThemeName = 'classic' | 'green' | 'pastel';
-export const THEME_NAMES: readonly ThemeName[] = ['classic', 'green', 'pastel'];
+export type ThemeName = 'classic' | 'green' | 'pastel' | 'mint';
+export const THEME_NAMES: readonly ThemeName[] = ['classic', 'green', 'pastel', 'mint'];
 
 export type Palette = {
   ground: string;
@@ -46,14 +46,19 @@ export type Palette = {
 };
 
 export type Fonts = { regular: string; medium: string; semibold: string; bold: string };
-export type Wallpaper = 'none' | 'streaks' | 'vignette';
+export type Wallpaper = 'none' | 'streaks' | 'vignette' | 'rings';
+/** How the active bottom tab is marked: just its colour, a soft pill, or a drop-shaped blob. */
+export type TabIndicator = 'none' | 'pill' | 'drop';
 /** How a card is lifted off the ground: a soft shadow, a thin border, or both. */
-export type CardChrome = 'shadow' | 'border' | 'both';
+export type CardChrome = 'shadow' | 'border' | 'both' | 'none';
 export type StatusColors = Record<Status, { bg: string; ink: string }>;
 
 export type ThemeDef = {
   /** True when the theme has one palette only, so the Light / Dark / Match device choice does not apply. */
   darkOnly: boolean;
+  tabIndicator: TabIndicator;
+  /** Corner radius of cards, tiles and summary cards. */
+  cardRadius: number;
   fonts: Fonts;
   /** Multiplies text sizes so a wider typeface (monospace) wraps no more often than Outfit does. */
   fontScale: number;
@@ -78,6 +83,8 @@ const CLASSIC_STATUS: Record<Scheme, StatusColors> = {
 
 const classic: ThemeDef = {
   darkOnly: false,
+  tabIndicator: 'none',
+  cardRadius: 22,
   fontScale: 1,
   fonts: { regular: 'Outfit_400Regular', medium: 'Outfit_500Medium', semibold: 'Outfit_600SemiBold', bold: 'Outfit_700Bold' },
   wallpaper: 'none',
@@ -124,6 +131,8 @@ const GREEN_PALETTE: Palette = {
  */
 const green: ThemeDef = {
   darkOnly: true,
+  tabIndicator: 'pill',
+  cardRadius: 22,
   fontScale: 1,
   fonts: { regular: 'Manrope_400Regular', medium: 'Manrope_500Medium', semibold: 'Manrope_600SemiBold', bold: 'Manrope_700Bold' },
   wallpaper: 'streaks',
@@ -158,6 +167,8 @@ const PASTEL_PALETTE: Palette = {
  */
 const pastel: ThemeDef = {
   darkOnly: true,
+  tabIndicator: 'pill',
+  cardRadius: 22,
   fontScale: 1,
   fonts: { regular: 'Inter_400Regular', medium: 'Inter_500Medium', semibold: 'Inter_600SemiBold', bold: 'Inter_700Bold' },
   wallpaper: 'vignette',
@@ -166,4 +177,37 @@ const pastel: ThemeDef = {
   palette: { light: PASTEL_PALETTE, dark: PASTEL_PALETTE },
 };
 
-export const THEMES: Record<ThemeName, ThemeDef> = { classic, green, pastel };
+const MINT_STATUS: StatusColors = {
+  'on-track': { bg: '#1c2b26', ink: '#a9ecd2' },
+  tight: { bg: '#2d2a1c', ink: '#f2e4b0' },
+  over: { bg: '#33222a', ink: '#f6c3cf' },
+};
+
+const MINT_PALETTE: Palette = {
+  ground: '#17181a', surface: '#222426', raised: '#2c2e31', border: '#2f3235', control: '#4a4e52', track: '#303336',
+  text: '#f3f6f5', muted: '#a3abb0', accent: '#bdeedd', onAccent: '#0e1e19', accentSoft: '#2b3b36', accentInk: '#bdeedd',
+  positive: '#9fe3c8', negative: '#f4b8c4', warning: '#efe1ae',
+  brand: ['#8fd9c0', '#bdeedd'], wash: ['#17181a', '#17181a'],
+  heroInk: '#0d1c17', heroSoft: '#2b4a40', heroChip: '#e3f8f1', heroGradient: ['#cdf4e8', '#b3ebdb'],
+  tagBg: '#2e3134', tagInk: '#d8dfdc', wallpaperInk: '#ffffff', wallpaperAccent: 'transparent',
+  // Mint, lavender, cream and blush.
+  tilePalette: ['#bde6d9', '#ddd3f1', '#f1ece1', '#f0d5d1'], tileInk: '#101a16',
+};
+
+/**
+ * Mint dark: flat charcoal ground with faint rings, charcoal cards, soft pastel category tiles (mint, lavender,
+ * cream, blush) with dark ink, a mint balance card, a drop-shaped active tab and Urbanist. Dark only.
+ */
+const mint: ThemeDef = {
+  darkOnly: true,
+  tabIndicator: 'drop',
+  cardRadius: 30,
+  fontScale: 1,
+  fonts: { regular: 'Urbanist_400Regular', medium: 'Urbanist_500Medium', semibold: 'Urbanist_600SemiBold', bold: 'Urbanist_700Bold' },
+  wallpaper: 'rings',
+  card: { light: 'none', dark: 'none' },
+  status: { light: MINT_STATUS, dark: MINT_STATUS },
+  palette: { light: MINT_PALETTE, dark: MINT_PALETTE },
+};
+
+export const THEMES: Record<ThemeName, ThemeDef> = { classic, green, pastel, mint };

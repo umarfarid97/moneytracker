@@ -28,6 +28,11 @@ export function activeTheme(): ThemeName {
 }
 
 export const radius = { card: 22, control: 14, sm: 10, xs: 6, pill: 999 } as const;
+/** Corner radius of cards, tiles and summary cards in the active theme. */
+export function cardRadius(): number {
+  return THEMES[activeName].cardRadius;
+}
+
 export const space = { xs: 4, s: 8, m: 12, gap: 16, pad: 20, xl: 24, xxl: 32 } as const;
 export const controlHeight = 50;
 
@@ -66,6 +71,7 @@ export function elevation(scheme: Scheme): ViewStyle {
 export function cardChrome(c: Palette, scheme: Scheme): ViewStyle {
   const kind = THEMES[activeName].card[scheme];
   const border: ViewStyle = { borderWidth: 1, borderColor: c.border };
+  if (kind === 'none') return {};
   if (kind === 'border') return border;
   if (kind === 'both') return { ...border, ...(Platform.OS === 'android' ? { elevation: 1 } : lightShadow()) };
   return elevation(scheme);
@@ -77,6 +83,7 @@ function lightShadow(): ViewStyle {
 
 /** Lift under a prominent surface such as the tab bar's + button. `color` tints the shadow slightly. */
 export function glow(color: string, scheme: Scheme): ViewStyle {
+  if (THEMES[activeName].tabIndicator === 'drop') return {};
   if (activeName !== 'classic') {
     if (Platform.OS === 'android') return { elevation: 6, shadowColor: color };
     return { shadowColor: color, shadowOpacity: 0.55, shadowRadius: 18, shadowOffset: { width: 0, height: 0 }, elevation: 6 };
@@ -150,7 +157,7 @@ const PICKABLE = new Set<string>(CATEGORY_ICONS);
  */
 export function categoryLook(name: string, icon?: string): { icon: IconName; color: string } {
   const picked = icon !== undefined && PICKABLE.has(icon) ? (icon as IconName) : undefined;
-  return { icon: picked ?? CATEGORY_ICON[name] ?? 'pricetag-outline', color: CATEGORY_COLOR };
+  return { icon: picked ?? CATEGORY_ICON[name] ?? 'pricetag-outline', color: activeName === 'classic' ? CATEGORY_COLOR : THEMES[activeName].palette.dark.accent };
 }
 
 /** Tint for a category tag. The design keeps tags neutral, so every category shares the same tag colours. */

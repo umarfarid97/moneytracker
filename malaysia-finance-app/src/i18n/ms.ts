@@ -384,6 +384,8 @@ export const ms: Record<StringKey, string> = {
   'more.theme.green': 'Hijau gelap',
   'more.theme.pastel': 'Gelap pastel',
   'more.theme.pastel.hint': 'Biru laut gelap dengan cahaya ungu lembut, jubin pastel berani, butang kelabu-biru dan fon sans yang kemas. Gelap sahaja.',
+  'more.theme.mint': 'Pudina gelap',
+  'more.theme.mint.hint': 'Arang dengan jubin pastel lembut dan kad baki pudina. Gelap sahaja.',
   'more.theme.green.hint': 'Hampir hitam dengan cahaya hijau lembut, aksen limau dan kad baki hijau sage. Gelap sahaja.',
   'more.settings': 'Tetapan',
   'more.demo': 'Data demo',

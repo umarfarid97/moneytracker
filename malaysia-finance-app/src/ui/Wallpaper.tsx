@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { THEMES } from './themeDefs';
 import { useTheme } from './useTheme';
 
@@ -31,6 +31,15 @@ export function Wallpaper() {
         </Defs>
         <Rect x="-40%" y="-30%" width="180%" height="70%" fill="url(#glowA)" />
         <Rect x="-60%" y="60%" width="160%" height="60%" fill="url(#glowB)" />
+      </Svg>
+    );
+  }
+  if (kind === 'rings') {
+    // Mint dark: a couple of faint arcs, like the rings behind the reference phones.
+    return (
+      <Svg pointerEvents="none" style={StyleSheet.absoluteFill} width="100%" height="100%" viewBox="0 0 100 200" preserveAspectRatio="xMidYMid slice">
+        <Circle cx="95" cy="30" r="62" fill="none" stroke={c.wallpaperInk} strokeOpacity="0.05" strokeWidth="0.5" />
+        <Circle cx="95" cy="30" r="88" fill="none" stroke={c.wallpaperInk} strokeOpacity="0.035" strokeWidth="0.5" />
       </Svg>
     );
   }
