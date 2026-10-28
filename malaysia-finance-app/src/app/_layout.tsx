@@ -15,6 +15,7 @@ import { SyncProvider } from '@/sync/SyncProvider';
 import { getThemeName } from '@/ui/appearance';
 import { loadThemeFonts } from '@/ui/themeFonts';
 import { useTheme } from '@/ui/useTheme';
+import { syncBrowserChrome } from '@/ui/browserChrome';
 
 const FONT_WAIT_MS = 700;
 
@@ -36,6 +37,11 @@ export default function RootLayout() {
   const ready = fontsLoaded || fontWaitOver;
   const { scheme, c } = useTheme();
   const language = useLanguage();
+
+  // Web: paint the page behind the app, the browser's status bar and the overscroll area in the theme's ground colour.
+  useEffect(() => {
+    syncBrowserChrome(c.ground, scheme);
+  }, [c.ground, scheme]);
 
   useEffect(() => {
     if (ready) SplashScreen.hideAsync().catch(() => {});
