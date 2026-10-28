@@ -164,8 +164,18 @@ export default function Categories() {
   return (
     <Screen>
       <BackButton />
-      <AppText variant="title">{t('categories.title')}</AppText>
-      <Button title={t('categories.addNew')} onPress={() => router.push('/category-new')} />
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <AppText variant="title" style={{ flexShrink: 1 }}>{t('categories.title')}</AppText>
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel={t('categories.addNew')}
+          hitSlop={8}
+          onPress={() => router.push('/category-new')}
+          style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Ionicons name="add" size={22} color={c.accentInk} />
+        </PressableScale>
+      </View>
       {error ? (
         <AppText variant="small" tone="negative">
           {error}
