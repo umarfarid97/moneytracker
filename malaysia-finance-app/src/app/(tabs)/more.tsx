@@ -10,7 +10,7 @@ import { IconBadge } from '@/ui/IconBadge';
 import { Screen } from '@/ui/Screen';
 import { useTheme } from '@/ui/useTheme';
 
-type Path = '/wealth' | '/tax' | '/profile' | '/budget' | '/loan-calculator' | '/reports' | '/import-statement' | '/owed' | '/settings' | '/demo';
+type Path = '/wealth' | '/tax' | '/profile' | '/budget' | '/loan-calculator' | '/reports' | '/import-statement' | '/categories' | '/payment-methods' | '/owed' | '/settings' | '/demo';
 type Item = { label: StringKey; path: Path; icon: keyof typeof Ionicons.glyphMap; color: string };
 
 const SECTIONS: { title: StringKey; items: Item[] }[] = [
@@ -39,6 +39,8 @@ const SECTIONS: { title: StringKey; items: Item[] }[] = [
   {
     title: 'more.section.tools',
     items: [
+      { label: 'more.categories', path: '/categories', icon: 'pricetags', color: '#ea580c' },
+      { label: 'more.methods', path: '/payment-methods', icon: 'card', color: '#0284c7' },
       { label: 'more.import', path: '/import-statement', icon: 'download', color: '#0d5bd3' },
       { label: 'more.demo', path: '/demo', icon: 'flask', color: '#7c3aed' },
       { label: 'more.settings', path: '/settings', icon: 'settings', color: '#64748b' },

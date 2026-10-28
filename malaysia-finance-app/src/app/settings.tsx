@@ -15,17 +15,15 @@ import { Screen } from '@/ui/Screen';
 import { Sheet } from '@/ui/Sheet';
 import { useTheme } from '@/ui/useTheme';
 
-type Path = '/security' | '/notifications-settings' | '/categories' | '/payment-methods' | '/backup';
+type Path = '/security' | '/notifications-settings' | '/backup';
 
 const ITEMS: { label: StringKey; path: Path; icon: keyof typeof Ionicons.glyphMap; color: string }[] = [
   { label: 'more.security', path: '/security', icon: 'lock-closed', color: '#0d5bd3' },
   { label: 'more.notifications', path: '/notifications-settings', icon: 'notifications', color: '#ea580c' },
-  { label: 'more.categories', path: '/categories', icon: 'pricetags', color: '#ea580c' },
-  { label: 'more.methods', path: '/payment-methods', icon: 'card', color: '#0284c7' },
   { label: 'more.backup', path: '/backup', icon: 'cloud-upload', color: '#0d5bd3' },
 ];
 
-/** Appearance, language and the things you set once: app lock, reminders, categories, payment methods and backup. */
+/** Appearance, language and the things you set once: app lock, reminders and backup. */
 export default function Settings() {
   const { c } = useTheme();
   const appearance = useAppearance();

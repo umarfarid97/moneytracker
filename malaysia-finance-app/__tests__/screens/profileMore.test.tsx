@@ -28,6 +28,8 @@ describe('More tab', () => {
       ['Savings, EPF & giving', '/wealth'],
       ['Tax reliefs', '/tax'],
       ['Loan calculator', '/loan-calculator'],
+      ['Categories', '/categories'],
+      ['Payment methods', '/payment-methods'],
       ['Settings', '/settings'],
     ] as const) {
       await fireEvent.press(screen.getByText(label));
@@ -51,20 +53,20 @@ describe('More tab', () => {
     expect(screen.queryByRole('button', { name: 'USD' })).toBeNull();
   });
 
-  test('Settings links to app lock, reminders, categories, payment methods and backup', async () => {
+  test('Settings links to app lock, reminders and backup, and no longer lists categories or payment methods', async () => {
     const db = await freshDb();
     await renderWithData(db, <Settings />);
     await waitFor(() => expect(screen.getByText('App lock')).toBeTruthy());
     for (const [label, path] of [
       ['App lock', '/security'],
       ['Reminders & quick add', '/notifications-settings'],
-      ['Categories', '/categories'],
-      ['Payment methods', '/payment-methods'],
       ['Backup & sync', '/backup'],
     ] as const) {
       await fireEvent.press(screen.getByText(label));
       expect(router.push).toHaveBeenLastCalledWith(path);
     }
+    expect(screen.queryByText('Categories')).toBeNull();
+    expect(screen.queryByText('Payment methods')).toBeNull();
   });
 
   test('Settings has a switch for pending bills in Spending, on by default, remembered in the database', async () => {
