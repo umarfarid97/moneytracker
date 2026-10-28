@@ -471,3 +471,32 @@ describe('Home layout sync', () => {
     expect(await getSetting(b, 'homeLayout')).toBe(layout([CAT.Lain]));
   });
 });
+
+describe('Theme sync', () => {
+  it('carries the theme choice to another phone and keeps the newest', async () => {
+    const a = await freshDb();
+    const b = await freshDb();
+    expect((await exportSnapshot(a)).themePrefs).toBeNull();
+    await setSetting(a, 'theme', 'mint');
+    await setSetting(a, 'appearance', 'dark');
+    await setSetting(a, 'themeAt', '1000');
+    await applySnapshot(b, mergeSnapshots(await exportSnapshot(b), await exportSnapshot(a)));
+    expect(await getSetting(b, 'theme')).toBe('mint');
+    expect(await getSetting(b, 'appearance')).toBe('dark');
+    await setSetting(b, 'theme', 'pastel');
+    await setSetting(b, 'themeAt', '2000');
+    const merged = mergeSnapshots(await exportSnapshot(a), await exportSnapshot(b));
+    expect(merged.themePrefs).toEqual({ updatedAt: 2000, theme: 'pastel', appearance: 'dark' });
+  });
+
+  it('tolerates snapshots without a theme', async () => {
+    const a = await freshDb();
+    await setSetting(a, 'theme', 'mint');
+    await setSetting(a, 'themeAt', '1000');
+    const old = await exportSnapshot(a);
+    delete old.themePrefs;
+    expect(isSnapshot(old)).toBe(true);
+    await applySnapshot(a, old);
+    expect(await getSetting(a, 'theme')).toBe('mint');
+  });
+});

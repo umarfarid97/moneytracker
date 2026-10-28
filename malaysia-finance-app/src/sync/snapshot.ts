@@ -3,6 +3,7 @@ import type { Db, SqlParam } from '@/db/types';
 import { FALLBACK_CATEGORY } from '@/db/repos/categories';
 import { demoUids, realProfile } from '@/db/repos/demo';
 import { getSetting, setSetting } from '@/db/repos/appSettings';
+import { THEME_KEY, APPEARANCE_KEY, THEME_AT_KEY } from '@/domain/themePrefs';
 import { HOME_LAYOUT_KEY, HOME_LAYOUT_AT_KEY, parseHomeLayout } from '@/domain/homeLayout';
 
 /**
@@ -53,6 +54,9 @@ export type HomeLayoutSync = {
   categoryHidden: string[];
 };
 
+/** The design theme and light/dark choice, one piece: the newest copy wins. */
+export type ThemeSync = { updatedAt: number; theme: string; appearance: string };
+
 export type Snapshot = {
   app: 'duit';
   format: 1;
@@ -63,6 +67,8 @@ export type Snapshot = {
   profile: Row | null;
   /** Missing in snapshots written before the Home layout was synced; then each phone keeps its own. */
   homeLayout?: HomeLayoutSync | null;
+  /** Missing in snapshots written before the theme was synced; then each phone keeps its own. */
+  themePrefs?: ThemeSync | null;
   deleted: Tombstone[];
 };
 
@@ -100,10 +106,22 @@ export async function exportSnapshot(db: Db, now: number = Date.now()): Promise<
   const profileRow = currentProfile ? await realProfile(db, currentProfile) : null;
   const { id: _id, ...profile } = profileRow ?? {};
   const homeLayout = await exportHomeLayout(db, uidOf.categories);
+  const themePrefs = await exportThemePrefs(db);
   const deleted = await db.all<Tombstone>(
     'SELECT tbl, uid, deleted_at AS deletedAt, merged_into AS mergedInto FROM sync_deleted',
   );
-  return { app: 'duit', format: 1, schema: await schemaVersion(db), exportedAt: now, tables, profile: profileRow ? profile : null, homeLayout, deleted };
+  return { app: 'duit', format: 1, schema: await schemaVersion(db), exportedAt: now, tables, profile: profileRow ? profile : null, homeLayout, themePrefs, deleted };
+}
+
+/** The saved theme choice; null if it was never changed on a device that synced. */
+async function exportThemePrefs(db: Db): Promise<ThemeSync | null> {
+  const at = Number(await getSetting(db, THEME_AT_KEY)) || 0;
+  if (!at) return null;
+  return {
+    updatedAt: at,
+    theme: (await getSetting(db, THEME_KEY)) ?? 'classic',
+    appearance: (await getSetting(db, APPEARANCE_KEY)) ?? 'light',
+  };
 }
 
 /** The saved Home layout with category ids turned into uids; null if it was never changed. */
@@ -134,12 +152,18 @@ export function canonical(s: Snapshot): string {
     tables: Object.fromEntries(Object.entries(tables).map(([t, rows]) => [t, rows.map(sortKeys)])),
     profile: sortKeys(s.profile),
     homeLayout: s.homeLayout ?? null,
+    themePrefs: s.themePrefs ?? null,
     deleted,
   });
 }
 
 /** Tables every snapshot has had since the first version; later ones may be missing from older files. */
 const ORIGINAL_TABLES = ['categories', 'payment_methods', 'commitments', 'expenses', 'relief_claims', 'budgets'] as const;
+
+function isThemeSync(v: unknown): v is ThemeSync {
+  const t = v as ThemeSync;
+  return typeof t === 'object' && typeof t.updatedAt === 'number' && typeof t.theme === 'string' && typeof t.appearance === 'string';
+}
 
 function isHomeLayoutSync(v: unknown): v is HomeLayoutSync {
   const h = v as HomeLayoutSync;
@@ -156,7 +180,8 @@ export function isSnapshot(value: unknown): value is Snapshot {
   return (
     !!s && s.app === 'duit' && s.format === 1 && typeof s.schema === 'number' && !!s.tables &&
     ORIGINAL_TABLES.every((t) => Array.isArray(s.tables[t])) && Array.isArray(s.deleted) &&
-    (s.homeLayout == null || isHomeLayoutSync(s.homeLayout))
+    (s.homeLayout == null || isHomeLayoutSync(s.homeLayout)) &&
+    (s.themePrefs == null || isThemeSync(s.themePrefs))
   );
 }
 
@@ -258,6 +283,13 @@ export async function applySnapshot(db: Db, snap: Snapshot): Promise<void> {
       await setSetting(db, HOME_LAYOUT_AT_KEY, String(h.updatedAt));
     }
 
+    if (snap.themePrefs) {
+      const t = snap.themePrefs;
+      await setSetting(db, THEME_KEY, t.theme);
+      await setSetting(db, APPEARANCE_KEY, t.appearance);
+      await setSetting(db, THEME_AT_KEY, String(t.updatedAt));
+    }
+
     await db.run('DELETE FROM sync_deleted');
     for (const d of snap.deleted) {
       await db.run('INSERT OR REPLACE INTO sync_deleted (tbl, uid, deleted_at, merged_into) VALUES (?, ?, ?, ?)', [
@@ -302,6 +334,7 @@ export async function restoreSnapshot(db: Db, backup: Snapshot, now: number = Da
     tables,
     profile: backup.profile ? { ...backup.profile, updated_at: now } : current.profile,
     homeLayout: backup.homeLayout ? { ...backup.homeLayout, updatedAt: now } : current.homeLayout,
+    themePrefs: backup.themePrefs ? { ...backup.themePrefs, updatedAt: now } : current.themePrefs,
     deleted,
   });
 }

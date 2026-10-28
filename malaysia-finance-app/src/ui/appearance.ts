@@ -28,6 +28,37 @@ export function setAppearance(next: Appearance): void {
   current = next;
   saveAppearance(next);
   listeners.forEach((l) => l());
+  notifyPrefsChanged();
+}
+
+/**
+ * The theme and light/dark choice are also kept in the database so they sync with the account. The data layer
+ * registers a listener here to save each change; changes that arrive from sync use applyThemePrefs, which
+ * doesn't call it back.
+ */
+let prefsListener: (() => void) | null = null;
+export function onThemePrefsChanged(listener: (() => void) | null): void {
+  prefsListener = listener;
+}
+function notifyPrefsChanged() {
+  prefsListener?.();
+}
+
+/** Applies a theme and light/dark choice that came from the database (a sync or restore), without saving it again. */
+export function applyThemePrefs(prefs: { theme?: unknown; appearance?: unknown }): void {
+  if (isAppearance(prefs.appearance) && prefs.appearance !== getAppearance()) {
+    current = prefs.appearance;
+    saveAppearance(prefs.appearance);
+    listeners.forEach((l) => l());
+  }
+  if (isThemeName(prefs.theme) && prefs.theme !== getThemeName()) {
+    const next = prefs.theme;
+    void loadThemeFonts(next);
+    currentTheme = next;
+    applyTheme(next);
+    saveThemeName(next);
+    themeListeners.forEach((l) => l());
+  }
 }
 
 function subscribe(listener: () => void) {
@@ -43,7 +74,7 @@ export function useAppearance(): Appearance {
 
 /**
  * Which design theme the app wears (More > Appearance > Theme). It sits beside the light/dark choice: every
- * theme has its own light and dark palette. Stored on this device only; it isn't part of backup or sync.
+ * theme has its own light and dark palette. Kept on the device for a quick start, and mirrored into the synced settings (see onThemePrefsChanged).
  */
 let currentTheme: ThemeName | undefined;
 const themeListeners = new Set<() => void>();
@@ -70,6 +101,7 @@ export function setThemeName(next: ThemeName): Promise<void> {
   applyTheme(next);
   saveThemeName(next);
   themeListeners.forEach((l) => l());
+  notifyPrefsChanged();
   return fonts;
 }
 
