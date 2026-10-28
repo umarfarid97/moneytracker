@@ -1,7 +1,6 @@
 /** Strings for bill start and end dates and the "bills still to pay" breakdown (merged into `en` and `ms`). */
 export const billDatesEn = {
-  'settings.showPending': 'Show pending bills in Spending',
-  'settings.showPendingHint': 'Unpaid bills due this period appear in Spending with a Mark paid button. They are never counted as spent.',
+  'commitments.showPending': 'Show unpaid bills in Spending',
   'spending.pending': 'Pending bills',
   'spending.pendingBadge': 'Pending',
   'spending.pendingDue': 'Due {date}',
@@ -35,8 +34,7 @@ export const billDatesEn = {
 } as const;
 
 export const billDatesMs: Record<keyof typeof billDatesEn, string> = {
-  'settings.showPending': 'Tunjuk bil belum dibayar dalam Perbelanjaan',
-  'settings.showPendingHint': 'Bil belum dibayar yang perlu dibayar dalam tempoh ini muncul dalam Perbelanjaan dengan butang Tandakan dibayar. Ia tidak pernah dikira sebagai perbelanjaan.',
+  'commitments.showPending': 'Tunjuk bil belum bayar dalam Perbelanjaan',
   'spending.pending': 'Bil belum dibayar',
   'spending.pendingBadge': 'Belum dibayar',
   'spending.pendingDue': 'Perlu dibayar {date}',
