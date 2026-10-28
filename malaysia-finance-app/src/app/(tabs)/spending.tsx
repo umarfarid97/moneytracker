@@ -3,7 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, TextInput, View } from 'react-native';
 import { LATEST_TAX_YEAR } from '@/data/tax';
-import { dayLabel, dayMonth, shortDate, monthLabel, shiftMonth } from '@/domain/dates';
+import { dayLabel, dayMonth, monthKey, shortDate, monthLabel, shiftMonth } from '@/domain/dates';
 import { periodEnd, periodKey, periodLabel } from '@/domain/budgetPeriod';
 import { billEstimate, lastPaidFor } from '@/domain/bills';
 import { loanBalance, nextPayment } from '@/domain/loanTracker';
@@ -45,6 +45,9 @@ type Item =
   | { type: 'pending'; key: string; bill: PendingBill };
 
 const RELIEFS = LATEST_TAX_YEAR.reliefs;
+
+/** A payday cycle is named after the month it ends in (30 Sep - 29 Oct is October), since that pay covers that month. */
+const namedMonth = (key: string, startDay: number) => (startDay === 1 ? key : monthKey(periodEnd(key, startDay)));
 
 /** "1 Oct - 31 Oct" for the period, even for a calendar month (periodLabel alone gives just the month name there). */
 const rangeLabel = (key: string, startDay: number) =>
@@ -305,7 +308,7 @@ export default function Spending() {
                   <Ionicons name="chevron-back" size={24} color={tileInk} />
                 </Pressable>
                 <View style={{ alignItems: 'center', gap: 2 }}>
-                  <AppText variant="section" color={tileInk}>{monthLabel(month)}</AppText>
+                  <AppText variant="section" color={tileInk}>{monthLabel(namedMonth(month, startDay))}</AppText>
                   <AppText testID="month-range" variant="bodyStrong" color={tileInk} style={{ opacity: 0.75 }}>
                     {rangeLabel(month, startDay)}
                   </AppText>
