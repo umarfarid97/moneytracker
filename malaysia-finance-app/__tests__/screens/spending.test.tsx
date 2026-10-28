@@ -43,7 +43,7 @@ describe('Spending: pending bills', () => {
     expect(screen.queryByText('Gym')).toBeNull();
   });
 
-  test('the Settings switch hides pending bills and the Filters toggle reflects it', async () => {
+  test('the Bills switch hides pending bills and the Filters toggle reflects it', async () => {
     const db = await freshDb();
     await addBill(db, 'Internet', 30);
     await db.run("INSERT INTO app_settings (key, value) VALUES ('showPendingBills', '0')");

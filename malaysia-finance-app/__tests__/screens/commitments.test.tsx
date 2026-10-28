@@ -18,6 +18,16 @@ async function addRow(db: Db, name: string, amount: number, day: number, kind = 
 }
 
 describe('Commitments screen', () => {
+  test('has a switch for unpaid bills in Spending, on by default, remembered in the database', async () => {
+    const db = await freshDb();
+    await renderWithData(db, <Commitments />);
+    await waitFor(() => expect(screen.getByLabelText('Show unpaid bills in Spending').props.value).toBe(true));
+    await fireEvent(screen.getByLabelText('Show unpaid bills in Spending'), 'valueChange', false);
+    await waitFor(async () =>
+      expect(await db.all("SELECT value FROM app_settings WHERE key = 'showPendingBills'")).toEqual([{ value: '0' }]));
+    expect(screen.getByLabelText('Show unpaid bills in Spending').props.value).toBe(false);
+  });
+
   test('lists by next due date with due labels and a monthly total', async () => {
     const db = await freshDb();
     await addRow(db, 'Rumah', 120000, 1, 'loan');

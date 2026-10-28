@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState, type ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, Switch, View } from 'react-native';
 import {
   applyBillChange, billEstimate, billStatus, lastPaidFor, paidDueDatesFor, payMode, type BillState, type BillStatus,
 } from '@/domain/bills';
@@ -16,6 +16,7 @@ import { MarkPaidSheet } from '@/features/commitments/MarkPaidSheet';
 import { useData } from '@/hooks/DataProvider';
 import { useCommitments } from '@/hooks/useCommitments';
 import { useExpenses } from '@/hooks/useExpenses';
+import { useShowPending } from '@/hooks/useShowPending';
 import { useToday } from '@/hooks/useToday';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
@@ -85,6 +86,7 @@ export default function Commitments() {
   const startDay = profile.budgetStartDay;
   const { data, add, update, remove } = useCommitments();
   const { data: expenses, remove: removeExpense } = useExpenses();
+  const [showPending, setShowPending] = useShowPending();
   const [justPaid, setJustPaid] = useState<{ id: number; name: string } | null>(null);
   const [sheet, setSheet] = useState<SheetState>({ open: false, editing: null, nonce: 0 });
   const [filter, setFilter] = useState<CommitmentKind | 'all'>('all');
@@ -268,6 +270,10 @@ export default function Commitments() {
         {KINDS.map((kind) => (
           <Chip key={kind} compact label={t(`commitments.group.${kind}`)} selected={filter === kind} onPress={() => setFilter(kind)} />
         ))}
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <AppText variant="small" tone="muted" style={{ flex: 1 }}>{t('commitments.showPending')}</AppText>
+        <Switch accessibilityLabel={t('commitments.showPending')} value={showPending} onValueChange={setShowPending} />
       </View>
       {rows.length === 0 ? (
         <EmptyState icon="calendar-outline" text={t('commitments.none')} hint={t('commitments.noneHint')} />
