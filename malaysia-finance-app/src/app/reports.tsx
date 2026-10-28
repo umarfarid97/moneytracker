@@ -60,7 +60,7 @@ export default function Reports() {
       <HeroCard style={{ gap: 4 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Pressable accessibilityRole="button" accessibilityLabel={t('reports.prev')} hitSlop={12} onPress={() => setKey(shiftMonth(key, -1))}>
-            <Ionicons name="chevron-back" size={22} color={c.heroInk} />
+            <Ionicons name="chevron-back" size={22} color={c.heroGradient ? c.heroInk : c.accent} />
           </Pressable>
           <AppText variant="eyebrow" color={c.heroSoft}>{periodLabel(key, startDay)}</AppText>
           <Pressable
@@ -68,7 +68,7 @@ export default function Reports() {
             disabled={key >= current} onPress={() => setKey(shiftMonth(key, 1))}
             style={{ opacity: key >= current ? 0.3 : 1 }}
           >
-            <Ionicons name="chevron-forward" size={22} color={c.heroInk} />
+            <Ionicons name="chevron-forward" size={22} color={c.heroGradient ? c.heroInk : c.accent} />
           </Pressable>
         </View>
         <AppText testID="report-total" variant="kpi" color={c.heroInk}>{formatRM(periodTotal)}</AppText>
