@@ -84,6 +84,16 @@ describe('reminder lead time in backup and sync', () => {
     await expect(db.run('UPDATE profile SET reminder_days = -1')).rejects.toBeTruthy();
   });
 
+  it('the Spending month start day defaults to 1 and travels in a backup', async () => {
+    const a = await freshDb();
+    expect((await getProfile(a)).spendingStartDay).toBe(1);
+    await expect(a.run('UPDATE profile SET spending_start_day = 32')).rejects.toBeTruthy();
+    await saveProfile(a, { ...(await getProfile(a)), spendingStartDay: 15 });
+    const b = await freshDb();
+    await restoreBackup(b, await parseBackup(b, await createBackup(a)));
+    expect((await getProfile(b)).spendingStartDay).toBe(15);
+  });
+
   it('a backup file round trips it, and an older backup leaves it alone', async () => {
     const a = await freshDb();
     await saveProfile(a, { ...(await getProfile(a)), reminderDays: 3 });

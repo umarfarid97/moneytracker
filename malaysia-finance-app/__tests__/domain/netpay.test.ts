@@ -5,7 +5,7 @@ import { calculateTaxBill } from '@/domain/taxBill';
 import type { Profile } from '@/domain/types';
 
 const base: Profile = {
-  grossMonthly: 500000, netMonthlyOverride: null, epfRate: 0.11, socsoMonthly: 1000, eisMonthly: 400, budgetStartDay: 1, reminderDays: 1, pcbMonthly: 0,
+  grossMonthly: 500000, netMonthlyOverride: null, epfRate: 0.11, socsoMonthly: 1000, eisMonthly: 400, budgetStartDay: 1, spendingStartDay: 1, reminderDays: 1, pcbMonthly: 0,
 };
 
 describe('estimateNetMonthly', () => {

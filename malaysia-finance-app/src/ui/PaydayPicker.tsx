@@ -18,38 +18,47 @@ const COLUMNS = 6;
 export function PaydayPicker({ value, onChange }: { value: number; onChange: (day: number) => void }) {
   const { c } = useTheme();
   const [open, setOpen] = useState(false);
-  const label = (day: number) => (day === 31 ? t('budget.startDay.last') : t('budget.startDay.dayN', { n: day }));
-
-  function pick(day: number) {
-    setOpen(false);
-    if (day !== value) onChange(day);
-  }
 
   return (
     <>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${t('profile.salaryDay')}: ${label(value)}`}
+        accessibilityLabel={`${t('profile.salaryDay')}: ${dayLabel(value)}`}
         onPress={() => setOpen(true)}
         style={{
           flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: controlHeight, borderRadius: radius.control,
           backgroundColor: c.surface, borderWidth: 1, borderColor: c.control, paddingHorizontal: 14,
         }}
       >
-        <AppText variant="bodyStrong">{label(value)}</AppText>
+        <AppText variant="bodyStrong">{dayLabel(value)}</AppText>
         <Ionicons name="chevron-down" size={18} color={c.muted} />
       </Pressable>
-      <Sheet visible={open} title={t('profile.salaryDay')} onClose={() => setOpen(false)}>
-        <View style={{ gap: 8, paddingBottom: 8 }}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {DAYS.map((day) => (
-              <Cell key={day} width={`${100 / COLUMNS - 2}%`} selected={day === value} label={String(day)} a11y={`Budget starts on day ${day}`} onPress={() => pick(day)} />
-            ))}
-          </View>
-          <Cell width="100%" selected={value === 31} label={t('budget.startDay.last')} a11y="Budget starts on the last day" onPress={() => pick(31)} />
-        </View>
-      </Sheet>
+      <DaySheet visible={open} title={t('profile.salaryDay')} value={value} onPick={onChange} onClose={() => setOpen(false)} a11yPrefix="Budget starts on" />
     </>
+  );
+}
+
+export const dayLabel = (day: number) => (day === 31 ? t('budget.startDay.last') : t('budget.startDay.dayN', { n: day }));
+
+/** The grid of days (1 to 30, plus Last day) in a bottom sheet; picking one closes it and reports the day if it changed. */
+export function DaySheet({
+  visible, title, value, onPick, onClose, a11yPrefix,
+}: { visible: boolean; title: string; value: number; onPick: (day: number) => void; onClose: () => void; a11yPrefix: string }) {
+  function pick(day: number) {
+    onClose();
+    if (day !== value) onPick(day);
+  }
+  return (
+    <Sheet visible={visible} title={title} onClose={onClose}>
+      <View style={{ gap: 8, paddingBottom: 8 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {DAYS.map((day) => (
+            <Cell key={day} width={`${100 / COLUMNS - 2}%`} selected={day === value} label={String(day)} a11y={`${a11yPrefix} day ${day}`} onPress={() => pick(day)} />
+          ))}
+        </View>
+        <Cell width="100%" selected={value === 31} label={t('budget.startDay.last')} a11y={`${a11yPrefix} the last day`} onPress={() => pick(31)} />
+      </View>
+    </Sheet>
   );
 }
 

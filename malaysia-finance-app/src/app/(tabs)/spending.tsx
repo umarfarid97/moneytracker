@@ -167,8 +167,8 @@ export default function Spending() {
   const { c, scheme } = useTheme();
   const today = useToday();
   const { profile } = useData();
-  const startDay = profile.budgetStartDay;
-  // The "month" is the user's budget period (payday to payday); a start day of 1 is the calendar month.
+  const startDay = profile.spendingStartDay;
+  // The "month" here has its own start day (More > Settings), apart from the salary day; 1 is the calendar month.
   const thisMonth = periodKey(today, startDay);
   const [month, setMonth] = useState(thisMonth);
   const [filters, setFilters] = useState<SpendingFilters>(EMPTY_FILTERS);

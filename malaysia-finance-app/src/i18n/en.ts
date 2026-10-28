@@ -540,6 +540,7 @@ export const en = {
   'more.theme.pastel.hint': 'Slate navy with a soft purple glow, bold pastel tiles, grey-blue buttons and a clean sans font. Dark only.',
   'more.theme.green.hint': 'Near-black with soft green light, lime accents and a sage balance card. Dark only.',
   'more.settings': 'Settings',
+  'settings.spendingStart': 'Spending month starts on',
   'more.demo': 'Demo data',
   'more.language': 'Language',
 

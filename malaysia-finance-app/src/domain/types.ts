@@ -126,6 +126,8 @@ export type Profile = {
   eisMonthly: Sen;
   /** Day of the month the budget period starts (1-31; a short month uses its last day). 1 is the calendar month. */
   budgetStartDay: number;
+  /** Day of the month the Spending page's month starts (1-31), its own setting apart from the salary day. 1 is the calendar month. */
+  spendingStartDay: number;
   /** Days before a bill or loan is due that its reminder fires (0-7); 0 is the morning of the due date. */
   reminderDays: number;
   /** Monthly income tax (PCB) from the payslip; 0 when not entered, then it is estimated from the tax calculation. */
