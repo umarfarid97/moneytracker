@@ -9,7 +9,11 @@ import { AmountInput } from '@/ui/AmountInput';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { DateField } from '@/ui/DateField';
+import { Chip } from '@/ui/Chip';
+import { MethodBadge } from '@/ui/MethodBadge';
 import { Sheet } from '@/ui/Sheet';
+import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+import { useTheme } from '@/ui/useTheme';
 
 type Props = {
   visible: boolean;
@@ -22,7 +26,7 @@ type Props = {
   startDay: number;
   onClose: () => void;
   /** Called with the amount actually paid and the day it was paid (never after today). */
-  onConfirm: (amount: number, date: string) => Promise<void>;
+  onConfirm: (amount: number, date: string, paymentMethodId: number | null) => Promise<void>;
 };
 
 /** Confirms a payment; the amount starts as the bill's usual amount and can be changed. Mount with a fresh `key` per bill. */
@@ -30,6 +34,10 @@ export function MarkPaidSheet({ visible, bill, lastPaid = null, suggested = null
   const [date, setDate] = useState(today);
   // A bill that changes monthly starts empty: the amount has to come from this month's bill.
   const [amountText, setAmountText] = useState(bill && !bill.variable ? senToInput(suggested ?? bill.amount) : '');
+  const { c } = useTheme();
+  const { data: methods } = usePaymentMethods();
+  // Starts on the bill's own setting; the choice only applies to this payment.
+  const [methodId, setMethodId] = useState<number | null>(bill?.paymentMethodId ?? null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const amount = parseRM(amountText);
@@ -40,7 +48,7 @@ export function MarkPaidSheet({ visible, bill, lastPaid = null, suggested = null
     setBusy(true);
     setError(null);
     try {
-      await onConfirm(amount, clampPaymentDate(date, today));
+      await onConfirm(amount, clampPaymentDate(date, today), methodId);
       onClose();
     } catch {
       setError(t('common.saveFailed'));
@@ -74,6 +82,23 @@ export function MarkPaidSheet({ visible, bill, lastPaid = null, suggested = null
           </AppText>
         ) : null}
         <AmountInput label={t('common.amount')} value={amountText} onChange={(text) => setAmountText(text)} />
+        {methods.length > 0 ? (
+          <View style={{ gap: 8 }}>
+            <AppText variant="smallStrong">{t('method.field')}</AppText>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {methods.map((m) => (
+                <Chip
+                  key={m.id}
+                  label={m.name}
+                  accessibilityLabel={`Paid with ${m.name}`}
+                  leading={<MethodBadge name={m.name} kind={m.kind} size={20} color={m.id === methodId ? c.onAccent : c.text} />}
+                  selected={m.id === methodId}
+                  onPress={() => setMethodId(m.id)}
+                />
+              ))}
+            </View>
+          </View>
+        ) : null}
         {(
           <View style={{ gap: 6 }}>
             <AppText variant="smallStrong">{t('commitments.payDate')}</AppText>

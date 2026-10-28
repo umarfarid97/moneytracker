@@ -101,7 +101,7 @@ export type DataContextValue = {
    * Records the spending for one due date of a bill, using the bill's category, payment method and relief.
    * Returns null (and records nothing) if that due date already has its spending.
    */
-  payBill: (c: Commitment, dueDate: string, opts: { amount: Sen; date: string }) => Promise<Expense | null>;
+  payBill: (c: Commitment, dueDate: string, opts: { amount: Sen; date: string; paymentMethodId?: number | null }) => Promise<Expense | null>;
   /** Records the spending for every due date up to today of bills set to record automatically; returns how many. */
   runAutoRecord: (today: string) => Promise<number>;
   budgets: Budget[];
@@ -347,7 +347,7 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
     const payBill: DataContextValue['payBill'] = async (c, dueDate, opts) => {
       const saved = await addBillExpense(db, {
         amount: opts.amount, categoryId: billCategoryId(c), date: clampPaymentDate(opts.date, todayKL()), note: c.name, receiptUri: null,
-        paymentMethodId: c.paymentMethodId, reliefId: c.reliefId, reliefAmount: null, commitmentId: c.id, dueDate,
+        paymentMethodId: opts.paymentMethodId !== undefined ? opts.paymentMethodId : c.paymentMethodId, reliefId: c.reliefId, reliefAmount: null, commitmentId: c.id, dueDate,
       });
       if (saved) setExpenses((prev) => [saved, ...prev].sort(byNewest));
       return saved;
