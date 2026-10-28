@@ -26,7 +26,7 @@ describe('Relief page', () => {
     await waitFor(() =>
       expect(screen.getByText('Lifestyle: books, computer/phone/tablet, internet, skill courses')).toBeTruthy(),
     );
-    expect(screen.getByText('Limit RM 2,500.00 a year')).toBeTruthy();
+    expect(screen.getByText('RM 0.00 of RM 2,500.00')).toBeTruthy();
     expect(screen.getByText('No claims yet')).toBeTruthy();
   });
 
@@ -43,6 +43,8 @@ describe('Relief page', () => {
       { relief_id: 'lifestyle', year: 2025, amount: 120000, receipt_uri: null, note: 'Phone' },
     ]);
     expect(screen.getByText('Receipt missing')).toBeTruthy();
+    expect(screen.queryByLabelText('Amount')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Add another claim' }));
     expect(screen.getByLabelText('Amount').props.value).toBe('');
   });
 
@@ -110,6 +112,8 @@ describe('Relief page', () => {
     await fireEvent.changeText(screen.getByLabelText('Note'), 'First');
     await fireEvent.press(screen.getByRole('button', { name: 'Add claim' }));
     await waitFor(async () => expect((await claimsIn(db)).length).toBe(1));
+    // with a claim on file the form stays folded away until Edit or Add another claim
+    expect(screen.queryByLabelText('Amount')).toBeNull();
     await fireEvent.press(await screen.findByRole('button', { name: 'Edit' }));
     expect(screen.getByLabelText('Amount').props.value).toBe('4000.00');
     await fireEvent.changeText(screen.getByLabelText('Amount'), '2500');
@@ -126,7 +130,7 @@ describe('Relief page', () => {
     useLocalSearchParams.mockReturnValue({ id: 'child-under-18' });
     const db = await freshDb();
     await renderWithData(db, <Relief />);
-    await waitFor(() => expect(screen.getByText('Add one claim for each child')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Add one claim for each child. Spending tagged here counts as one child. Add other children as separate claims.')).toBeTruthy());
   });
 
   test('an unknown relief id shows a not-found message', async () => {
@@ -142,6 +146,6 @@ describe('Relief page: per-child note', () => {
     useLocalSearchParams.mockReturnValue({ id: 'child-higher-ed' });
     const db = await freshDb();
     await renderWithData(db, <Relief />);
-    await waitFor(() => expect(screen.getByText('Spending tagged here counts as one child. Add other children as separate claims.')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Spending tagged here counts as one child/)).toBeTruthy());
   });
 });

@@ -37,3 +37,26 @@ export function capReliefClaims(claims: ReliefClaim[], defs: ReliefDef[]): Relie
   }
   return { perRelief, total, missingReceipts };
 }
+
+export type ReliefSectionKey = 'family' | 'medical' | 'education' | 'savings' | 'home' | 'other';
+
+const SECTION_OF: Record<string, ReliefSectionKey> = {
+  spouse: 'family', 'spouse-disabled': 'family', 'disabled-individual': 'family', 'disabled-equipment': 'family',
+  'child-under-18': 'family', 'child-fulltime-18': 'family', 'child-higher-ed': 'family', 'child-disabled': 'family',
+  'child-disabled-higher-ed': 'family', childcare: 'family', breastfeeding: 'family',
+  'parents-medical': 'medical', 'parents-medical-exam': 'medical', 'medical-serious': 'medical', 'medical-vaccination': 'medical',
+  'medical-dental': 'medical', 'medical-checkup': 'medical', 'child-intervention': 'medical',
+  'education-self': 'education', 'education-upskilling': 'education', lifestyle: 'education', sports: 'education',
+  epf: 'savings', 'life-insurance': 'savings', prs: 'savings', sspn: 'savings', socso: 'savings', 'insurance-edu-medical': 'savings',
+  'housing-interest-500k': 'home', 'housing-interest-750k': 'home', 'ev-charging': 'home',
+};
+
+const SECTION_ORDER: ReliefSectionKey[] = ['family', 'medical', 'education', 'savings', 'home', 'other'];
+
+/** The reliefs split into the sections shown on the Tax reliefs screen; empty sections are left out. */
+export function groupReliefs(reliefs: ReliefDef[]): { key: ReliefSectionKey; reliefs: ReliefDef[] }[] {
+  return SECTION_ORDER.map((key) => ({
+    key,
+    reliefs: reliefs.filter((r) => (SECTION_OF[r.id] ?? 'other') === key),
+  })).filter((section) => section.reliefs.length > 0);
+}

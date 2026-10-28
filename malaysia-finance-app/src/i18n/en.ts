@@ -164,7 +164,6 @@ export const en = {
   'pack.shareFailed': 'Could not share. Please try again.',
   'pack.source.spending': 'From spending',
   'pack.source.manual': 'Typed in',
-  'tax.upTo': 'Up to {amount}',
   'tax.claimedOf': '{claimed} of {limit}',
   'tax.limit': 'Limit {amount} a year',
   'tax.editClaim': 'Edit claim',

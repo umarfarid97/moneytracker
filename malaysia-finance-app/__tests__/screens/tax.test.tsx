@@ -24,11 +24,12 @@ describe('Tax reliefs tab', () => {
     await renderWithData(db, <Tax />);
     await waitFor(() => expect(screen.getByText('Year of assessment 2025')).toBeTruthy());
     expect(screen.getByTestId('total-relief').props.children).toBe('RM 9,000.00');
-    expect(screen.getByText('Individual and dependent relatives')).toBeTruthy();
-    expect(screen.getByText('Claimed automatically')).toBeTruthy();
+    expect(screen.getByText('Individual and dependent relatives · Claimed automatically · RM 9,000.00')).toBeTruthy();
+    expect(screen.getByText('Family & dependants')).toBeTruthy();
+    expect(screen.getByText('Savings & insurance')).toBeTruthy();
     expect(screen.getByText('Lifestyle: books, computer/phone/tablet, internet, skill courses')).toBeTruthy();
     // lifestyle and EV charging both have a RM 2,500 limit
-    expect(screen.getAllByText('Up to RM 2,500.00')).toHaveLength(2);
+    expect(screen.getAllByText('RM 2,500.00')).toHaveLength(2);
   });
 
   test('caps a claim at its limit, says what cannot be claimed and adds it to the total', async () => {
