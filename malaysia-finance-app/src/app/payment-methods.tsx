@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { TextInput, View } from 'react-native';
@@ -148,8 +149,18 @@ export default function PaymentMethods() {
   return (
     <Screen>
       <BackButton />
-      <AppText variant="title">{t('methods.title')}</AppText>
-      <Button title={t('methods.addNew')} onPress={() => router.push('/payment-method-new')} />
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <AppText variant="title" style={{ flexShrink: 1 }}>{t('methods.title')}</AppText>
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel={t('methods.addNew')}
+          hitSlop={8}
+          onPress={() => router.push('/payment-method-new')}
+          style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Ionicons name="add" size={22} color={c.accentInk} />
+        </PressableScale>
+      </View>
       {error ? (
         <AppText variant="small" tone="negative">
           {error}
