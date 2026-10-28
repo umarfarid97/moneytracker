@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { t } from '@/i18n/t';
 import { AppText } from './AppText';
 import { radius } from './theme';
@@ -15,7 +16,7 @@ type Props = {
   children: ReactNode;
   /** Save/Cancel buttons: pinned under the scrolling content so they never scroll away. */
   footer?: ReactNode;
-  /** Fills most of the screen like a page, with the title centred between a back arrow and a close cross. */
+  /** A full-screen page instead of a bottom sheet, with the title centred between a back arrow and a close cross. */
   tall?: boolean;
   /** Shows a back arrow on the left of a `tall` sheet. */
   onBack?: () => void;
@@ -54,6 +55,33 @@ export function Sheet({ visible, title, onClose, children, footer, tall = false,
   const backdropStyle = useAnimatedStyle(() => ({ opacity: backdrop.value * 0.4 }));
 
   if (!visible) return null;
+  if (tall) {
+    return (
+      <Modal animationType="slide" visible onRequestClose={onClose} statusBarTranslucent>
+        <SafeAreaView style={{ flex: 1, backgroundColor: c.ground }}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, width: '100%', maxWidth: 640, alignSelf: 'center' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 }}>
+              <View style={{ width: 32 }}>
+                {onBack ? (
+                  <Pressable accessibilityRole="button" accessibilityLabel={t('addflow.back')} onPress={onBack} hitSlop={12}>
+                    <Ionicons name="chevron-back" size={24} color={c.text} />
+                  </Pressable>
+                ) : null}
+              </View>
+              <AppText variant="bodyStrong" style={{ flexShrink: 1, textAlign: 'center' }}>{title}</AppText>
+              <Pressable accessibilityRole="button" accessibilityLabel={t('common.close')} onPress={onClose} hitSlop={12} style={{ width: 32, alignItems: 'flex-end' }}>
+                <Ionicons name="close" size={24} color={c.text} />
+              </Pressable>
+            </View>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingTop: 4 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              {children}
+            </ScrollView>
+            {footer ? <View testID="sheet-footer" style={{ padding: 16 }}>{footer}</View> : null}
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </Modal>
+    );
+  }
   return (
     <Modal transparent animationType="none" visible onRequestClose={onClose} statusBarTranslucent>
       <GestureHandlerRootView style={{ flex: 1, justifyContent: 'flex-end' }}>
@@ -69,7 +97,6 @@ export function Sheet({ visible, title, onClose, children, footer, tall = false,
         <Animated.View
           style={[
             { backgroundColor: c.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, paddingBottom: 32, gap: 16 },
-            tall ? { height: height * 0.94 } : null,
             sheetStyle,
           ]}
         >
@@ -77,21 +104,6 @@ export function Sheet({ visible, title, onClose, children, footer, tall = false,
           <GestureDetector gesture={drag}>
             <View style={{ gap: 16 }}>
               <View style={{ alignSelf: 'center', width: 36, height: 5, borderRadius: 3, backgroundColor: c.control }} />
-              {tall ? (
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <View style={{ width: 32 }}>
-                    {onBack ? (
-                      <Pressable accessibilityRole="button" accessibilityLabel={t('addflow.back')} onPress={onBack} hitSlop={12}>
-                        <Ionicons name="chevron-back" size={24} color={c.text} />
-                      </Pressable>
-                    ) : null}
-                  </View>
-                  <AppText variant="bodyStrong" style={{ flexShrink: 1, textAlign: 'center' }}>{title}</AppText>
-                  <Pressable accessibilityRole="button" accessibilityLabel={t('common.close')} onPress={onClose} hitSlop={12} style={{ width: 32, alignItems: 'flex-end' }}>
-                    <Ionicons name="close" size={24} color={c.text} />
-                  </Pressable>
-                </View>
-              ) : (
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <AppText variant="section">{title}</AppText>
                 <Pressable accessibilityRole="button" accessibilityLabel={t('common.close')} onPress={onClose} hitSlop={12}>
@@ -100,11 +112,10 @@ export function Sheet({ visible, title, onClose, children, footer, tall = false,
                   </AppText>
                 </Pressable>
               </View>
-              )}
             </View>
           </GestureDetector>
           {/* Long forms scroll inside the sheet instead of running off the screen. */}
-          <ScrollView style={tall ? { flex: 1 } : { maxHeight: height * 0.7 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <ScrollView style={{ maxHeight: height * 0.7 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             {children}
           </ScrollView>
           {footer ? <View testID="sheet-footer">{footer}</View> : null}

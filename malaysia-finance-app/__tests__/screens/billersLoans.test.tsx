@@ -13,7 +13,7 @@ const rows = (db: Awaited<ReturnType<typeof freshDb>>) =>
             loan_original, loan_rate_pct FROM commitments ORDER BY id`,
   );
 
-async function openAdd(db: Awaited<ReturnType<typeof freshDb>>, card: 'Bills' | 'Loan / Instalment' | 'Other commitment' = 'Bills') {
+async function openAdd(db: Awaited<ReturnType<typeof freshDb>>, card: 'Bills' | 'Loan / Instalment' | 'Subscription' = 'Bills') {
   await renderWithData(db, <Commitments />);
   await waitFor(() => expect(screen.getByRole('button', { name: 'Add commitment' })).toBeTruthy());
   await fireEvent.press(screen.getByRole('button', { name: 'Add commitment' }));
@@ -38,7 +38,7 @@ describe('biller presets', () => {
 
   test('the Subscription type has its own quick picks, which set the kind and category', async () => {
     const db = await freshDb();
-    await openAdd(db, 'Other commitment');
+    await openAdd(db, 'Subscription');
     await fireEvent.press(screen.getByRole('button', { name: 'Subscription Netflix' }));
     await fireEvent.changeText(screen.getByLabelText('Amount'), '55');
     await fireEvent.changeText(screen.getByLabelText('Day of month'), '12');
@@ -51,7 +51,7 @@ describe('biller presets', () => {
 
   test('Subscription quick picks are separate from bill billers and grouped', async () => {
     const db = await freshDb();
-    await openAdd(db, 'Other commitment');
+    await openAdd(db, 'Subscription');
     expect(screen.getByRole('button', { name: 'Subscription Netflix' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Biller TNB electricity' })).toBeNull();
     await fireEvent.press(screen.getByRole('button', { name: 'Cloud storage' }));

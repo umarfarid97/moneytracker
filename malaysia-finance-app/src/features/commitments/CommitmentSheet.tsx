@@ -215,22 +215,27 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
   const nameField = (
     <View style={{ gap: 8 }}>
       <Label text={t('commitments.name')} required />
-      <TextInput accessibilityLabel={t('commitments.name')} value={name} onChangeText={setName} placeholderTextColor={c.muted} style={field} />
+      <TextInput accessibilityLabel={t('commitments.name')} value={name} onChangeText={setName} placeholder={t('addflow.namePlaceholder')} placeholderTextColor={c.muted} style={field} />
     </View>
   );
   const dayField = (
     <View style={{ gap: 8 }}>
       <Label text={t('addflow.dueDay')} required />
-      <TextInput
-        accessibilityLabel={t('commitments.day')}
-        value={dayText}
-        onChangeText={(text) => setDayText(sanitizeNumber(text, 0))}
-        keyboardType="number-pad"
-        maxLength={2}
-        placeholder="1 - 31"
-        placeholderTextColor={c.muted}
-        style={field}
-      />
+      <View style={{ height: controlHeight, borderRadius: radius.control, backgroundColor: c.surface, borderWidth: 1, borderColor: c.control, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 10 }}>
+        <View style={{ width: 32, height: 32, borderRadius: radius.sm, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="calendar-outline" size={18} color={c.accent} />
+        </View>
+        <TextInput
+          accessibilityLabel={t('commitments.day')}
+          value={dayText}
+          onChangeText={(text) => setDayText(sanitizeNumber(text, 0))}
+          keyboardType="number-pad"
+          maxLength={2}
+          placeholder={t('addflow.selectDay')}
+          placeholderTextColor={c.muted}
+          style={{ flex: 1, minWidth: 0, color: c.text, fontFamily: fontFamily.medium, fontSize: 16 }}
+        />
+      </View>
     </View>
   );
   const selectedCategory = categories.find((cat) => cat.id === categoryId);
@@ -486,7 +491,7 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
       footer={footer}
     >
       {choosing ? chooser : (
-        <View style={{ gap: 18 }}>
+        <View style={{ gap: 18, padding: 16, borderRadius: radius.card, backgroundColor: c.surface, borderWidth: 1, borderColor: c.border }}>
           {header}
           {isLoan ? (
             <>
@@ -525,9 +530,9 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
               {nameField}
             </Section>
             <Section title={t('loans.sec.amounts')}>
-              <AmountInput required label={t('loans.payment')} value={amountText} onChange={(text) => setAmountText(text)} />
-              <AmountInput label={t('loans.balance')} value={balanceText} onChange={(text) => setBalanceText(text)} />
-              <AmountInput label={t('loans.original')} value={originalText} onChange={(text) => setOriginalText(text)} />
+              <AmountInput plain required label={t('loans.payment')} value={amountText} onChange={(text) => setAmountText(text)} />
+              <AmountInput plain label={t('loans.balance')} value={balanceText} onChange={(text) => setBalanceText(text)} />
+              <AmountInput plain label={t('loans.original')} value={originalText} onChange={(text) => setOriginalText(text)} />
               <View style={{ gap: 8 }}>
                 <AppText variant="smallStrong">{t('loans.rate')}</AppText>
                 <TextInput
@@ -594,7 +599,7 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
                   {t(variable ? 'commitments.type.variableHint' : 'commitments.type.fixedHint')}
                 </AppText>
               </View>
-              <AmountInput required label={t(variable ? 'commitments.estimate' : 'common.amount')} value={amountText} onChange={(text) => setAmountText(text)} />
+              <AmountInput plain required label={t(variable ? 'commitments.estimate' : 'common.amount')} value={amountText} onChange={(text) => setAmountText(text)} />
               {dayField}
               <View style={{ gap: 8 }}>
                 <Label text={t('addflow.repeat')} />
