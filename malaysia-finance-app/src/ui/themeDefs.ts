@@ -1,11 +1,13 @@
 /**
- * The one Duit look: near-black ground with a soft green light streak, charcoal rounded cards, a pale lime-mint
- * accent, a sage-green gradient summary card and Manrope type. It is dark only; there is no theme chooser.
+ * The app themes: Classic (the original look) and Dark green. A theme changes colours, fonts, the wallpaper and how cards are outlined; it never
+ * changes layout, sizes or components. Each theme defines its own light and dark palette, so More > Appearance
+ * (Light / Dark / Match device) keeps working inside every theme.
  */
 import type { Status } from '@/domain/budget';
 
-/** Kept as a type so call sites that pass a scheme keep compiling; the app only has the dark scheme. */
-export type Scheme = 'dark';
+export type Scheme = 'light' | 'dark';
+export type ThemeName = 'classic' | 'green';
+export const THEME_NAMES: readonly ThemeName[] = ['classic', 'green'];
 
 export type Palette = {
   ground: string;
@@ -23,59 +25,107 @@ export type Palette = {
   positive: string;
   negative: string;
   warning: string;
-  /** Gradient of progress bars and other filled strokes. */
   brand: readonly [string, string];
-  /** Headline figure, supporting text and divider/chip fill on the sage summary card. */
+  wash: readonly [string, string];
+  /** Headline figure, supporting text and divider/chip fill on a summary card. */
   heroInk: string;
   heroSoft: string;
   heroChip: string;
-  /** Gradient of the summary card, light lime to sage. */
-  heroGradient: readonly [string, string];
+  /** Sage gradient behind a summary card; null keeps the plain surface card. */
+  heroGradient: readonly [string, string] | null;
   /** Neutral tag behind a category name. */
   tagBg: string;
   tagInk: string;
-  /** Green of the light streaks painted on the ground. */
-  streak: string;
+  /** Faint lines of the wallpaper (ruled paper, editor grid). */
+  wallpaperInk: string;
+  /** Second wallpaper colour, unused by the current themes. */
+  wallpaperAccent: string;
 };
 
 export type Fonts = { regular: string; medium: string; semibold: string; bold: string };
+export type Wallpaper = 'none' | 'streaks';
+/** How a card is lifted off the ground: a soft shadow, a thin border, or both. */
+export type CardChrome = 'shadow' | 'border' | 'both';
 export type StatusColors = Record<Status, { bg: string; ink: string }>;
 
-export const FONTS: Fonts = {
-  regular: 'Manrope_400Regular',
-  medium: 'Manrope_500Medium',
-  semibold: 'Manrope_600SemiBold',
-  bold: 'Manrope_700Bold',
+export type ThemeDef = {
+  fonts: Fonts;
+  /** Multiplies text sizes so a wider typeface (monospace) wraps no more often than Outfit does. */
+  fontScale: number;
+  wallpaper: Wallpaper;
+  card: Record<Scheme, CardChrome>;
+  palette: Record<Scheme, Palette>;
+  status: Record<Scheme, StatusColors>;
 };
 
-export const PALETTE: Palette = {
-  ground: '#090b0a',
-  surface: '#1b1e1c',
-  raised: '#262a27',
-  border: '#2e332f',
-  control: '#434a45',
-  track: '#2f3430',
-  text: '#f1f4ef',
-  muted: '#9aa59d',
-  accent: '#c5e9a1',
-  onAccent: '#0f1d0b',
-  accentSoft: '#26311f',
-  accentInk: '#c5e9a1',
-  positive: '#a6e3b4',
-  negative: '#d9b7f5',
-  warning: '#efd98e',
-  brand: ['#6fb596', '#c5e9a1'],
-  heroInk: '#0c1d12',
-  heroSoft: '#23402f',
-  heroChip: '#e6f5d8',
-  heroGradient: ['#c1e5a2', '#74b99b'],
-  tagBg: '#2a2f2c',
-  tagInk: '#d4dcd6',
-  streak: '#4f9a63',
+const CLASSIC_STATUS: Record<Scheme, StatusColors> = {
+  light: {
+    'on-track': { bg: '#dcfae5', ink: '#04250e' },
+    tight: { bg: '#ffefc2', ink: '#7a3410' },
+    over: { bg: '#ffedea', ink: '#831c1e' },
+  },
+  dark: {
+    'on-track': { bg: '#123b22', ink: '#a8efc0' },
+    tight: { bg: '#43310a', ink: '#ffd98a' },
+    over: { bg: '#4a1a1c', ink: '#ffbcbd' },
+  },
 };
 
-export const STATUS: StatusColors = {
+const classic: ThemeDef = {
+  fontScale: 1,
+  fonts: { regular: 'Outfit_400Regular', medium: 'Outfit_500Medium', semibold: 'Outfit_600SemiBold', bold: 'Outfit_700Bold' },
+  wallpaper: 'none',
+  card: { light: 'shadow', dark: 'border' },
+  status: CLASSIC_STATUS,
+  palette: {
+    light: {
+      ground: '#f4f5f7', surface: '#ffffff', raised: '#f6f7f9', border: '#e6e8ec', control: '#d8dce3', track: '#e9ecf1',
+      text: '#111318', muted: '#62677a', accent: '#0d5bd3', onAccent: '#ffffff', accentSoft: '#e8f0fc', accentInk: '#0a47a6',
+      positive: '#13a150', negative: '#d9430c', warning: '#a14a05',
+      brand: ['#0d5bd3', '#0d5bd3'], wash: ['#f4f5f7', '#f4f5f7'],
+      heroInk: '#0d5bd3', heroSoft: '#62677a', heroChip: '#e8f0fc', heroGradient: null,
+      tagBg: '#eef0f3', tagInk: '#3a3f4b', wallpaperInk: 'transparent', wallpaperAccent: 'transparent',
+    },
+    dark: {
+      ground: '#000000', surface: '#1c1c1e', raised: '#2c2c2e', border: '#38383a', control: '#48484a', track: '#2c2c2e',
+      text: '#f5f5f7', muted: '#9a9aa1', accent: '#5b9bff', onAccent: '#04122b', accentSoft: '#13274a', accentInk: '#a9c8ff',
+      positive: '#4fd27f', negative: '#ff8a5c', warning: '#f5b565',
+      brand: ['#5b9bff', '#5b9bff'], wash: ['#000000', '#000000'],
+      heroInk: '#5b9bff', heroSoft: '#9a9aa1', heroChip: '#13274a', heroGradient: null,
+      tagBg: '#2a2f34', tagInk: '#d3d7db', wallpaperInk: 'transparent', wallpaperAccent: 'transparent',
+    },
+  },
+};
+
+const GREEN_STATUS: StatusColors = {
   'on-track': { bg: '#26402c', ink: '#c3f0cb' },
   tight: { bg: '#433b1b', ink: '#f6e5a0' },
   over: { bg: '#40294f', ink: '#ecd3fb' },
 };
+
+const GREEN_PALETTE: Palette = {
+  ground: '#090b0a', surface: '#1b1e1c', raised: '#262a27', border: '#2e332f', control: '#434a45', track: '#2f3430',
+  text: '#f1f4ef', muted: '#9aa59d', accent: '#c5e9a1', onAccent: '#0f1d0b', accentSoft: '#26311f', accentInk: '#c5e9a1',
+  positive: '#a6e3b4', negative: '#d9b7f5', warning: '#efd98e',
+  brand: ['#6fb596', '#c5e9a1'], wash: ['#090b0a', '#090b0a'],
+  heroInk: '#0c1d12', heroSoft: '#23402f', heroChip: '#e6f5d8', heroGradient: ['#c1e5a2', '#74b99b'],
+  tagBg: '#2a2f2c', tagInk: '#d4dcd6', wallpaperInk: '#4f9a63', wallpaperAccent: 'transparent',
+};
+
+/**
+ * Dark green: near-black ground with soft green light streaks, flat charcoal cards, a pale lime-mint accent, a
+ * sage gradient summary card and Manrope. Dark only: the Light / Dark / Match device choice does not apply.
+ */
+const green: ThemeDef = {
+  fontScale: 1,
+  fonts: { regular: 'Manrope_400Regular', medium: 'Manrope_500Medium', semibold: 'Manrope_600SemiBold', bold: 'Manrope_700Bold' },
+  wallpaper: 'streaks',
+  card: { light: 'border', dark: 'border' },
+  status: {
+    light: GREEN_STATUS,
+    dark: GREEN_STATUS,
+  },
+  palette: { light: GREEN_PALETTE, dark: GREEN_PALETTE },
+};
+
+export const THEMES: Record<ThemeName, ThemeDef> = { classic, green };

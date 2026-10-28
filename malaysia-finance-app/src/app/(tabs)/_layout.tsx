@@ -25,18 +25,20 @@ const PLUS = 64;
 const LEFT = 2;
 
 /**
- * Bottom bar: line icons with labels, the active tab in a glowing green pill, and a large round lime + in the middle that
+ * Bottom bar: line icons with labels, the active tab in blue, and a large round blue + in the middle that
  * adds spending (it opens the Add spending screen; it is not a tab).
  */
 function TabBar({ state, descriptors, navigateToTab, emitter }: BottomTabBarProps) {
-  const { c, scheme } = useTheme();
+  const { c, scheme, theme } = useTheme();
+  const green = theme === 'green';
+  const bordered = theme !== 'classic';
   const insets = useSafeAreaInsets();
 
   const item = (index: number) => {
     const route = state.routes[index];
     const focused = index === state.index;
     const label = descriptors[route.key].options.title ?? route.name;
-    const color = focused ? c.accent : c.muted;
+    const color = focused ? c.accent : green ? c.muted : c.text;
     const onPress = () => {
       const event = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
       if (!focused && !event.defaultPrevented) navigateToTab(route.key);
@@ -48,17 +50,21 @@ function TabBar({ state, descriptors, navigateToTab, emitter }: BottomTabBarProp
         accessibilityLabel={label}
         accessibilityState={{ selected: focused }}
         onPress={onPress}
-        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2, paddingTop: 8 }}
+        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: green ? 2 : 4, paddingTop: green ? 8 : 10 }}
       >
-        {/* The active tab sits in a soft pill with a green glow. */}
-        <View
-          style={[
-            { width: 56, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-            focused ? [{ backgroundColor: c.accentSoft, borderWidth: 1, borderColor: c.accentSoft }, glow(c.accent, scheme)] : null,
-          ]}
-        >
-          <Ionicons name={ICONS[route.name] ?? 'ellipse-outline'} size={24} color={color} />
-        </View>
+        {green ? (
+          // Dark green: the active tab sits in a soft pill with a green glow.
+          <View
+            style={[
+              { width: 56, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+              focused ? [{ backgroundColor: c.accentSoft }, glow(c.accent, scheme)] : null,
+            ]}
+          >
+            <Ionicons name={ICONS[route.name] ?? 'ellipse-outline'} size={24} color={color} />
+          </View>
+        ) : (
+          <Ionicons name={ICONS[route.name] ?? 'ellipse-outline'} size={25} color={color} />
+        )}
         <AppText variant="small" color={color} numberOfLines={1} style={{ fontSize: 12, lineHeight: 16 }}>
           {label}
         </AppText>
@@ -78,10 +84,15 @@ function TabBar({ state, descriptors, navigateToTab, emitter }: BottomTabBarProp
         backgroundColor: c.surface,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
-        borderTopWidth: 1,
-        borderLeftWidth: 1,
-        borderRightWidth: 1,
+        borderTopWidth: bordered ? 1 : 0,
+        borderLeftWidth: green ? 1 : 0,
+        borderRightWidth: green ? 1 : 0,
         borderColor: c.border,
+        shadowColor: '#0b1530',
+        shadowOpacity: scheme === 'dark' ? 0 : 0.07,
+        shadowRadius: 20,
+        shadowOffset: { width: 0, height: -4 },
+        elevation: 12,
       }}
     >
       <View style={{ flex: 1, flexDirection: 'row' }}>{left}</View>

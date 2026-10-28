@@ -1,16 +1,42 @@
-/** Manrope, the app's only typeface. Loaded once at start-up; text uses the system font until it arrives. */
+/**
+ * Fonts per theme, loaded on demand so a phone only downloads the family of the theme in use.
+ * Classic's Outfit is always loaded because the app opens in it and falls back to it.
+ */
 import * as Font from 'expo-font';
-import { Manrope_400Regular } from '@expo-google-fonts/manrope/400Regular';
-import { Manrope_500Medium } from '@expo-google-fonts/manrope/500Medium';
-import { Manrope_600SemiBold } from '@expo-google-fonts/manrope/600SemiBold';
-import { Manrope_700Bold } from '@expo-google-fonts/manrope/700Bold';
+import { Outfit_400Regular } from '@expo-google-fonts/outfit/400Regular';
+import { Outfit_500Medium } from '@expo-google-fonts/outfit/500Medium';
+import { Outfit_600SemiBold } from '@expo-google-fonts/outfit/600SemiBold';
+import { Outfit_700Bold } from '@expo-google-fonts/outfit/700Bold';
+import type { ThemeName } from './themeDefs';
 
-let loading: Promise<void> | undefined;
+type FontMap = Record<string, number | string>;
 
-/** Resolves once the fonts are ready. Never rejects: on a failed download text uses the system font. */
-export function loadFonts(): Promise<void> {
-  loading ??= Font.loadAsync({ Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold }).catch(() => {
-    loading = undefined;
-  });
-  return loading;
+const LOADERS: Record<ThemeName, () => Promise<FontMap>> = {
+  // Classic is imported statically: the app opens in it, so it ships with the main bundle.
+  classic: async () => ({ Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold }),
+  green: async () => {
+    const [a, b, c, d] = await Promise.all([
+      import('@expo-google-fonts/manrope/400Regular'),
+      import('@expo-google-fonts/manrope/500Medium'),
+      import('@expo-google-fonts/manrope/600SemiBold'),
+      import('@expo-google-fonts/manrope/700Bold'),
+    ]);
+    return { Manrope_400Regular: a.Manrope_400Regular, Manrope_500Medium: b.Manrope_500Medium, Manrope_600SemiBold: c.Manrope_600SemiBold, Manrope_700Bold: d.Manrope_700Bold };
+  },
+};
+
+const loaded = new Map<ThemeName, Promise<void>>();
+
+/** Resolves once the theme's fonts are ready. Never rejects: on a failed download text uses the system font. */
+export function loadThemeFonts(name: ThemeName): Promise<void> {
+  let p = loaded.get(name);
+  if (!p) {
+    p = LOADERS[name]()
+      .then((map) => Font.loadAsync(map))
+      .catch(() => {
+        loaded.delete(name);
+      });
+    loaded.set(name, p);
+  }
+  return p;
 }

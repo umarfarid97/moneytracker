@@ -1,7 +1,8 @@
-import { categoryLook, categoryTint, contrast, palette, radius, statusStyle } from '@/ui/theme';
-import { FONTS } from '@/ui/themeDefs';
+import { categoryLook, categoryTint, contrast, heroGradient, palette, radius, statusStyle } from '@/ui/theme';
+import { THEMES, THEME_NAMES } from '@/ui/themeDefs';
 import { t } from '@/i18n/t';
 
+const schemes = ['light', 'dark'] as const;
 const CATEGORIES = ['Makan', 'Transport', 'Bil', 'Rumah', 'Hiburan', 'Kesihatan', 'Pendidikan', 'Lain-lain'];
 
 describe('contrast', () => {
@@ -11,52 +12,73 @@ describe('contrast', () => {
   });
 });
 
-describe('dark green palette', () => {
-  const p = palette;
-  test('text, muted text and the accent are readable on cards and the ground', () => {
-    for (const bg of [p.surface, p.ground, p.raised]) {
-      expect(contrast(p.text, bg)).toBeGreaterThanOrEqual(4.5);
-      expect(contrast(p.muted, bg)).toBeGreaterThanOrEqual(4.5);
-      expect(contrast(p.accent, bg)).toBeGreaterThanOrEqual(4.5);
-    }
-    expect(contrast(p.accentInk, p.accentSoft)).toBeGreaterThanOrEqual(4.5);
+describe.each(schemes)('%s palette', (scheme) => {
+  const p = palette[scheme];
+  test('body text and muted text are readable on surface and ground', () => {
+    expect(contrast(p.text, p.surface)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(p.text, p.ground)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(p.muted, p.surface)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(p.muted, p.ground)).toBeGreaterThanOrEqual(4.5);
   });
   test('primary button text is readable on the accent', () => {
     expect(contrast(p.onAccent, p.accent)).toBeGreaterThanOrEqual(4.5);
   });
-  test('money colours are readable on cards', () => {
-    for (const tone of [p.positive, p.negative, p.warning]) {
-      expect(contrast(tone, p.surface)).toBeGreaterThanOrEqual(4.5);
-      expect(contrast(tone, p.ground)).toBeGreaterThanOrEqual(4.5);
-    }
-  });
-  test('ink is readable on both ends of the sage summary card, and on its chips', () => {
-    for (const stop of p.heroGradient) {
-      expect(contrast(p.heroInk, stop)).toBeGreaterThanOrEqual(4.5);
-      expect(contrast(p.heroSoft, stop)).toBeGreaterThanOrEqual(4.5);
-    }
-    expect(contrast(p.heroInk, p.heroChip)).toBeGreaterThanOrEqual(4.5);
-  });
-  test('every category tag is readable', () => {
+  test('every category tile ink is readable on its tint', () => {
     for (const name of CATEGORIES) {
-      const tint = categoryTint(name);
+      const tint = categoryTint(name, scheme);
       expect(contrast(tint.ink, tint.bg)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+  test('white text is readable on every stop of every hero gradient', () => {
+    for (const hero of ['brand', 'ocean', 'mint', 'sunset'] as const) {
+      for (const stop of heroGradient(hero, scheme)) expect(contrast('#ffffff', stop)).toBeGreaterThanOrEqual(4.5);
     }
   });
   test('every status pill is readable', () => {
     for (const s of ['on-track', 'tight', 'over'] as const) {
-      const st = statusStyle(s);
+      const st = statusStyle(s, scheme);
       expect(contrast(st.ink, st.bg)).toBeGreaterThanOrEqual(4.5);
     }
   });
-  test('the font names a family for every weight', () => {
-    expect(Object.keys(FONTS).sort()).toEqual(['bold', 'medium', 'regular', 'semibold']);
+});
+
+describe.each(THEME_NAMES.flatMap((n) => schemes.map((s) => [n, s] as const)))('%s theme, %s palette', (name, scheme) => {
+  const p = THEMES[name].palette[scheme];
+  test('text, muted text and the accent are readable on surface and ground', () => {
+    for (const bg of [p.surface, p.ground]) {
+      expect(contrast(p.text, bg)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(p.muted, bg)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(p.accent, bg)).toBeGreaterThanOrEqual(4.5);
+      // Dark green draws hero text on its sage gradient instead; it is checked below.
+      if (!p.heroGradient) {
+        expect(contrast(p.heroInk, bg)).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(p.heroSoft, bg)).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+    for (const stop of p.heroGradient ?? []) {
+      expect(contrast(p.heroInk, stop)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(p.heroSoft, stop)).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(contrast(p.onAccent, p.accent)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(p.accentInk, p.accentSoft)).toBeGreaterThanOrEqual(4.5);
+  });
+  test('money colours, tags and status pills are readable', () => {
+    // Classic keeps its original money colours untouched, so they are not held to the new bar.
+    if (name !== 'classic') for (const tone of [p.positive, p.negative, p.warning]) expect(contrast(tone, p.surface)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(p.tagInk, p.tagBg)).toBeGreaterThanOrEqual(4.5);
+    for (const s of ['on-track', 'tight', 'over'] as const) {
+      const st = statusStyle(s, scheme, name);
+      expect(contrast(st.ink, st.bg)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+  test('the theme names a font for every weight', () => {
+    expect(Object.keys(THEMES[name].fonts).sort()).toEqual(['bold', 'medium', 'regular', 'semibold']);
   });
 });
 
 describe('categoryTint', () => {
   test('unknown categories fall back to a neutral tint', () => {
-    expect(categoryTint('Kucing')).toEqual(categoryTint('Lain-lain'));
+    expect(categoryTint('Kucing', 'light')).toEqual(categoryTint('Lain-lain', 'light'));
   });
 });
 
@@ -68,8 +90,8 @@ describe('categoryLook', () => {
     expect(categoryLook('Kucing', 'paw-outline').icon).toBe('paw-outline');
   });
 
-  test('the category icon colour stands out (3:1) on the card', () => {
-    for (const name of [...CATEGORIES, 'Kucing']) expect(contrast(categoryLook(name).color, palette.surface)).toBeGreaterThanOrEqual(3);
+  test('white icons stand out (3:1) on every category colour', () => {
+    for (const name of [...CATEGORIES, 'Kucing']) expect(contrast('#ffffff', categoryLook(name).color)).toBeGreaterThanOrEqual(3);
   });
   test('categories the user adds share one look', () => {
     expect(categoryLook('Kucing')).toEqual(categoryLook('Anjing'));

@@ -7,7 +7,7 @@ import { useTheme } from './useTheme';
 type Props = {
   title: string;
   onPress: () => void;
-  /** primary: solid lime; secondary: soft green; light: same as primary (kept for hero cards). */
+  /** primary: solid blue; secondary: soft blue; light: same as primary (kept for hero cards). */
   variant?: 'primary' | 'secondary' | 'light';
   disabled?: boolean;
   /** Overrides the spoken name when the title alone is ambiguous (e.g. several Delete buttons). */
@@ -19,7 +19,7 @@ export function Button({ title, onPress, variant = 'primary', disabled = false, 
   const { c } = useTheme();
   const onHero = useContext(OnHeroContext);
   const primary = variant === 'primary' || variant === 'light';
-  // On the sage summary card the lime button would vanish, so it flips to dark ink with a lime label.
+  // On Dark green's sage summary card a lime button would vanish, so it flips to dark ink with a lime label.
   const ink = onHero ? (primary ? c.accent : c.heroInk) : primary ? c.onAccent : c.accentInk;
   const fill = onHero ? (primary ? c.heroInk : c.heroChip) : primary ? c.accent : c.accentSoft;
   return (
