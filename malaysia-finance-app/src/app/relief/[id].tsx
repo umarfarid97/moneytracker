@@ -21,6 +21,7 @@ import { ProgressBar } from '@/ui/ProgressBar';
 import { confirmDelete } from '@/ui/confirm';
 import { ReceiptField } from '@/ui/ReceiptField';
 import { Screen } from '@/ui/Screen';
+import { Sheet } from '@/ui/Sheet';
 import { controlHeight, fontFamily, radius, statusStyle } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
@@ -114,6 +115,33 @@ export default function ReliefPage() {
     }
   }
 
+  const formFields = (
+    <>
+        <AmountInput label={t('common.amount')} value={amountText} onChange={(text) => setAmountText(text)} />
+        <View style={{ gap: 8 }}>
+          <AppText variant="smallStrong">{t('common.note')}</AppText>
+          <TextInput
+            accessibilityLabel={t('common.note')}
+            value={note}
+            onChangeText={setNote}
+            placeholderTextColor={c.muted}
+            style={{
+              height: controlHeight,
+              borderRadius: radius.control,
+              backgroundColor: c.surface,
+              borderWidth: 1,
+              borderColor: c.control,
+              paddingHorizontal: 14,
+              color: c.text,
+              fontFamily: fontFamily.medium,
+              fontSize: 16,
+            }}
+          />
+        </View>
+        <ReceiptField uri={receiptUri} onChange={setReceiptUri} />
+    </>
+  );
+
   const missingBadge = (
     <View style={{ alignSelf: 'flex-start', backgroundColor: warn.bg, borderRadius: radius.sm, paddingHorizontal: 10, paddingVertical: 4 }}>
       <AppText variant="smallStrong" color={warn.ink}>
@@ -122,19 +150,20 @@ export default function ReliefPage() {
     </View>
   );
 
-  // Existing claims keep the form folded away until you add or edit one; an empty relief shows it straight away.
-  const showForm = formOpen || editingId !== null || (spendingRows.length === 0 && manualClaims.length === 0);
+  // Existing claims keep the add form folded away until you add one; an empty relief shows it straight away. Editing opens a popup.
+  const editing = editingId !== null;
+  const showForm = formOpen || (!editing && spendingRows.length === 0 && manualClaims.length === 0);
   const canSave = amount !== null && amount > 0 && !busy;
   const footer = (
     <View style={{ gap: 8 }}>
-      {error ? (
+      {error && !editing ? (
         <AppText variant="small" tone="negative">
           {error}
         </AppText>
       ) : null}
       {!showForm ? (
         <Button title={t('tax.addAnother')} onPress={() => setFormOpen(true)} />
-      ) : editingId !== null || formOpen ? (
+      ) : formOpen ? (
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <View style={{ flex: 2 }}>
             <Button title={t('common.save')} onPress={saveClaim} disabled={!canSave} />
@@ -260,35 +289,31 @@ export default function ReliefPage() {
         </View>
       ) : null}
 
-      {showForm ? (
-        <Card style={{ gap: 14 }}>
-        {editingId !== null ? (
-          <AppText variant="section">{t('tax.editClaim')}</AppText>
-        ) : null}
-        <AmountInput label={t('common.amount')} value={amountText} onChange={(text) => setAmountText(text)} />
-        <View style={{ gap: 8 }}>
-          <AppText variant="smallStrong">{t('common.note')}</AppText>
-          <TextInput
-            accessibilityLabel={t('common.note')}
-            value={note}
-            onChangeText={setNote}
-            placeholderTextColor={c.muted}
-            style={{
-              height: controlHeight,
-              borderRadius: radius.control,
-              backgroundColor: c.surface,
-              borderWidth: 1,
-              borderColor: c.control,
-              paddingHorizontal: 14,
-              color: c.text,
-              fontFamily: fontFamily.medium,
-              fontSize: 16,
-            }}
-          />
-        </View>
-        <ReceiptField uri={receiptUri} onChange={setReceiptUri} />
-        </Card>
-      ) : null}
+      {showForm ? <Card style={{ gap: 14 }}>{formFields}</Card> : null}
+      <Sheet
+        visible={editing}
+        title={t('tax.editClaim')}
+        onClose={resetForm}
+        footer={
+          <View style={{ gap: 8 }}>
+            {error ? (
+              <AppText variant="small" tone="negative">
+                {error}
+              </AppText>
+            ) : null}
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flex: 2 }}>
+                <Button title={t('common.save')} onPress={saveClaim} disabled={!canSave} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Button title={t('common.cancel')} variant="secondary" onPress={resetForm} disabled={busy} />
+              </View>
+            </View>
+          </View>
+        }
+      >
+        <View style={{ gap: 14 }}>{formFields}</View>
+      </Sheet>
     </Screen>
   );
 }
