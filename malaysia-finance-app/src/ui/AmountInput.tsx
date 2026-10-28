@@ -21,15 +21,20 @@ type Props = {
   large?: boolean;
   /** Greyed hint in the empty field; defaults to the standard 0.00 hint. */
   placeholder?: string;
+  /** Marks the label with a red asterisk. */
+  required?: boolean;
 };
 
-export function AmountInput({ label, value, onChange, autoFocus, compact = false, large = false, placeholder }: Props) {
+export function AmountInput({ label, value, onChange, autoFocus, compact = false, large = false, placeholder, required = false }: Props) {
   const { c, scheme } = useTheme();
   const [focused, setFocused] = useState(false);
   const invalid = value.trim() !== '' && parseRM(value) === null;
   return (
     <View style={{ gap: compact ? 4 : 8 }}>
-      <AppText variant="eyebrow" tone="muted">{label}</AppText>
+      <AppText variant="eyebrow" tone="muted">
+        {label}
+        {required ? <AppText variant="eyebrow" color={c.negative}> *</AppText> : null}
+      </AppText>
       <View
         style={[
           {

@@ -147,16 +147,19 @@ describe('Bills: sheet fields', () => {
     await renderWithData(db, <Commitments />);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Add commitment' })).toBeTruthy());
     await fireEvent.press(screen.getByRole('button', { name: 'Add commitment' }));
+    await fireEvent.press(screen.getByRole('button', { name: /^Bills\./ }));
     await fireEvent.changeText(screen.getByLabelText('Name'), 'Insurance');
     await fireEvent.changeText(screen.getByLabelText('Amount'), '300');
     await fireEvent.changeText(screen.getByLabelText('Day of month'), '12');
+    await fireEvent.press(screen.getByRole('button', { name: 'Category' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Bill category Kesihatan' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'More options' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Bill method Credit card' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Tax relief' }));
     await fireEvent.changeText(screen.getByLabelText('Search reliefs'), 'life insurance');
     await fireEvent.press(screen.getByText('Life insurance / family takaful / extra voluntary EPF'));
     await fireEvent(screen.getByLabelText('Record automatically on the due date'), 'valueChange', true);
-    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await fireEvent.press(screen.getByRole('button', { name: /^Save/ }));
     await waitFor(() => expect(screen.getByText('Insurance')).toBeTruthy());
     expect(await db.get('SELECT category_id, payment_method_id, relief_id, auto_record, start_date FROM commitments')).toEqual({
       category_id: 6, payment_method_id: 3, relief_id: 'life-insurance', auto_record: 1, start_date: '2026-10-24',
@@ -169,6 +172,7 @@ describe('Bills: sheet fields', () => {
     await renderWithData(db, <Commitments />);
     await waitFor(() => expect(screen.getByText('Insurance')).toBeTruthy());
     await fireEvent.press(screen.getByText('Insurance'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Category' }));
     expect(screen.getByRole('button', { name: 'Bill category Kesihatan' })).toBeSelected();
     expect(screen.getByRole('button', { name: 'Bill method Credit card' })).toBeSelected();
     expect(screen.getAllByText('Life insurance / family takaful / extra voluntary EPF').length).toBeGreaterThan(0);
@@ -205,8 +209,8 @@ describe('Bills: editing cannot invent payments (review findings)', () => {
     await waitFor(() => expect(screen.getByText('Astro')).toBeTruthy());
     await fireEvent.press(screen.getByText('Astro'));
     await edit();
-    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Save' })).toBeNull());
+    await fireEvent.press(screen.getByRole('button', { name: /^Save/ }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: /^Save/ })).toBeNull());
     await new Promise((resolve) => setTimeout(resolve, 80));
   }
 
@@ -250,6 +254,8 @@ describe('Bills: fixed or changes monthly', () => {
     await renderWithData(db, <Commitments />);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Add commitment' })).toBeTruthy());
     await fireEvent.press(screen.getByRole('button', { name: 'Add commitment' }));
+    await fireEvent.press(screen.getByRole('button', { name: /^Bills\./ }));
+    await fireEvent.press(screen.getByRole('button', { name: 'More options' }));
     expect(screen.getByRole('button', { name: 'Fixed amount' })).toBeSelected();
     expect(screen.getByLabelText('Record automatically on the due date')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Changes monthly' }));
@@ -257,7 +263,7 @@ describe('Bills: fixed or changes monthly', () => {
     await fireEvent.changeText(screen.getByLabelText('Name'), 'TNB');
     await fireEvent.changeText(screen.getByLabelText('Estimated amount'), '150');
     await fireEvent.changeText(screen.getByLabelText('Day of month'), '28');
-    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await fireEvent.press(screen.getByRole('button', { name: /^Save/ }));
     await waitFor(() => expect(screen.getByText('TNB')).toBeTruthy());
     expect(await db.get('SELECT amount, variable, auto_record FROM commitments')).toEqual({ amount: 15000, variable: 1, auto_record: 0 });
     expect(screen.getByText('~RM 150.00')).toBeTruthy();
