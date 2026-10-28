@@ -1,6 +1,7 @@
 import type { StringKey } from './en';
 import { homeLayoutMs } from './homeLayout';
 import { lockRemindersMs } from './lockReminders';
+import { addFlowMs } from './addFlow';
 import { billDatesMs } from './billDates';
 import { statementImportMs } from './statementImport';
 import { reportsMs } from './reports';
@@ -605,6 +606,7 @@ export const ms: Record<StringKey, string> = {
 
   ...lockRemindersMs,
   ...billDatesMs,
+  ...addFlowMs,
   'more.owed': 'Buku 555',
   'more.income': 'Pendapatan tambahan',
   'fx.original': 'Dibayar dalam {code}',

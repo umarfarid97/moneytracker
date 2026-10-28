@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { Switch, TextInput, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable, ScrollView, Switch, TextInput, View } from 'react-native';
 import { resolveTaxData } from '@/data/tax';
 import { BILLER_GROUPS, billersIn, type BillerGroup } from '@/domain/billers';
 import { SUBSCRIPTION_GROUPS, subscriptionsIn, type SubscriptionGroup } from '@/domain/subscriptions';
@@ -20,6 +21,7 @@ import { Chip } from '@/ui/Chip';
 import { DateField } from '@/ui/DateField';
 import { MethodBadge } from '@/ui/MethodBadge';
 import { ReliefPicker } from '@/ui/ReliefPicker';
+import { PressableScale } from '@/ui/PressableScale';
 import { Sheet } from '@/ui/Sheet';
 import { controlHeight, fontFamily, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
@@ -39,7 +41,14 @@ type Props = {
   onDelete?: () => Promise<boolean | void>;
 };
 
-const KINDS: CommitmentKind[] = ['bill', 'loan', 'subscription'];
+type Flow = 'bill' | 'loan' | 'other';
+const FLOWS: Flow[] = ['bill', 'loan', 'other'];
+const FLOW_KIND: Record<Flow, CommitmentKind> = { bill: 'bill', loan: 'loan', other: 'subscription' };
+const FLOW_ICON: Record<Flow, keyof typeof Ionicons.glyphMap> = {
+  bill: 'document-text-outline',
+  loan: 'home-outline',
+  other: 'calendar-outline',
+};
 
 /** A titled white card that groups related fields. */
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -49,6 +58,52 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
       <AppText variant="bodyStrong">{title}</AppText>
       {children}
     </View>
+  );
+}
+
+/** A field label, with a red asterisk when the field is required. */
+function Label({ text, required = false }: { text: string; required?: boolean }) {
+  const { c } = useTheme();
+  return (
+    <AppText variant="smallStrong">
+      {text}
+      {required ? <AppText variant="smallStrong" color={c.negative}> *</AppText> : null}
+    </AppText>
+  );
+}
+
+/** A round icon on a tinted disc: `tone` is the icon colour and the disc is a soft wash of it. */
+function TintDisc({ icon, tone, size = 48 }: { icon: keyof typeof Ionicons.glyphMap; tone: string; size?: number }) {
+  return (
+    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: `${tone}26`, alignItems: 'center', justifyContent: 'center' }}>
+      <Ionicons name={icon} size={Math.round(size * 0.5)} color={tone} />
+    </View>
+  );
+}
+
+/** A dropdown-looking row: icon, value and a chevron. Tapping it toggles `open`; a fixed row has no `onPress`. */
+function SelectRow({ icon, value, open, onPress, accessibilityLabel }: {
+  icon: keyof typeof Ionicons.glyphMap; value: string; open?: boolean; onPress?: () => void; accessibilityLabel: string;
+}) {
+  const { c } = useTheme();
+  return (
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ expanded: open }}
+      disabled={!onPress}
+      onPress={onPress}
+      style={{
+        height: controlHeight, borderRadius: radius.control, borderWidth: 1, borderColor: open ? c.accent : c.control,
+        backgroundColor: c.surface, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 10,
+      }}
+    >
+      <View style={{ width: 32, height: 32, borderRadius: radius.sm, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name={icon} size={18} color={c.accent} />
+      </View>
+      <AppText variant="bodyStrong" style={{ flex: 1 }} numberOfLines={1}>{value}</AppText>
+      {onPress ? <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={c.muted} /> : null}
+    </PressableScale>
   );
 }
 
@@ -86,6 +141,9 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
   const [endsOn, setEndsOn] = useState(existing?.endsOn ?? today);
   const [group, setGroup] = useState<BillerGroup>('utilities');
   const [subGroup, setSubGroup] = useState<SubscriptionGroup>('streaming');
+  const [step, setStep] = useState<'choose' | 'form'>(existing ? 'form' : 'choose');
+  const [moreOpen, setMoreOpen] = useState(existing !== null);
+  const [catOpen, setCatOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -156,13 +214,13 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
 
   const nameField = (
     <View style={{ gap: 8 }}>
-      <AppText variant="smallStrong">{t('commitments.name')}</AppText>
+      <Label text={t('commitments.name')} required />
       <TextInput accessibilityLabel={t('commitments.name')} value={name} onChangeText={setName} placeholderTextColor={c.muted} style={field} />
     </View>
   );
   const dayField = (
     <View style={{ gap: 8 }}>
-      <AppText variant="smallStrong">{t('commitments.day')}</AppText>
+      <Label text={t('addflow.dueDay')} required />
       <TextInput
         accessibilityLabel={t('commitments.day')}
         value={dayText}
@@ -175,20 +233,34 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
       />
     </View>
   );
+  const selectedCategory = categories.find((cat) => cat.id === categoryId);
   const categoryBlock = (
     <View style={{ gap: 8 }}>
-      <AppText variant="smallStrong">{t('commitments.recordsAs')}</AppText>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        {categories.map((cat) => (
-          <Chip
-            key={cat.id}
-            label={cat.name}
-            accessibilityLabel={`Bill category ${cat.name}`}
-            selected={cat.id === categoryId}
-            onPress={() => setCategoryId(cat.id)}
-          />
-        ))}
-      </View>
+      <Label text={t('addflow.category')} required />
+      <SelectRow
+        accessibilityLabel={t('addflow.category')}
+        icon={(selectedCategory?.icon ?? 'pricetag-outline') as keyof typeof Ionicons.glyphMap}
+        value={selectedCategory?.name ?? '-'}
+        open={catOpen}
+        onPress={() => setCatOpen((v) => !v)}
+      />
+      {catOpen ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {categories.map((cat) => (
+            <Chip
+              key={cat.id}
+              label={cat.name}
+              accessibilityLabel={`Bill category ${cat.name}`}
+              selected={cat.id === categoryId}
+              onPress={() => {
+                setCategoryId(cat.id);
+                setCatOpen(false);
+              }}
+            />
+          ))}
+        </View>
+      ) : null}
+      <AppText variant="small" tone="muted">{t('commitments.recordsAs')}</AppText>
     </View>
   );
   const methodBlock = (
@@ -238,49 +310,186 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
     </View>
   );
 
-  return (
-    <Sheet visible={visible} title={t(existing ? 'commitments.edit' : 'commitments.add')} onClose={onClose}
-      footer={(
-        <View style={{ gap: 8 }}>
-          {error ? (
-            <AppText variant="small" tone="negative">
-              {error}
-            </AppText>
-          ) : null}
-          {!valid && loanValid ? (
-            <AppText variant="small" tone="muted">
-              {name.trim() === '' ? t('commitments.need.name') : amount === null || amount <= 0 ? t('commitments.need.amount') : t('commitments.need.day')}
-            </AppText>
-          ) : null}
-          <Button
-            title={t('common.save')}
-            disabled={!valid || busy}
-            onPress={() =>
-              run(() =>
-                onSave({
-                  name: name.trim(), amount: amount ?? 0, dayOfMonth: day, kind, active,
-                  categoryId, paymentMethodId: methodId, reliefId, autoRecord: auto && !isVariable, variable: isVariable,
-                  startDate: existing?.startDate ?? today,
-                  startsOn: hasStart ? startsOn : null, endsOn: hasEnd ? endsOn : null,
-                  ...loanFields(),
-                }),
-              )
-            }
+  const flow: Flow = isLoan ? 'loan' : kind === 'subscription' ? 'other' : 'bill';
+  const flowTone = flow === 'bill' ? c.accent : flow === 'loan' ? c.positive : c.negative;
+  const choosing = step === 'choose';
+  const chooseFlow = (f: Flow) => {
+    setKind(FLOW_KIND[f]);
+    setVariable(false);
+    setStep('form');
+  };
+
+  const moreOptions = (
+    <View style={{ borderRadius: radius.control, borderWidth: 1, borderColor: c.control, backgroundColor: c.surface }}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('addflow.more')}
+        accessibilityState={{ expanded: moreOpen }}
+        onPress={() => setMoreOpen((v) => !v)}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 }}
+      >
+        <View style={{ flex: 1, gap: 2 }}>
+          <AppText variant="bodyStrong">{t('addflow.more')}</AppText>
+          <AppText variant="small" tone="muted">{t('addflow.moreHint')}</AppText>
+        </View>
+        <Ionicons name={moreOpen ? 'chevron-up' : 'chevron-down'} size={20} color={c.muted} />
+      </Pressable>
+      {moreOpen ? (
+        <View style={{ gap: 16, padding: 14, paddingTop: 2 }}>
+          {methodBlock}
+          {reliefBlock}
+          {datesBlock}
+          {autoRow}
+        </View>
+      ) : null}
+    </View>
+  );
+
+  const quickPicks = existing ? null : kind === 'subscription' ? (
+    <View style={{ gap: 8 }}>
+      <Label text={t('subscriptions.pick')} />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+        {SUBSCRIPTION_GROUPS.map((g) => (
+          <Chip key={g} compact label={t(`subscriptions.group.${g}`)} selected={subGroup === g} onPress={() => setSubGroup(g)} />
+        ))}
+      </ScrollView>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+        {subscriptionsIn(subGroup).map((b) => (
+          <Chip
+            key={b.id}
+            label={b.name}
+            accessibilityLabel={`Subscription ${b.name}`}
+            leading={<BrandBadge id={b.id} initials={b.initials} color={b.color} ink={b.ink} size={22} />}
+            selected={name === b.name}
+            onPress={() => {
+              setName(b.name);
+              setVariable(false);
+              const cat = categories.find((x) => x.name === b.category);
+              if (cat) setCategoryId(cat.id);
+            }}
           />
-          {existing && onDelete ? (
-            <Button title={t('common.delete')} variant="secondary" disabled={busy} onPress={() => run(onDelete)} />
-          ) : null}
+        ))}
+      </ScrollView>
+      <AppText variant="small" tone="muted">{t('subscriptions.hint')}</AppText>
+    </View>
+  ) : (
+    <View style={{ gap: 8 }}>
+      <Label text={t('billers.pick')} />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+        {BILLER_GROUPS.map((g) => (
+          <Chip key={g} compact label={t(`billers.group.${g}`)} selected={group === g} onPress={() => setGroup(g)} />
+        ))}
+      </ScrollView>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+        {billersIn(group).map((b) => (
+          <Chip
+            key={b.id}
+            label={b.name}
+            accessibilityLabel={`Biller ${b.name}`}
+            leading={<BrandBadge id={b.id} initials={b.initials} color={b.color} ink={b.ink} icon={b.icon} size={22} />}
+            selected={name === b.name}
+            onPress={() => {
+              setName(b.name);
+              setKind(b.kind);
+              setVariable(b.variable);
+              const cat = categories.find((x) => x.name === b.category);
+              if (cat) setCategoryId(cat.id);
+            }}
+          />
+        ))}
+      </ScrollView>
+      <AppText variant="small" tone="muted">{t('billers.hint')}</AppText>
+    </View>
+  );
+
+  const header = (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+      <TintDisc icon={FLOW_ICON[flow]} tone={flowTone} size={56} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <AppText variant="section">{t(`addflow.${flow}.title`)}</AppText>
+        <AppText variant="small" tone="muted">{t(`addflow.${flow}.sub`)}</AppText>
+      </View>
+    </View>
+  );
+
+  const chooser = (
+    <View style={{ gap: 14 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: radius.card, backgroundColor: c.accentSoft }}>
+        <TintDisc icon="document-text-outline" tone={c.accent} size={52} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <AppText variant="bodyStrong">{t('addflow.choose.title')}</AppText>
+          <AppText variant="small" tone="muted">{t('addflow.choose.sub')}</AppText>
         </View>
-      )}
+      </View>
+      {FLOWS.map((f) => {
+        const tone = f === 'bill' ? c.accent : f === 'loan' ? c.positive : c.negative;
+        return (
+          <PressableScale
+            key={f}
+            accessibilityRole="button"
+            accessibilityLabel={`${t(`addflow.${f}.title`)}. ${t(`addflow.${f}.desc`)}`}
+            onPress={() => chooseFlow(f)}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: radius.card, backgroundColor: `${tone}14`, borderWidth: 1, borderColor: `${tone}33` }}
+          >
+            <TintDisc icon={FLOW_ICON[f]} tone={tone} size={56} />
+            <View style={{ flex: 1, gap: 4 }}>
+              <AppText variant="bodyStrong">{t(`addflow.${f}.title`)}</AppText>
+              <AppText variant="small" tone="muted">{t(`addflow.${f}.desc`)}</AppText>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={c.text} />
+          </PressableScale>
+        );
+      })}
+    </View>
+  );
+
+  const footer = choosing ? undefined : (
+    <View style={{ gap: 8 }}>
+      {error ? (
+        <AppText variant="small" tone="negative">
+          {error}
+        </AppText>
+      ) : null}
+      {!valid && loanValid ? (
+        <AppText variant="small" tone="muted">
+          {name.trim() === '' ? t('commitments.need.name') : amount === null || amount <= 0 ? t('commitments.need.amount') : t('commitments.need.day')}
+        </AppText>
+      ) : null}
+      <Button
+        title={existing ? t('common.save') : t(`addflow.save.${flow}`)}
+        disabled={!valid || busy}
+        onPress={() =>
+          run(() =>
+            onSave({
+              name: name.trim(), amount: amount ?? 0, dayOfMonth: day, kind, active,
+              categoryId, paymentMethodId: methodId, reliefId, autoRecord: auto && !isVariable, variable: isVariable,
+              startDate: existing?.startDate ?? today,
+              startsOn: hasStart ? startsOn : null, endsOn: hasEnd ? endsOn : null,
+              ...loanFields(),
+            }),
+          )
+        }
+      />
+      {existing && onDelete ? (
+        <Button title={t('common.delete')} variant="secondary" disabled={busy} onPress={() => run(onDelete)} />
+      ) : null}
+    </View>
+  );
+
+  return (
+    <Sheet
+      tall
+      visible={visible}
+      title={existing ? t('commitments.edit') : t(choosing ? 'commitments.add' : `addflow.screen.${flow}`)}
+      onClose={onClose}
+      onBack={!existing && !choosing ? () => setStep('choose') : undefined}
+      footer={footer}
     >
-      <View style={{ gap: 16 }}>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {KINDS.map((k) => (
-            <Chip key={k} label={t(`commitments.kind.${k}`)} selected={kind === k} onPress={() => setKind(k)} />
-          ))}
-        </View>
-        {isLoan ? (
-          <>
+      {choosing ? chooser : (
+        <View style={{ gap: 18 }}>
+          {header}
+          {isLoan ? (
+            <>
             <Section title={t('loans.sec.about')}>
               <View style={{ gap: 8 }}>
                 <AppText variant="smallStrong">{t('loans.type')}</AppText>
@@ -316,7 +525,7 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
               {nameField}
             </Section>
             <Section title={t('loans.sec.amounts')}>
-              <AmountInput label={t('loans.payment')} value={amountText} onChange={(text) => setAmountText(text)} />
+              <AmountInput required label={t('loans.payment')} value={amountText} onChange={(text) => setAmountText(text)} />
               <AmountInput label={t('loans.balance')} value={balanceText} onChange={(text) => setBalanceText(text)} />
               <AmountInput label={t('loans.original')} value={originalText} onChange={(text) => setOriginalText(text)} />
               <View style={{ gap: 8 }}>
@@ -367,99 +576,41 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
                 ) : null}
               </View>
             </Section>
-            <Section title={t('loans.sec.payment')}>
               {categoryBlock}
-              {methodBlock}
-              {reliefBlock}
-              {autoRow}
-              {datesBlock}
-            </Section>
-          </>
-        ) : (
-          <>
-            {existing ? null : kind === 'subscription' ? (
+              {moreOptions}
+            </>
+          ) : (
+            <>
+              {nameField}
+              {quickPicks}
+              {categoryBlock}
               <View style={{ gap: 8 }}>
-                <AppText variant="smallStrong">{t('subscriptions.pick')}</AppText>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {SUBSCRIPTION_GROUPS.map((g) => (
-                    <Chip key={g} compact label={t(`subscriptions.group.${g}`)} selected={subGroup === g} onPress={() => setSubGroup(g)} />
-                  ))}
+                <Label text={t('commitments.type')} />
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <Chip icon="lock-closed-outline" label={t('commitments.type.fixed')} selected={!variable} onPress={() => setVariable(false)} />
+                  <Chip icon="pulse-outline" label={t('commitments.type.variable')} selected={variable} onPress={() => setVariable(true)} />
                 </View>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {subscriptionsIn(subGroup).map((b) => (
-                    <Chip
-                      key={b.id}
-                      label={b.name}
-                      accessibilityLabel={`Subscription ${b.name}`}
-                      leading={<BrandBadge id={b.id} initials={b.initials} color={b.color} ink={b.ink} size={22} />}
-                      selected={name === b.name}
-                      onPress={() => {
-                        setName(b.name);
-                        setVariable(false);
-                        const cat = categories.find((x) => x.name === b.category);
-                        if (cat) setCategoryId(cat.id);
-                      }}
-                    />
-                  ))}
-                </View>
-                <AppText variant="small" tone="muted">{t('subscriptions.hint')}</AppText>
+                <AppText variant="small" tone="muted">
+                  {t(variable ? 'commitments.type.variableHint' : 'commitments.type.fixedHint')}
+                </AppText>
               </View>
-            ) : (
+              <AmountInput required label={t(variable ? 'commitments.estimate' : 'common.amount')} value={amountText} onChange={(text) => setAmountText(text)} />
+              {dayField}
               <View style={{ gap: 8 }}>
-                <AppText variant="smallStrong">{t('billers.pick')}</AppText>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {BILLER_GROUPS.map((g) => (
-                    <Chip key={g} compact label={t(`billers.group.${g}`)} selected={group === g} onPress={() => setGroup(g)} />
-                  ))}
-                </View>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {billersIn(group).map((b) => (
-                    <Chip
-                      key={b.id}
-                      label={b.name}
-                      accessibilityLabel={`Biller ${b.name}`}
-                      leading={<BrandBadge id={b.id} initials={b.initials} color={b.color} ink={b.ink} icon={b.icon} size={22} />}
-                      selected={name === b.name}
-                      onPress={() => {
-                        setName(b.name);
-                        setKind(b.kind);
-                        setVariable(b.variable);
-                        const cat = categories.find((x) => x.name === b.category);
-                        if (cat) setCategoryId(cat.id);
-                      }}
-                    />
-                  ))}
-                </View>
-                <AppText variant="small" tone="muted">{t('billers.hint')}</AppText>
+                <Label text={t('addflow.repeat')} />
+                <SelectRow accessibilityLabel={t('addflow.repeat')} icon="repeat-outline" value={t('addflow.monthly')} />
               </View>
-            )}
-            {nameField}
-            <View style={{ gap: 8 }}>
-              <AppText variant="smallStrong">{t('commitments.type')}</AppText>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <Chip icon="lock-closed-outline" label={t('commitments.type.fixed')} selected={!variable} onPress={() => setVariable(false)} />
-                <Chip icon="pulse-outline" label={t('commitments.type.variable')} selected={variable} onPress={() => setVariable(true)} />
-              </View>
-              <AppText variant="small" tone="muted">
-                {t(variable ? 'commitments.type.variableHint' : 'commitments.type.fixedHint')}
-              </AppText>
+              {moreOptions}
+            </>
+          )}
+          {existing ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <AppText variant="bodyStrong">{t('commitments.active')}</AppText>
+              <Switch accessibilityLabel={t('commitments.active')} value={active} onValueChange={setActive} />
             </View>
-            <AmountInput label={t(variable ? 'commitments.estimate' : 'common.amount')} value={amountText} onChange={(text) => setAmountText(text)} />
-            {dayField}
-            {categoryBlock}
-            {methodBlock}
-            {reliefBlock}
-            {datesBlock}
-            {autoRow}
-          </>
-        )}
-        {existing ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <AppText variant="bodyStrong">{t('commitments.active')}</AppText>
-            <Switch accessibilityLabel={t('commitments.active')} value={active} onValueChange={setActive} />
-          </View>
-        ) : null}
-      </View>
+          ) : null}
+        </View>
+      )}
     </Sheet>
   );
 }

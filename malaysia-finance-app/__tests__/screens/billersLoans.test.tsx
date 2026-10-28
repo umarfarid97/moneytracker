@@ -13,10 +13,11 @@ const rows = (db: Awaited<ReturnType<typeof freshDb>>) =>
             loan_original, loan_rate_pct FROM commitments ORDER BY id`,
   );
 
-async function openAdd(db: Awaited<ReturnType<typeof freshDb>>) {
+async function openAdd(db: Awaited<ReturnType<typeof freshDb>>, card: 'Bills' | 'Loan / Instalment' | 'Other commitment' = 'Bills') {
   await renderWithData(db, <Commitments />);
   await waitFor(() => expect(screen.getByRole('button', { name: 'Add commitment' })).toBeTruthy());
   await fireEvent.press(screen.getByRole('button', { name: 'Add commitment' }));
+  await fireEvent.press(screen.getByRole('button', { name: new RegExp(`^${card.replace('/', '\\/')}\\.`) }));
 }
 
 describe('biller presets', () => {
@@ -25,10 +26,10 @@ describe('biller presets', () => {
     await openAdd(db);
     await fireEvent.press(screen.getByRole('button', { name: 'Biller TNB electricity' }));
     expect(screen.getByLabelText('Name').props.value).toBe('TNB electricity');
-    expect(screen.getByText('Estimated amount')).toBeTruthy();
+    expect(screen.getByLabelText('Estimated amount')).toBeTruthy();
     await fireEvent.changeText(screen.getByLabelText('Estimated amount'), '150');
     await fireEvent.changeText(screen.getByLabelText('Day of month'), '28');
-    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await fireEvent.press(screen.getByRole('button', { name: /^Save/ }));
     await waitFor(() => expect(screen.getByText('TNB electricity')).toBeTruthy());
     expect(await rows(db)).toEqual([
       expect.objectContaining({ name: 'TNB electricity', kind: 'bill', amount: 15000, day_of_month: 28, variable: 1, category_id: 3 }),
@@ -37,12 +38,11 @@ describe('biller presets', () => {
 
   test('the Subscription type has its own quick picks, which set the kind and category', async () => {
     const db = await freshDb();
-    await openAdd(db);
-    await fireEvent.press(screen.getByRole('button', { name: 'Subscription' }));
+    await openAdd(db, 'Other commitment');
     await fireEvent.press(screen.getByRole('button', { name: 'Subscription Netflix' }));
     await fireEvent.changeText(screen.getByLabelText('Amount'), '55');
     await fireEvent.changeText(screen.getByLabelText('Day of month'), '12');
-    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await fireEvent.press(screen.getByRole('button', { name: /^Save/ }));
     await waitFor(() => expect(screen.getByText('Netflix')).toBeTruthy());
     expect(await rows(db)).toEqual([
       expect.objectContaining({ name: 'Netflix', kind: 'subscription', variable: 0, category_id: 5 }),
@@ -51,9 +51,8 @@ describe('biller presets', () => {
 
   test('Subscription quick picks are separate from bill billers and grouped', async () => {
     const db = await freshDb();
-    await openAdd(db);
-    expect(screen.queryByRole('button', { name: 'Subscription Netflix' })).toBeNull();
-    await fireEvent.press(screen.getByRole('button', { name: 'Subscription' }));
+    await openAdd(db, 'Other commitment');
+    expect(screen.getByRole('button', { name: 'Subscription Netflix' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Biller TNB electricity' })).toBeNull();
     await fireEvent.press(screen.getByRole('button', { name: 'Cloud storage' }));
     expect(screen.getByRole('button', { name: 'Subscription Google One' })).toBeTruthy();
@@ -82,15 +81,14 @@ describe('biller presets', () => {
 
 describe('loans', () => {
   async function addPtptn(db: Awaited<ReturnType<typeof freshDb>>) {
-    await openAdd(db);
-    await fireEvent.press(screen.getByRole('button', { name: 'Loan' }));
+    await openAdd(db, 'Loan / Instalment');
     await fireEvent.press(screen.getByRole('button', { name: 'PTPTN' }));
     expect(screen.getByLabelText('Name').props.value).toBe('PTPTN');
     await fireEvent.changeText(screen.getByLabelText('Monthly payment'), '200');
     await fireEvent.changeText(screen.getByLabelText('Day of month'), '28');
     await fireEvent.changeText(screen.getByLabelText('Still owed (optional)'), '10000');
     await fireEvent.changeText(screen.getByLabelText('Amount borrowed (optional)'), '20000');
-    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await fireEvent.press(screen.getByRole('button', { name: /^Save/ }));
     await waitFor(() => expect(screen.getByTestId('loan-line')).toBeTruthy());
   }
 
@@ -137,8 +135,7 @@ describe('loans', () => {
 
   test('pay later providers fill in the name', async () => {
     const db = await freshDb();
-    await openAdd(db);
-    await fireEvent.press(screen.getByRole('button', { name: 'Loan' }));
+    await openAdd(db, 'Loan / Instalment');
     await fireEvent.press(screen.getByRole('button', { name: 'Pay later' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Pay later Atome' }));
     expect(screen.getByLabelText('Name').props.value).toBe('Atome');
@@ -148,12 +145,11 @@ describe('loans', () => {
 
   test('a loan with no balance entered still works like before', async () => {
     const db = await freshDb();
-    await openAdd(db);
-    await fireEvent.press(screen.getByRole('button', { name: 'Loan' }));
+    await openAdd(db, 'Loan / Instalment');
     await fireEvent.changeText(screen.getByLabelText('Name'), 'Car');
     await fireEvent.changeText(screen.getByLabelText('Monthly payment'), '800');
     await fireEvent.changeText(screen.getByLabelText('Day of month'), '1');
-    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await fireEvent.press(screen.getByRole('button', { name: /^Save/ }));
     await waitFor(() => expect(screen.getByText('Car')).toBeTruthy());
     expect(screen.queryByTestId('loan-line')).toBeNull();
     expect((await rows(db))[0]).toMatchObject({ kind: 'loan', loan_balance: null, loan_balance_date: null });
@@ -175,13 +171,13 @@ describe('loans', () => {
     // The field shows what is owed now, after the payment.
     expect(screen.getByLabelText('Still owed (optional)').props.value).toBe('199000.00');
     await fireEvent.changeText(screen.getByLabelText('Name'), 'Home loan CIMB');
-    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await fireEvent.press(screen.getByRole('button', { name: /^Save/ }));
     await waitFor(() => expect(screen.getByText('Home loan CIMB')).toBeTruthy());
     expect((await rows(db))[0]).toMatchObject({ loan_balance: 20000000, loan_balance_date: '2026-09-01' });
 
     await fireEvent.press(screen.getByText('Home loan CIMB'));
     await fireEvent.changeText(screen.getByLabelText('Still owed (optional)'), '1950000');
-    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await fireEvent.press(screen.getByRole('button', { name: /^Save/ }));
     await waitFor(() => expect(screen.getByTestId('loan-line').props.children).toMatch(/^RM 1,950,000.00 left/));
     expect((await rows(db))[0]).toMatchObject({ loan_balance: 195000000, loan_balance_date: '2026-10-24' });
   });

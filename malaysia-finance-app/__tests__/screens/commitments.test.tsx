@@ -82,12 +82,12 @@ describe('Commitments screen', () => {
     await renderWithData(db, <Commitments />);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Add commitment' })).toBeTruthy());
     await fireEvent.press(screen.getByRole('button', { name: 'Add commitment' }));
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    await fireEvent.press(screen.getByRole('button', { name: /^Other commitment\./ }));
+    expect(screen.getByRole('button', { name: /^Save/ })).toBeDisabled();
     await fireEvent.changeText(screen.getByLabelText('Name'), 'Netflix');
     await fireEvent.changeText(screen.getByLabelText('Amount'), '55');
     await fireEvent.changeText(screen.getByLabelText('Day of month'), '12');
-    await fireEvent.press(screen.getByRole('button', { name: 'Subscription' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await fireEvent.press(screen.getByRole('button', { name: /^Save/ }));
     await waitFor(() => expect(screen.getByText('Netflix')).toBeTruthy());
     expect(screen.getByText('Due in 19 days')).toBeTruthy();
     const row = await db.get<{ name: string; amount: number; day_of_month: number; kind: string }>(
@@ -101,16 +101,17 @@ describe('Commitments screen', () => {
     await renderWithData(db, <Commitments />);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Add commitment' })).toBeTruthy());
     await fireEvent.press(screen.getByRole('button', { name: 'Add commitment' }));
+    await fireEvent.press(screen.getByRole('button', { name: /^Bills\./ }));
     await fireEvent.changeText(screen.getByLabelText('Name'), 'Netflix');
     await fireEvent.changeText(screen.getByLabelText('Amount'), '55');
     for (const bad of ['0', '32', 'x', '']) {
       await fireEvent.changeText(screen.getByLabelText('Day of month'), bad);
-      expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: /^Save/ })).toBeDisabled();
     }
     await fireEvent.changeText(screen.getByLabelText('Day of month'), '31');
-    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^Save/ })).toBeEnabled();
     await fireEvent.changeText(screen.getByLabelText('Name'), '   ');
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^Save/ })).toBeDisabled();
   });
 
   test('edit: tap a row, change it, pause it, then delete it', async () => {
@@ -123,7 +124,7 @@ describe('Commitments screen', () => {
     expect(screen.getByLabelText('Amount').props.value).toBe('89.00');
     await fireEvent.changeText(screen.getByLabelText('Amount'), '95');
     await fireEvent(screen.getByLabelText('Active'), 'valueChange', false);
-    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await fireEvent.press(screen.getByRole('button', { name: /^Save/ }));
     await waitFor(() => expect(screen.getByText('Paused')).toBeTruthy());
     expect((await db.get<{ amount: number; active: number }>('SELECT amount, active FROM commitments'))).toEqual({
       amount: 9500, active: 0,
@@ -150,10 +151,11 @@ describe('RemindersSync', () => {
     expect(scheduleReminders.mock.calls[0][0]).toHaveLength(1);
     const calls = scheduleReminders.mock.calls.length;
     await fireEvent.press(screen.getByRole('button', { name: 'Add commitment' }));
+    await fireEvent.press(screen.getByRole('button', { name: /^Bills\./ }));
     await fireEvent.changeText(screen.getByLabelText('Name'), 'Netflix');
     await fireEvent.changeText(screen.getByLabelText('Amount'), '55');
     await fireEvent.changeText(screen.getByLabelText('Day of month'), '12');
-    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await fireEvent.press(screen.getByRole('button', { name: /^Save/ }));
     await waitFor(() => expect(scheduleReminders.mock.calls.length).toBeGreaterThan(calls));
     const last = scheduleReminders.mock.calls[scheduleReminders.mock.calls.length - 1][0];
     expect(last.map((c: { name: string }) => c.name).sort()).toEqual(['Astro', 'Netflix']);
