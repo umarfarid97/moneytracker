@@ -155,6 +155,10 @@ export default function Profile() {
           <AmountInput compact label={t('profile.net')} value={net} onChange={(text) => setNet(text)} />
           <AppText variant="small" tone="muted">{t('profile.netHint')}</AppText>
         </View>
+        <View style={{ gap: 8 }}>
+          <AppText variant="eyebrow" tone="muted">{t('profile.salaryDay')}</AppText>
+          <PaydayPicker value={startDay} onChange={setStartDay} />
+        </View>
       </Section>
       <Section title={t('profile.section.deductions')}>
         <AppText variant="small" tone="muted">{t('profile.deductionHint')}</AppText>
@@ -175,10 +179,6 @@ export default function Profile() {
           <AmountInput compact label={t('profile.pcb')} value={pcb} onChange={(text) => setPcb(text)} placeholder={senToInput(estimatedPcb)} />
           <AppText variant="small" tone="muted">{t('profile.pcbHint')}</AppText>
         </View>
-      </Section>
-      <Section title={t('profile.salaryDay')}>
-        <PaydayPicker value={startDay} onChange={setStartDay} />
-        <AppText variant="small" tone="muted">{t('profile.salaryDayHint')}</AppText>
       </Section>
       <PressableScale accessibilityRole="button" accessibilityLabel={t('profile.extra')} onPress={() => router.push('/income')}>
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
