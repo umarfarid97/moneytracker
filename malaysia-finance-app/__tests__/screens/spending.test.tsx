@@ -65,6 +65,31 @@ describe('Spending: pending bills', () => {
   });
 });
 
+describe('Spending month setting', () => {
+  test('follows its own start day, not the salary day', async () => {
+    const db = await freshDb();
+    await db.run('UPDATE profile SET budget_start_day = 25, spending_start_day = 1');
+    await addExpenseRow(db, CAT.Makan, 1000, '2026-10-24', 'in october');
+    await addExpenseRow(db, CAT.Makan, 2000, '2026-09-30', 'in september');
+    await renderWithData(db, <Spending />);
+    await waitFor(() => expect(screen.getByText('in october')).toBeTruthy());
+    expect(screen.getByTestId('month-range').props.children).toBe('1 Oct - 31 Oct');
+    expect(screen.queryByText('in september')).toBeNull();
+  });
+
+  test('a mid-month start day names the cycle after the month it ends in', async () => {
+    const db = await freshDb();
+    await db.run('UPDATE profile SET spending_start_day = 25');
+    await addExpenseRow(db, CAT.Makan, 1000, '2026-10-24', 'cycle expense');
+    await addExpenseRow(db, CAT.Makan, 2000, '2026-10-25', 'next cycle');
+    await renderWithData(db, <Spending />);
+    await waitFor(() => expect(screen.getByText('cycle expense')).toBeTruthy());
+    expect(screen.getByText('October 2026')).toBeTruthy();
+    expect(screen.getByTestId('month-range').props.children).toBe('25 Sep - 24 Oct');
+    expect(screen.queryByText('next cycle')).toBeNull();
+  });
+});
+
 describe('Spending', () => {
   test('lists this month by day with day totals and a month total', async () => {
     const db = await freshDb();

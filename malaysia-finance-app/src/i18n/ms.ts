@@ -386,6 +386,7 @@ export const ms: Record<StringKey, string> = {
   'more.theme.mint.hint': 'Arang dengan jubin pastel lembut dan kad baki pudina. Gelap sahaja.',
   'more.theme.green.hint': 'Hampir hitam dengan cahaya hijau lembut, aksen limau dan kad baki hijau sage. Gelap sahaja.',
   'more.settings': 'Tetapan',
+  'settings.spendingStart': 'Bulan perbelanjaan bermula pada',
   'more.demo': 'Data demo',
   'more.language': 'Bahasa',
 

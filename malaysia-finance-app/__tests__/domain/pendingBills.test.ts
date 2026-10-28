@@ -37,7 +37,7 @@ describe('pendingBills', () => {
   });
 
   test('pending bills are not spending: the balance only counts them as still to pay, and not twice once paid', () => {
-    const profile = { grossMonthly: 500000, netMonthlyOverride: 400000, epfRate: 0.11, socsoMonthly: 0, eisMonthly: 0, budgetStartDay: 1, reminderDays: 1, pcbMonthly: 0 };
+    const profile = { grossMonthly: 500000, netMonthlyOverride: 400000, epfRate: 0.11, socsoMonthly: 0, eisMonthly: 0, budgetStartDay: 1, spendingStartDay: 1, reminderDays: 1, pcbMonthly: 0 };
     const c = bill({ dayOfMonth: 30 });
     const base = { profile, commitments: [c], today: '2026-10-24' };
     const before = balanceLeft({ ...base, expenses: [] });

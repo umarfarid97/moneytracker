@@ -7,10 +7,12 @@ import { t } from '@/i18n/t';
 import type { StringKey } from '@/i18n/en';
 import { APPEARANCES, setAppearance, setThemeName, useAppearance, useThemeName } from '@/ui/appearance';
 import { AppText } from '@/ui/AppText';
+import { useProfile } from '@/hooks/useProfile';
 import { BackButton } from '@/ui/BackButton';
 import { Card } from '@/ui/Card';
 import { IconBadge } from '@/ui/IconBadge';
 import { Screen } from '@/ui/Screen';
+import { DaySheet, dayLabel } from '@/ui/PaydayPicker';
 import { Sheet } from '@/ui/Sheet';
 import { THEMES, THEME_NAMES } from '@/ui/themeDefs';
 import { useTheme } from '@/ui/useTheme';
@@ -29,7 +31,9 @@ export default function Settings() {
   const appearance = useAppearance();
   const themeName = useThemeName();
   const language = useLanguage();
+  const { data: profile, save: saveProfile } = useProfile();
   const [picking, setPicking] = useState<'appearance' | 'theme' | 'language' | null>(null);
+  const [pickingDay, setPickingDay] = useState(false);
 
   const options: { key: string; label: string; hint?: string; selected: boolean; pick: () => void }[] =
     picking === 'appearance'
@@ -44,6 +48,7 @@ export default function Settings() {
     ...(THEMES[themeName].darkOnly ? [] : [{ key: 'appearance', label: t('more.appearance'), icon: 'contrast' as const, value: t(`more.appearance.${appearance}`), onPress: () => setPicking('appearance') }]),
     { key: 'theme', label: t('more.theme'), icon: 'color-palette', value: t(`more.theme.${themeName}`), onPress: () => setPicking('theme') },
     { key: 'language', label: t('more.language'), icon: 'language', value: LANGUAGE_NAMES[language], onPress: () => setPicking('language') },
+    { key: 'spendingDay', label: t('settings.spendingStart'), icon: 'calendar', value: dayLabel(profile.spendingStartDay), onPress: () => setPickingDay(true) },
     ...ITEMS.map((item) => ({ key: item.path, label: t(item.label), icon: item.icon, onPress: () => router.push(item.path) })),
   ];
 
@@ -73,6 +78,14 @@ export default function Settings() {
           </Pressable>
         ))}
       </Card>
+      <DaySheet
+        visible={pickingDay}
+        title={t('settings.spendingStart')}
+        a11yPrefix="Spending month starts on"
+        value={profile.spendingStartDay}
+        onPick={(day) => { saveProfile({ ...profile, spendingStartDay: day }).catch(() => {}); }}
+        onClose={() => setPickingDay(false)}
+      />
       <Sheet visible={picking !== null} title={sheetTitle} onClose={() => setPicking(null)}>
         <View>
           {options.map((o, i) => (

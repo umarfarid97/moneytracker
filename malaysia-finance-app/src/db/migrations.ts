@@ -174,6 +174,10 @@ export const MIGRATIONS: string[] = [
   `
   ALTER TABLE commitments ADD COLUMN loan_start TEXT;
   `,
+  // 20: the day the Spending page's month starts, separate from the salary day (1 is the calendar month); synced with the profile
+  `
+  ALTER TABLE profile ADD COLUMN spending_start_day INTEGER NOT NULL DEFAULT 1 CHECK (spending_start_day BETWEEN 1 AND 31);
+  `,
 ];
 
 function projectsMigration(): string {
