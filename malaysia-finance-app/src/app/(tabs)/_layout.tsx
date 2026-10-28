@@ -29,7 +29,8 @@ const LEFT = 2;
  * adds spending (it opens the Add spending screen; it is not a tab).
  */
 function TabBar({ state, descriptors, navigateToTab, emitter }: BottomTabBarProps) {
-  const { c, scheme } = useTheme();
+  const { c, scheme, theme } = useTheme();
+  const bordered = theme !== 'classic';
   const insets = useSafeAreaInsets();
 
   const item = (index: number) => {
@@ -70,6 +71,8 @@ function TabBar({ state, descriptors, navigateToTab, emitter }: BottomTabBarProp
         backgroundColor: c.surface,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
+        borderTopWidth: bordered ? 1 : 0,
+        borderTopColor: c.border,
         shadowColor: '#0b1530',
         shadowOpacity: scheme === 'dark' ? 0 : 0.07,
         shadowRadius: 20,

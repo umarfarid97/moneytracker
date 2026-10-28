@@ -17,8 +17,9 @@ import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Chip } from '@/ui/Chip';
 import { EmptyState } from '@/ui/EmptyState';
-import { HeroCard, onHero } from '@/ui/HeroCard';
+import { HeroCard } from '@/ui/HeroCard';
 import { Screen } from '@/ui/Screen';
+import { useTheme } from '@/ui/useTheme';
 
 type Sheet = { type: 'new'; key: number } | { type: 'import'; key: number };
 
@@ -28,6 +29,7 @@ function goToProject(id: number) {
 
 /** Buku 555: every project (a trip, a dinner) with the money lent, borrowed and split in it, and the balance per person. */
 export default function Owed() {
+  const { c } = useTheme();
   const today = useToday();
   const { people, projects, projectOps, totals, add } = useOwed();
   const [sheet, setSheet] = useState<Sheet | null>(null);
@@ -56,8 +58,8 @@ export default function Owed() {
       <AppText variant="small" tone="muted">{t('owed.about')}</AppText>
       <HeroCard style={{ gap: 12 }}>
         <View style={{ gap: 4 }}>
-          <AppText variant="eyebrow" color={onHero.soft}>{t('owed.owedToMe')}</AppText>
-          <AppText testID="owed-total" variant="kpi" color={onHero.ink}>{formatRM(totals.owedToMe)}</AppText>
+          <AppText variant="eyebrow" color={c.heroSoft}>{t('owed.owedToMe')}</AppText>
+          <AppText testID="owed-total" variant="kpi" color={c.heroInk}>{formatRM(totals.owedToMe)}</AppText>
         </View>
         {totals.iOwe > 0 ? (
           <AppText testID="owed-iowe" variant="small" tone="muted">{t('owed.iOwe')}: {formatRM(totals.iOwe)}</AppText>

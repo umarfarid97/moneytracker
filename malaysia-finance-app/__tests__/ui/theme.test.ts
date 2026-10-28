@@ -1,4 +1,5 @@
 import { categoryLook, categoryTint, contrast, heroGradient, palette, radius, statusStyle } from '@/ui/theme';
+import { THEMES, THEME_NAMES } from '@/ui/themeDefs';
 import { t } from '@/i18n/t';
 
 const schemes = ['light', 'dark'] as const;
@@ -38,6 +39,33 @@ describe.each(schemes)('%s palette', (scheme) => {
       const st = statusStyle(s, scheme);
       expect(contrast(st.ink, st.bg)).toBeGreaterThanOrEqual(4.5);
     }
+  });
+});
+
+describe.each(THEME_NAMES.flatMap((n) => schemes.map((s) => [n, s] as const)))('%s theme, %s palette', (name, scheme) => {
+  const p = THEMES[name].palette[scheme];
+  test('text, muted text and the accent are readable on surface and ground', () => {
+    for (const bg of [p.surface, p.ground]) {
+      expect(contrast(p.text, bg)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(p.muted, bg)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(p.accent, bg)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(p.heroInk, bg)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(p.heroSoft, bg)).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(contrast(p.onAccent, p.accent)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(p.accentInk, p.accentSoft)).toBeGreaterThanOrEqual(4.5);
+  });
+  test('money colours, tags and status pills are readable', () => {
+    // Classic keeps its original money colours untouched, so they are not held to the new bar.
+    if (name !== 'classic') for (const tone of [p.positive, p.negative, p.warning]) expect(contrast(tone, p.surface)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(p.tagInk, p.tagBg)).toBeGreaterThanOrEqual(4.5);
+    for (const s of ['on-track', 'tight', 'over'] as const) {
+      const st = statusStyle(s, scheme, name);
+      expect(contrast(st.ink, st.bg)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+  test('the theme names a font for every weight', () => {
+    expect(Object.keys(THEMES[name].fonts).sort()).toEqual(['bold', 'medium', 'regular', 'semibold']);
   });
 });
 

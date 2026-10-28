@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Platform, Switch, View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { useProfile } from '@/hooks/useProfile';
 import { t } from '@/i18n/t';
 import { ensurePermission } from '@/notifications';
@@ -9,6 +9,7 @@ import { BackButton } from '@/ui/BackButton';
 import { Card } from '@/ui/Card';
 import { Chip } from '@/ui/Chip';
 import { Screen } from '@/ui/Screen';
+import { Toggle } from '@/ui/Toggle';
 
 const LEAD_DAYS = [0, 1, 2, 3, 7] as const;
 
@@ -58,7 +59,7 @@ export default function NotificationsSettings() {
               <AppText variant="bodyStrong">{t('notify.quick')}</AppText>
               <AppText variant="small" tone="muted">{t('notify.quickHint')}</AppText>
             </View>
-            <Switch accessibilityLabel={t('notify.quick')} value={quickAdd} onValueChange={toggleQuickAdd} />
+            <Toggle accessibilityLabel={t('notify.quick')} value={quickAdd} onValueChange={toggleQuickAdd} />
           </View>
         ) : null}
         {Platform.OS === 'ios' ? <AppText variant="small" tone="muted">{t('notify.iosNote')}</AppText> : null}

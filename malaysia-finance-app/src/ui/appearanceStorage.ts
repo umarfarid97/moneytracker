@@ -48,3 +48,19 @@ export function saveHideBalance(hidden: boolean): void {
     // Ignore: the choice simply lasts until the app restarts.
   }
 }
+
+export function loadThemeName(): string | null {
+  try {
+    return Storage.getItemSync('theme');
+  } catch {
+    return null;
+  }
+}
+
+export function saveThemeName(value: string): void {
+  try {
+    Storage.setItemSync('theme', value);
+  } catch {
+    // Ignore: the choice simply lasts until the app restarts.
+  }
+}

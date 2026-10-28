@@ -23,7 +23,7 @@ import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { GET_STARTED_MAX_SPENDINGS, GetStarted } from '@/features/onboarding/GetStarted';
-import { HeroCard, onHero } from '@/ui/HeroCard';
+import { HeroCard } from '@/ui/HeroCard';
 import { Screen } from '@/ui/Screen';
 import { radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
@@ -69,16 +69,16 @@ export default function Home() {
 
   const todaySection = (
     <View style={{ gap: 6 }}>
-        <AppText variant="eyebrow" color={onHero.soft}>
+        <AppText variant="eyebrow" color={c.heroSoft}>
           {t('home.today')}
         </AppText>
-        <AppText variant="kpi" color={onHero.ink} style={{ fontSize: 40, lineHeight: 48 }}>
+        <AppText variant="kpi" color={c.heroInk} style={{ fontSize: 40, lineHeight: 48 }}>
           {formatRM(home.todaySpent)}
         </AppText>
         {home.today ? (
-          <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: onHero.chip, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 5, marginTop: 4 }}>
-            <Ionicons name={home.today.left >= 0 ? 'checkmark-circle' : 'information-circle'} size={16} color={onHero.ink} />
-            <AppText variant="smallStrong" color={onHero.ink}>
+          <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.heroChip, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 5, marginTop: 4 }}>
+            <Ionicons name={home.today.left >= 0 ? 'checkmark-circle' : 'information-circle'} size={16} color={c.heroInk} />
+            <AppText variant="smallStrong" color={c.heroInk}>
               {home.today.left >= 0
                 ? t('home.todayLeft', { amount: formatRM(home.today.left) })
                 : t('home.todayOver', { amount: formatRM(-home.today.left) })}
@@ -86,7 +86,7 @@ export default function Home() {
           </View>
         ) : (
           <View style={{ gap: 12, marginTop: 4 }}>
-            <AppText variant="body" color={onHero.soft}>
+            <AppText variant="body" color={c.heroSoft}>
               {t('home.noBudget')}
             </AppText>
             <Button title={t('home.setBudget')} variant="light" onPress={() => router.push('/budget')} />
@@ -99,7 +99,7 @@ export default function Home() {
       {balance ? (
         <View style={{ gap: 4 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <AppText variant="eyebrow" color={onHero.soft}>
+            <AppText variant="eyebrow" color={c.heroSoft}>
               {t('home.balanceTitle')}
             </AppText>
             <Pressable
@@ -108,13 +108,13 @@ export default function Home() {
               accessibilityLabel={t(hidden ? 'home.balanceShow' : 'home.balanceHide')}
               hitSlop={12}
             >
-              <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={22} color={onHero.soft} />
+              <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={22} color={c.heroSoft} />
             </Pressable>
           </View>
           <AppText variant="kpi" tone={balance.left < 0 && !hidden ? 'negative' : 'text'}>
             {hidden ? money(0) : balance.left >= 0 ? formatRM(balance.left) : `-${formatRM(-balance.left)}`}
           </AppText>
-          <AppText variant="small" color={onHero.soft}>
+          <AppText variant="small" color={c.heroSoft}>
             {balance.extra > 0
               ? t('home.balanceDetailExtra', { income: money(balance.income), extra: money(balance.extra), spent: money(balance.spent) })
               : t('home.balanceDetail', { income: money(balance.income), spent: money(balance.spent) })}
@@ -127,16 +127,16 @@ export default function Home() {
               hitSlop={8}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
             >
-              <AppText variant="small" color={onHero.soft} style={{ flexShrink: 1 }}>
+              <AppText variant="small" color={c.heroSoft} style={{ flexShrink: 1 }}>
                 {t('home.balanceUpcoming', { upcoming: money(balance.upcoming), free: money(Math.max(0, balance.afterBills)) })}
               </AppText>
-              <Ionicons name="information-circle-outline" size={16} color={onHero.soft} />
+              <Ionicons name="information-circle-outline" size={16} color={c.heroSoft} />
             </Pressable>
           ) : null}
         </View>
       ) : (
         <View style={{ gap: 8 }}>
-          <AppText variant="small" color={onHero.soft}>{t('home.balanceSetup')}</AppText>
+          <AppText variant="small" color={c.heroSoft}>{t('home.balanceSetup')}</AppText>
           <Button title={t('home.balanceSetupButton')} variant="light" onPress={() => router.push('/profile')} />
         </View>
       )}
@@ -191,7 +191,7 @@ export default function Home() {
           {todaySection}
           {joined ? (
             <>
-              <View style={{ height: 1, backgroundColor: onHero.chip, marginVertical: 12 }} />
+              <View style={{ height: 1, backgroundColor: c.heroChip, marginVertical: 12 }} />
               {balanceSection}
             </>
           ) : null}

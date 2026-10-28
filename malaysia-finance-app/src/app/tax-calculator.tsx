@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Switch, View } from 'react-native';
+import { View } from 'react-native';
 import { formatRM, parseRM, senToInput } from '@/domain/money';
 import { capReliefClaims } from '@/domain/reliefs';
 import { calculateTaxBill } from '@/domain/taxBill';
@@ -14,6 +14,7 @@ import { BackButton } from '@/ui/BackButton';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { useTheme } from '@/ui/useTheme';
+import { Toggle } from '@/ui/Toggle';
 
 type Field = 'salary' | 'freelance' | 'business' | 'expenses' | 'pcb' | 'zakat' | 'donations';
 
@@ -110,7 +111,7 @@ export default function TaxCalculator() {
         <AppText variant="bodyStrong" style={{ flex: 1 }}>
           {t('taxCalc.spouse')}
         </AppText>
-        <Switch accessibilityLabel={t('taxCalc.spouse')} value={spouse} onValueChange={setSpouse} />
+        <Toggle accessibilityLabel={t('taxCalc.spouse')} value={spouse} onValueChange={setSpouse} />
       </View>
 
       <Card style={{ gap: 8 }}>

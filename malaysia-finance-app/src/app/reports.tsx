@@ -18,7 +18,7 @@ import { BackButton } from '@/ui/BackButton';
 import { BarChart } from '@/ui/BarChart';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
-import { HeroCard, onHero } from '@/ui/HeroCard';
+import { HeroCard } from '@/ui/HeroCard';
 import { ProgressBar } from '@/ui/ProgressBar';
 import { Screen } from '@/ui/Screen';
 import { useTheme } from '@/ui/useTheme';
@@ -62,7 +62,7 @@ export default function Reports() {
           <Pressable accessibilityRole="button" accessibilityLabel={t('reports.prev')} hitSlop={12} onPress={() => setKey(shiftMonth(key, -1))}>
             <Ionicons name="chevron-back" size={22} color={c.accent} />
           </Pressable>
-          <AppText variant="eyebrow" color={onHero.soft}>{periodLabel(key, startDay)}</AppText>
+          <AppText variant="eyebrow" color={c.heroSoft}>{periodLabel(key, startDay)}</AppText>
           <Pressable
             accessibilityRole="button" accessibilityLabel={t('reports.next')} hitSlop={12}
             disabled={key >= current} onPress={() => setKey(shiftMonth(key, 1))}
@@ -71,7 +71,7 @@ export default function Reports() {
             <Ionicons name="chevron-forward" size={22} color={c.accent} />
           </Pressable>
         </View>
-        <AppText testID="report-total" variant="kpi" color={onHero.ink}>{formatRM(periodTotal)}</AppText>
+        <AppText testID="report-total" variant="kpi" color={c.heroInk}>{formatRM(periodTotal)}</AppText>
       </HeroCard>
 
       <Card style={{ gap: 12 }}>

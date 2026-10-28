@@ -16,10 +16,12 @@ import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { confirmDelete } from '@/ui/confirm';
 import { EmptyState } from '@/ui/EmptyState';
-import { HeroCard, onHero } from '@/ui/HeroCard';
+import { HeroCard } from '@/ui/HeroCard';
 import { Screen } from '@/ui/Screen';
+import { useTheme } from '@/ui/useTheme';
 
 export default function Socso() {
+  const { c } = useTheme();
   const today = useToday();
   const year = Number(today.slice(0, 4));
   const { socsoEntries, socso, add, update, remove } = useRetirement(year);
@@ -54,8 +56,8 @@ export default function Socso() {
       <AppText variant="title">{t('socso.title')}</AppText>
       <HeroCard style={{ gap: 12 }}>
         <View style={{ gap: 4 }}>
-          <AppText variant="eyebrow" color={onHero.soft}>{t('socso.total')}</AppText>
-          <AppText testID="socso-total" variant="kpi" color={onHero.ink}>{formatRM(totalEmployee + totalEmployer)}</AppText>
+          <AppText variant="eyebrow" color={c.heroSoft}>{t('socso.total')}</AppText>
+          <AppText testID="socso-total" variant="kpi" color={c.heroInk}>{formatRM(totalEmployee + totalEmployer)}</AppText>
         </View>
         <View style={{ flexDirection: 'row', gap: 12 }}>
           <View style={{ flex: 1 }}>

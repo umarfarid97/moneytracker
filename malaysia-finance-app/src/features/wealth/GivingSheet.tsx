@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Switch, View } from 'react-native';
+import { View } from 'react-native';
 import { isValidDate } from '@/domain/dates';
 import { GIVING_KINDS, isZakat, type GivingKind, type GivingRecord, type NewGivingRecord } from '@/domain/giving';
 import { parseRM, senToInput } from '@/domain/money';
@@ -12,6 +12,7 @@ import { Chip } from '@/ui/Chip';
 import { DateField } from '@/ui/DateField';
 import { Sheet } from '@/ui/Sheet';
 import { TextField } from './TextField';
+import { Toggle } from '@/ui/Toggle';
 
 type Props = {
   visible: boolean;
@@ -88,7 +89,7 @@ export function GivingSheet({ visible, existing, preset, onClose, onSave, onDele
             <AppText variant="bodyStrong">{t('giving.counts')}</AppText>
             <AppText variant="small" tone="muted">{t(isZakat(kind) ? 'giving.countsZakat' : 'giving.countsDonation')}</AppText>
           </View>
-          <Switch accessibilityLabel={t('giving.counts')} value={counts} onValueChange={setCounts} />
+          <Toggle accessibilityLabel={t('giving.counts')} value={counts} onValueChange={setCounts} />
         </View>
       </View>
     </Sheet>

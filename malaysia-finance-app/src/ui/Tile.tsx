@@ -4,7 +4,7 @@ import { t } from '@/i18n/t';
 import { AppText } from './AppText';
 import { IconBadge } from './IconBadge';
 import { PressableScale } from './PressableScale';
-import { categoryLook, elevation, radius, statusStyle } from './theme';
+import { categoryLook, cardChrome, radius, statusStyle } from './theme';
 import { useTheme } from './useTheme';
 
 type Props = {
@@ -34,7 +34,7 @@ export function Tile({ title, leftText, status, detail, tintName, icon, onPress 
       onPress={onPress}
       style={[
         { flex: 1, backgroundColor: c.surface, borderRadius: radius.card, padding: 14, gap: 10, justifyContent: 'space-between' },
-        scheme === 'dark' ? { borderWidth: 1, borderColor: c.border } : elevation(scheme),
+        cardChrome(c, scheme),
       ]}
     >
       {/* Icon and name share one line at matching sizes; the figure sits under them, then the status. */}

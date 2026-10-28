@@ -1,6 +1,3 @@
-import {
-  Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold, useFonts,
-} from '@expo-google-fonts/outfit';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -15,6 +12,8 @@ import { AppLockGate } from '@/features/security/AppLockGate';
 import { DataProvider } from '@/hooks/DataProvider';
 import { QuickAddSync } from '@/quickAdd/QuickAddSync';
 import { SyncProvider } from '@/sync/SyncProvider';
+import { getThemeName } from '@/ui/appearance';
+import { loadThemeFonts } from '@/ui/themeFonts';
 import { useTheme } from '@/ui/useTheme';
 
 const FONT_WAIT_MS = 700;
@@ -22,15 +21,19 @@ const FONT_WAIT_MS = 700;
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
-  const [fontsLoaded, fontError] = useFonts({ Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold });
+  // Outfit (Classic) is the fallback for every theme; the saved theme's own fonts load alongside it.
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+  useEffect(() => {
+    Promise.all([loadThemeFonts('classic'), loadThemeFonts(getThemeName())]).then(() => setFontsLoaded(true));
+  }, []);
   // Safari can take a long time (or fail) to report the fonts as loaded, so the app shows after a short wait in the
-  // system font and switches to Outfit once the fonts arrive. The loading screen covers the gap.
+  // system font and switches to the theme's font once the fonts arrive. The loading screen covers the gap.
   const [fontWaitOver, setFontWaitOver] = useState(false);
   useEffect(() => {
     const timer = setTimeout(() => setFontWaitOver(true), FONT_WAIT_MS);
     return () => clearTimeout(timer);
   }, []);
-  const ready = fontsLoaded || fontError != null || fontWaitOver;
+  const ready = fontsLoaded || fontWaitOver;
   const { scheme, c } = useTheme();
   const language = useLanguage();
 

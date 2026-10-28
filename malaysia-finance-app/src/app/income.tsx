@@ -15,12 +15,14 @@ import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { confirmDelete } from '@/ui/confirm';
 import { EmptyState } from '@/ui/EmptyState';
-import { HeroCard, onHero } from '@/ui/HeroCard';
+import { HeroCard } from '@/ui/HeroCard';
 import { Screen } from '@/ui/Screen';
+import { useTheme } from '@/ui/useTheme';
 
 type Sheet = { type: 'rule'; key: number; rule: IncomeRule | null } | { type: 'entry'; key: number; entry: IncomeEntry | null };
 
 export default function Income() {
+  const { c } = useTheme();
   const today = useToday();
   const { rules, ruleOps, entries, entryOps, received } = useIncome(today.slice(0, 7));
   const [sheet, setSheet] = useState<Sheet | null>(null);
@@ -36,8 +38,8 @@ export default function Income() {
       <BackButton />
       <AppText variant="title">{t('income.title')}</AppText>
       <HeroCard style={{ gap: 8 }}>
-        <AppText variant="eyebrow" color={onHero.soft}>{t('income.thisMonth')}</AppText>
-        <AppText testID="income-month" variant="kpi" color={onHero.ink}>{formatRM(received)}</AppText>
+        <AppText variant="eyebrow" color={c.heroSoft}>{t('income.thisMonth')}</AppText>
+        <AppText testID="income-month" variant="kpi" color={c.heroInk}>{formatRM(received)}</AppText>
         <AppText variant="small" tone="muted">{t('income.hint')}</AppText>
       </HeroCard>
 

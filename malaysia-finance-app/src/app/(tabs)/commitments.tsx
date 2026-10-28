@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState, type ReactNode } from 'react';
-import { Pressable, Switch, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import {
   applyBillChange, billEstimate, billStatus, lastPaidFor, paidDueDatesFor, payMode, type BillState, type BillStatus,
 } from '@/domain/bills';
@@ -23,7 +23,7 @@ import { AppText } from '@/ui/AppText';
 import { BrandBadge } from '@/ui/BrandBadge';
 import { Chip } from '@/ui/Chip';
 import { EmptyState } from '@/ui/EmptyState';
-import { HeroCard, onHero } from '@/ui/HeroCard';
+import { HeroCard } from '@/ui/HeroCard';
 import { IconBadge } from '@/ui/IconBadge';
 import { confirmDelete } from '@/ui/confirm';
 import { PressableScale } from '@/ui/PressableScale';
@@ -31,6 +31,7 @@ import { ProgressBar } from '@/ui/ProgressBar';
 import { Screen } from '@/ui/Screen';
 import { elevation, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
+import { Toggle } from '@/ui/Toggle';
 
 const LOAN_ICON = { home: 'home', car: 'car', ptptn: 'school', personal: 'cash', bnpl: 'card', installment: 'receipt' } as const;
 
@@ -235,19 +236,19 @@ export default function Commitments() {
         </PressableScale>
       </View>
       <HeroCard hero="mint" style={{ gap: 6 }}>
-        <AppText variant="eyebrow" color={onHero.soft}>
+        <AppText variant="eyebrow" color={c.heroSoft}>
           {t('commitments.total')}
         </AppText>
-        <AppText testID="commitments-total" variant="kpi" color={onHero.ink} style={{ fontSize: 40, lineHeight: 48 }}>
+        <AppText testID="commitments-total" variant="kpi" color={c.heroInk} style={{ fontSize: 40, lineHeight: 48 }}>
           {formatRM(total)}
         </AppText>
         {anyVariable ? (
-          <AppText variant="small" color={onHero.soft}>
+          <AppText variant="small" color={c.heroSoft}>
             {t('commitments.totalHint')}
           </AppText>
         ) : null}
         {owed > 0 ? (
-          <AppText testID="loans-owed" variant="smallStrong" color={onHero.soft}>
+          <AppText testID="loans-owed" variant="smallStrong" color={c.heroSoft}>
             {`${t('loans.totalOwed')} ${formatRM(owed)}`}
           </AppText>
         ) : null}
@@ -276,7 +277,7 @@ export default function Commitments() {
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <AppText variant="small" tone="muted" style={{ flex: 1 }}>{t('commitments.showPending')}</AppText>
-        <Switch accessibilityLabel={t('commitments.showPending')} value={showPending} onValueChange={setShowPending} />
+        <Toggle accessibilityLabel={t('commitments.showPending')} value={showPending} onValueChange={setShowPending} />
       </View>
       {rows.length === 0 ? (
         <EmptyState icon="calendar-outline" text={t('commitments.none')} hint={t('commitments.noneHint')} />

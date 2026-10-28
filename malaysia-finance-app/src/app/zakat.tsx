@@ -15,10 +15,12 @@ import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { confirmDelete } from '@/ui/confirm';
 import { EmptyState } from '@/ui/EmptyState';
-import { HeroCard, onHero } from '@/ui/HeroCard';
+import { HeroCard } from '@/ui/HeroCard';
 import { Screen } from '@/ui/Screen';
+import { useTheme } from '@/ui/useTheme';
 
 export default function Zakat() {
+  const { c } = useTheme();
   const year = Number(useToday().slice(0, 4));
   const { data, summary, add, update, remove } = useGiving(year);
   const params = useLocalSearchParams<{ amount?: string }>();
@@ -39,8 +41,8 @@ export default function Zakat() {
       <AppText variant="title">{t('giving.title')}</AppText>
       <HeroCard style={{ gap: 12 }}>
         <View style={{ gap: 4 }}>
-          <AppText variant="eyebrow" color={onHero.soft}>{t('giving.given', { year })}</AppText>
-          <AppText testID="giving-total" variant="kpi" color={onHero.ink}>{formatRM(summary.total)}</AppText>
+          <AppText variant="eyebrow" color={c.heroSoft}>{t('giving.given', { year })}</AppText>
+          <AppText testID="giving-total" variant="kpi" color={c.heroInk}>{formatRM(summary.total)}</AppText>
         </View>
         <View style={{ flexDirection: 'row', gap: 12 }}>
           <View style={{ flex: 1 }}>

@@ -5,13 +5,14 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { LANGUAGES, LANGUAGE_NAMES, setLanguage, useLanguage } from '@/i18n/language';
 import { t } from '@/i18n/t';
 import type { StringKey } from '@/i18n/en';
-import { APPEARANCES, setAppearance, useAppearance } from '@/ui/appearance';
+import { APPEARANCES, setAppearance, setThemeName, useAppearance, useThemeName } from '@/ui/appearance';
 import { AppText } from '@/ui/AppText';
 import { BackButton } from '@/ui/BackButton';
 import { Card } from '@/ui/Card';
 import { IconBadge } from '@/ui/IconBadge';
 import { Screen } from '@/ui/Screen';
 import { Sheet } from '@/ui/Sheet';
+import { THEME_NAMES } from '@/ui/themeDefs';
 import { useTheme } from '@/ui/useTheme';
 
 type Path = '/security' | '/notifications-settings' | '/backup';
@@ -26,16 +27,21 @@ const ITEMS: { label: StringKey; path: Path; icon: keyof typeof Ionicons.glyphMa
 export default function Settings() {
   const { c } = useTheme();
   const appearance = useAppearance();
+  const themeName = useThemeName();
   const language = useLanguage();
-  const [picking, setPicking] = useState<'appearance' | 'language' | null>(null);
+  const [picking, setPicking] = useState<'appearance' | 'theme' | 'language' | null>(null);
 
-  const options =
+  const options: { key: string; label: string; hint?: string; selected: boolean; pick: () => void }[] =
     picking === 'appearance'
       ? APPEARANCES.map((a) => ({ key: a, label: t(`more.appearance.${a}`), selected: appearance === a, pick: () => setAppearance(a) }))
-      : LANGUAGES.map((l) => ({ key: l, label: LANGUAGE_NAMES[l], selected: language === l, pick: () => setLanguage(l) }));
+      : picking === 'theme'
+        ? THEME_NAMES.map((n) => ({ key: n, label: t(`more.theme.${n}`), hint: t(`more.theme.${n}.hint`), selected: themeName === n, pick: () => { void setThemeName(n); } }))
+        : LANGUAGES.map((l) => ({ key: l, label: LANGUAGE_NAMES[l], selected: language === l, pick: () => setLanguage(l) }));
+  const sheetTitle = picking === 'appearance' ? t('more.appearance') : picking === 'theme' ? t('more.theme') : t('more.language');
 
   const rows: { key: string; label: string; icon: keyof typeof Ionicons.glyphMap; value?: string; onPress: () => void }[] = [
     { key: 'appearance', label: t('more.appearance'), icon: 'contrast', value: t(`more.appearance.${appearance}`), onPress: () => setPicking('appearance') },
+    { key: 'theme', label: t('more.theme'), icon: 'color-palette', value: t(`more.theme.${themeName}`), onPress: () => setPicking('theme') },
     { key: 'language', label: t('more.language'), icon: 'language', value: LANGUAGE_NAMES[language], onPress: () => setPicking('language') },
     ...ITEMS.map((item) => ({ key: item.path, label: t(item.label), icon: item.icon, onPress: () => router.push(item.path) })),
   ];
@@ -66,7 +72,7 @@ export default function Settings() {
           </Pressable>
         ))}
       </Card>
-      <Sheet visible={picking !== null} title={picking === 'appearance' ? t('more.appearance') : t('more.language')} onClose={() => setPicking(null)}>
+      <Sheet visible={picking !== null} title={sheetTitle} onClose={() => setPicking(null)}>
         <View>
           {options.map((o, i) => (
             <Pressable
@@ -82,7 +88,10 @@ export default function Settings() {
                 borderTopColor: c.border,
               }}
             >
-              <AppText variant="bodyStrong" style={{ flex: 1 }}>{o.label}</AppText>
+              <View style={{ flex: 1, paddingVertical: 8 }}>
+                <AppText variant="bodyStrong">{o.label}</AppText>
+                {o.hint ? <AppText variant="small" tone="muted">{o.hint}</AppText> : null}
+              </View>
               {o.selected ? <Ionicons name="checkmark" size={22} color={c.accent} /> : null}
             </Pressable>
           ))}

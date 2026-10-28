@@ -14,7 +14,7 @@ import type { StringKey } from '@/i18n/en';
 import { AppText } from '@/ui/AppText';
 import { BackButton } from '@/ui/BackButton';
 import { Card } from '@/ui/Card';
-import { HeroCard, onHero } from '@/ui/HeroCard';
+import { HeroCard } from '@/ui/HeroCard';
 import { IconBadge } from '@/ui/IconBadge';
 import { PressableScale } from '@/ui/PressableScale';
 import { Screen } from '@/ui/Screen';
@@ -45,8 +45,8 @@ export default function Wealth() {
       <AppText variant="title">{t('wealth.title')}</AppText>
       <PressableScale accessibilityRole="button" accessibilityLabel={t('netWorth.title')} onPress={() => router.push('/net-worth')} pressedScale={0.99}>
         <HeroCard style={{ gap: 4 }}>
-          <AppText variant="eyebrow" color={onHero.soft}>{t('netWorth.title')}</AppText>
-          <AppText testID="wealth-total" variant="kpi" color={onHero.ink}>{formatRM(nw.net)}</AppText>
+          <AppText variant="eyebrow" color={c.heroSoft}>{t('netWorth.title')}</AppText>
+          <AppText testID="wealth-total" variant="kpi" color={c.heroInk}>{formatRM(nw.net)}</AppText>
           <AppText variant="small" tone="muted">{t('netWorth.hint')}</AppText>
           {savings.length === 0 && nw.totalLiabilities > nw.totalAssets ? (
             <AppText variant="small" tone="muted">{t('netWorth.addAssets')}</AppText>

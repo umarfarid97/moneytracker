@@ -11,7 +11,7 @@ import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
 import { BackButton } from '@/ui/BackButton';
 import { Button } from '@/ui/Button';
-import { HeroCard, onHero } from '@/ui/HeroCard';
+import { HeroCard } from '@/ui/HeroCard';
 import { Card } from '@/ui/Card';
 import { Chip } from '@/ui/Chip';
 import { ProgressBar } from '@/ui/ProgressBar';
@@ -48,14 +48,14 @@ export default function Tax() {
         ) : null}
       </View>
       <HeroCard hero="sunset" style={{ gap: 6 }}>
-        <AppText variant="eyebrow" color={onHero.soft}>
+        <AppText variant="eyebrow" color={c.heroSoft}>
           {t('tax.totalRelief')}
         </AppText>
-        <AppText testID="total-relief" variant="kpi" color={onHero.ink} style={{ fontSize: 40, lineHeight: 48 }}>
+        <AppText testID="total-relief" variant="kpi" color={c.heroInk} style={{ fontSize: 40, lineHeight: 48 }}>
           {formatRM(automatic + summary.total)}
         </AppText>
         {data.automaticReliefs.map((r) => (
-          <AppText key={r.id} variant="small" color={onHero.soft}>
+          <AppText key={r.id} variant="small" color={c.heroSoft}>
             {reliefLabel(r)} · {t('tax.automatic')} · {formatRM(r.amount)}
           </AppText>
         ))}

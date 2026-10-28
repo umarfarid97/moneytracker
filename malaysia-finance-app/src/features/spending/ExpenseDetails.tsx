@@ -9,7 +9,7 @@ import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
-import { HeroCard, onHero } from '@/ui/HeroCard';
+import { HeroCard } from '@/ui/HeroCard';
 import { IconBadge } from '@/ui/IconBadge';
 import { ReceiptPreview } from '@/ui/ReceiptPreview';
 import { ReceiptFile, ReceiptMissing, useReceipt } from '@/ui/useReceipt';
@@ -73,16 +73,16 @@ export function ExpenseDetails({ expense, categoryName, categoryIcon, methodName
       <AppText variant="title">{t('expense.view')}</AppText>
       <HeroCard style={{ gap: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <View style={{ backgroundColor: '#ffffff', borderRadius: radius.control }}>
+          <View style={{ backgroundColor: c.surface, borderRadius: radius.control }}>
             <IconBadge icon={look.icon} color={look.color} size={36} />
           </View>
-          <AppText variant="bodyStrong" color={onHero.ink}>{categoryName}</AppText>
+          <AppText variant="bodyStrong" color={c.heroInk}>{categoryName}</AppText>
         </View>
-        <AppText testID="expense-amount" variant="kpi" color={onHero.ink} style={{ fontSize: 40, lineHeight: 48 }}>
+        <AppText testID="expense-amount" variant="kpi" color={c.heroInk} style={{ fontSize: 40, lineHeight: 48 }}>
           {formatRM(expense.amount)}
         </AppText>
         {expense.note ? (
-          <AppText variant="body" color={onHero.soft}>{expense.note}</AppText>
+          <AppText variant="body" color={c.heroSoft}>{expense.note}</AppText>
         ) : null}
       </HeroCard>
 

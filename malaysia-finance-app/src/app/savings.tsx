@@ -13,7 +13,7 @@ import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { confirmDelete } from '@/ui/confirm';
 import { EmptyState } from '@/ui/EmptyState';
-import { HeroCard, onHero } from '@/ui/HeroCard';
+import { HeroCard } from '@/ui/HeroCard';
 import { IconBadge } from '@/ui/IconBadge';
 import { PressableScale } from '@/ui/PressableScale';
 import { ProgressBar } from '@/ui/ProgressBar';
@@ -80,8 +80,8 @@ export default function Savings() {
       <AppText variant="title">{t('savings.title')}</AppText>
       <HeroCard style={{ gap: 12 }}>
         <View style={{ gap: 4 }}>
-          <AppText variant="eyebrow" color={onHero.soft}>{t('savings.total')}</AppText>
-          <AppText testID="savings-total" variant="kpi" color={onHero.ink}>{formatRM(totals.balance)}</AppText>
+          <AppText variant="eyebrow" color={c.heroSoft}>{t('savings.total')}</AppText>
+          <AppText testID="savings-total" variant="kpi" color={c.heroInk}>{formatRM(totals.balance)}</AppText>
         </View>
         {totals.invested > 0 ? (
           <AppText variant="small" tone="muted">

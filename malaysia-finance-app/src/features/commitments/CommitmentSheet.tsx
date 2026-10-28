@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, ScrollView, Switch, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, TextInput, View } from 'react-native';
 import { resolveTaxData } from '@/data/tax';
 import { BILLER_GROUPS, billersIn, type BillerGroup } from '@/domain/billers';
 import { SUBSCRIPTION_GROUPS, subscriptionsIn, type SubscriptionGroup } from '@/domain/subscriptions';
@@ -26,6 +26,7 @@ import { Sheet } from '@/ui/Sheet';
 import { controlHeight, fontFamily, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 import { sanitizeNumber } from '@/ui/numeric';
+import { Toggle } from '@/ui/Toggle';
 
 export type CommitmentInput = NewCommitment;
 
@@ -322,7 +323,7 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
         <AppText variant="bodyStrong">{t('commitments.auto')}</AppText>
         <AppText variant="small" tone="muted">{t('commitments.autoHint')}</AppText>
       </View>
-      <Switch accessibilityLabel={t('commitments.auto')} value={auto} onValueChange={setAuto} />
+      <Toggle accessibilityLabel={t('commitments.auto')} value={auto} onValueChange={setAuto} />
     </View>
   );
 
@@ -623,7 +624,7 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
           {existing ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <AppText variant="bodyStrong">{t('commitments.active')}</AppText>
-              <Switch accessibilityLabel={t('commitments.active')} value={active} onValueChange={setActive} />
+              <Toggle accessibilityLabel={t('commitments.active')} value={active} onValueChange={setActive} />
             </View>
           ) : null}
         </View>
