@@ -17,7 +17,10 @@ export const billDatesEn = {
   'bill.hasEnd': 'Ends on a date',
   'bill.startDate': 'Start date',
   'bill.endDate': 'End date',
-  'bill.datesHint': 'Before the start date and after the end date this bill is not due, not counted in what is still to pay, and gets no reminders. Leave both off for a bill that always applies.',
+  'bill.datesHint': 'Leave blank if it always applies. Outside these dates the bill is not due and gets no reminders.',
+  'bill.optional': 'optional',
+  'bill.setDate': 'Set date',
+  'bill.clearDate': 'Clear',
   'bill.endBeforeStart': 'The end date cannot be before the start date.',
 
   'home.balanceUpcomingOpen': 'See which bills are still to pay',
@@ -51,7 +54,10 @@ export const billDatesMs: Record<keyof typeof billDatesEn, string> = {
   'bill.hasEnd': 'Tamat pada tarikh tertentu',
   'bill.startDate': 'Tarikh mula',
   'bill.endDate': 'Tarikh tamat',
-  'bill.datesHint': 'Sebelum tarikh mula dan selepas tarikh tamat, bil ini tidak perlu dibayar, tidak dikira dalam baki bil dan tiada peringatan. Biarkan kosong untuk bil yang sentiasa terpakai.',
+  'bill.datesHint': 'Biarkan kosong jika sentiasa terpakai. Di luar tarikh ini bil tidak perlu dibayar dan tiada peringatan.',
+  'bill.optional': 'pilihan',
+  'bill.setDate': 'Tetapkan tarikh',
+  'bill.clearDate': 'Kosongkan',
   'bill.endBeforeStart': 'Tarikh tamat tidak boleh sebelum tarikh mula.',
 
   'home.balanceUpcomingOpen': 'Lihat bil mana yang belum dibayar',

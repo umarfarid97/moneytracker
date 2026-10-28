@@ -403,8 +403,8 @@ export default function Spending() {
         today={today}
         startDay={profile.budgetStartDay}
         onClose={() => setPay((p) => ({ ...p, bill: null }))}
-        onConfirm={async (amount, date) => {
-          if (pay.bill) await payBill(pay.bill.commitment, pay.bill.dueDate, { amount, date });
+        onConfirm={async (amount, date, paymentMethodId) => {
+          if (pay.bill) await payBill(pay.bill.commitment, pay.bill.dueDate, { amount, date, paymentMethodId });
         }}
       />
 

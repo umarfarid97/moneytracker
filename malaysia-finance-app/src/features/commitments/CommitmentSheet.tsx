@@ -291,15 +291,26 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
       <ReliefPicker reliefs={reliefs} value={reliefId} onChange={setReliefId} />
     </View>
   );
-  // A loan runs on its own schedule, so the bill start/end dates only show for one that already has them.
-  const datesBlock = isLoan && !hasStart && !hasEnd ? null : (
+  // Start and end are optional; each is a labelled row with a "Set date" button until a date is chosen.
+  const dateRow = (label: string, on: boolean, setOn: (v: boolean) => void, value: string, setValue: (v: string) => void) => (
     <View style={{ gap: 8 }}>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        <Chip label={t('bill.hasStart')} selected={hasStart} onPress={() => setHasStart((v) => !v)} />
-        <Chip label={t('bill.hasEnd')} selected={hasEnd} onPress={() => setHasEnd((v) => !v)} />
-      </View>
-      {hasStart ? <DateField label={t('bill.startDate')} value={startsOn} onChange={setStartsOn} /> : null}
-      {hasEnd ? <DateField label={t('bill.endDate')} value={endsOn} onChange={setEndsOn} /> : null}
+      <Label text={`${label} (${t('bill.optional')})`} />
+      {on ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <DateField label={label} value={value} onChange={setValue} />
+          <Chip compact label={t('bill.clearDate')} accessibilityLabel={`${t('bill.clearDate')} ${label}`} onPress={() => setOn(false)} />
+        </View>
+      ) : (
+        <View style={{ flexDirection: 'row' }}>
+          <Chip icon="calendar-outline" label={t('bill.setDate')} accessibilityLabel={`${t('bill.setDate')} ${label}`} onPress={() => setOn(true)} />
+        </View>
+      )}
+    </View>
+  );
+  const datesBlock = (
+    <View style={{ gap: 14 }}>
+      {dateRow(t('bill.startDate'), hasStart, setHasStart, startsOn, setStartsOn)}
+      {dateRow(t('bill.endDate'), hasEnd, setHasEnd, endsOn, setEndsOn)}
       {hasStart && hasEnd && !datesOk ? <AppText variant="small" tone="negative">{t('bill.endBeforeStart')}</AppText> : null}
       <AppText variant="small" tone="muted">{t('bill.datesHint')}</AppText>
     </View>
@@ -343,7 +354,6 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
         <View style={{ gap: 16, padding: 14, paddingTop: 2 }}>
           {methodBlock}
           {reliefBlock}
-          {datesBlock}
           {autoRow}
         </View>
       ) : null}
@@ -582,6 +592,7 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
               </View>
             </Section>
               {categoryBlock}
+              {datesBlock}
               {moreOptions}
             </>
           ) : (
@@ -605,6 +616,7 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
                 <Label text={t('addflow.repeat')} />
                 <SelectRow accessibilityLabel={t('addflow.repeat')} icon="repeat-outline" value={t('addflow.monthly')} />
               </View>
+              {datesBlock}
               {moreOptions}
             </>
           )}

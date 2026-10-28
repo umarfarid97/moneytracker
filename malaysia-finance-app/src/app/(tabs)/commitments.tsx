@@ -327,9 +327,9 @@ export default function Commitments() {
         today={today}
         startDay={startDay}
         onClose={closePay}
-        onConfirm={async (amount, date) => {
+        onConfirm={async (amount, date, paymentMethodId) => {
           if (!pay.bill) return;
-          const saved = await payBill(pay.bill, pay.dueDate, { amount, date });
+          const saved = await payBill(pay.bill, pay.dueDate, { amount, date, paymentMethodId });
           if (saved) setJustPaid({ id: saved.id, name: pay.bill.name });
         }}
       />
