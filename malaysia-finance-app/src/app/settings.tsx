@@ -12,7 +12,7 @@ import { Card } from '@/ui/Card';
 import { IconBadge } from '@/ui/IconBadge';
 import { Screen } from '@/ui/Screen';
 import { Sheet } from '@/ui/Sheet';
-import { THEME_NAMES } from '@/ui/themeDefs';
+import { THEMES, THEME_NAMES } from '@/ui/themeDefs';
 import { useTheme } from '@/ui/useTheme';
 
 type Path = '/security' | '/notifications-settings' | '/backup';
@@ -40,8 +40,8 @@ export default function Settings() {
   const sheetTitle = picking === 'appearance' ? t('more.appearance') : picking === 'theme' ? t('more.theme') : t('more.language');
 
   const rows: { key: string; label: string; icon: keyof typeof Ionicons.glyphMap; value?: string; onPress: () => void }[] = [
-    // Dark green is dark only, so the Light / Dark / Match device choice applies to Classic alone.
-    ...(themeName === 'green' ? [] : [{ key: 'appearance', label: t('more.appearance'), icon: 'contrast' as const, value: t(`more.appearance.${appearance}`), onPress: () => setPicking('appearance') }]),
+    // The coloured themes are dark only, so the Light / Dark / Match device choice applies to Classic alone.
+    ...(THEMES[themeName].darkOnly ? [] : [{ key: 'appearance', label: t('more.appearance'), icon: 'contrast' as const, value: t(`more.appearance.${appearance}`), onPress: () => setPicking('appearance') }]),
     { key: 'theme', label: t('more.theme'), icon: 'color-palette', value: t(`more.theme.${themeName}`), onPress: () => setPicking('theme') },
     { key: 'language', label: t('more.language'), icon: 'language', value: LANGUAGE_NAMES[language], onPress: () => setPicking('language') },
     ...ITEMS.map((item) => ({ key: item.path, label: t(item.label), icon: item.icon, onPress: () => router.push(item.path) })),

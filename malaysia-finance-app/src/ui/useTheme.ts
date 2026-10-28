@@ -7,7 +7,7 @@ export function useTheme(): { scheme: Scheme; c: Palette; theme: ThemeName } {
   const appearance = useAppearance();
   const theme = useThemeName();
   const device = useColorScheme();
-  // Dark green is dark only; Classic follows the Light / Dark / Match device choice.
-  const scheme: Scheme = theme === 'green' ? 'dark' : appearance === 'system' ? (device === 'dark' ? 'dark' : 'light') : appearance;
+  // Dark green and Pastel dark are dark only; Classic follows the Light / Dark / Match device choice.
+  const scheme: Scheme = THEMES[theme].darkOnly ? 'dark' : appearance === 'system' ? (device === 'dark' ? 'dark' : 'light') : appearance;
   return { scheme, c: THEMES[theme].palette[scheme], theme };
 }

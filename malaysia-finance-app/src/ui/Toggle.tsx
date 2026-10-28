@@ -5,5 +5,5 @@ import { useTheme } from './useTheme';
 export function Toggle(props: SwitchProps) {
   const { c, theme } = useTheme();
   if (theme === 'classic') return <Switch {...props} />;
-  return <Switch trackColor={{ true: c.accent, false: c.control }} thumbColor={props.value ? c.onAccent : theme === 'green' ? c.text : c.surface} {...props} />;
+  return <Switch trackColor={{ true: c.accent, false: c.control }} thumbColor={props.value ? c.onAccent : c.text} {...props} />;
 }

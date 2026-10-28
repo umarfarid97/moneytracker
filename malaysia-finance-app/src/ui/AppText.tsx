@@ -16,7 +16,7 @@ const build = (): Record<Variant, TextStyle> => ({
   small: { fontFamily: fontFamily.regular, fontSize: fontSize.small, lineHeight: 20 },
   smallStrong: { fontFamily: fontFamily.medium, fontSize: fontSize.small, lineHeight: 20, fontVariant: ['tabular-nums'] },
   /** Small capitals above a figure or a group, e.g. "SPENT TODAY". */
-  eyebrow: { fontFamily: fontFamily.semibold, fontSize: 12, lineHeight: 16, letterSpacing: activeTheme() === 'green' ? 1.6 : 0.8, textTransform: 'uppercase' },
+  eyebrow: { fontFamily: fontFamily.semibold, fontSize: 12, lineHeight: 16, letterSpacing: activeTheme() !== 'classic' ? 1.6 : 0.8, textTransform: 'uppercase' },
 });
 
 let cached: { theme: string; styles: Record<Variant, TextStyle> } | undefined;

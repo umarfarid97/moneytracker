@@ -155,9 +155,10 @@ export default function Home() {
         <>
           <AppText variant="section">{t('home.categories')}</AppText>
           <TileGrid>
-            {visibleTiles.map((tile) => (
+            {visibleTiles.map((tile, i) => (
                 <Tile
                   key={tile.categoryId}
+                  index={i}
                   title={tile.name}
                   tintName={tile.name}
                   icon={categoryById.get(tile.categoryId)?.icon}

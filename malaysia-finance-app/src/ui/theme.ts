@@ -77,7 +77,7 @@ function lightShadow(): ViewStyle {
 
 /** Lift under a prominent surface such as the tab bar's + button. `color` tints the shadow slightly. */
 export function glow(color: string, scheme: Scheme): ViewStyle {
-  if (activeName === 'green') {
+  if (activeName !== 'classic') {
     if (Platform.OS === 'android') return { elevation: 6, shadowColor: color };
     return { shadowColor: color, shadowOpacity: 0.55, shadowRadius: 18, shadowOffset: { width: 0, height: 0 }, elevation: 6 };
   }
