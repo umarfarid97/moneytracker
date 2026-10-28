@@ -86,7 +86,7 @@ describe('loans', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Loan' }));
     await fireEvent.press(screen.getByRole('button', { name: 'PTPTN' }));
     expect(screen.getByLabelText('Name').props.value).toBe('PTPTN');
-    await fireEvent.changeText(screen.getByLabelText('Amount'), '200');
+    await fireEvent.changeText(screen.getByLabelText('Monthly payment'), '200');
     await fireEvent.changeText(screen.getByLabelText('Day of month'), '28');
     await fireEvent.changeText(screen.getByLabelText('Still owed (optional)'), '10000');
     await fireEvent.changeText(screen.getByLabelText('Amount borrowed (optional)'), '20000');
@@ -151,7 +151,7 @@ describe('loans', () => {
     await openAdd(db);
     await fireEvent.press(screen.getByRole('button', { name: 'Loan' }));
     await fireEvent.changeText(screen.getByLabelText('Name'), 'Car');
-    await fireEvent.changeText(screen.getByLabelText('Amount'), '800');
+    await fireEvent.changeText(screen.getByLabelText('Monthly payment'), '800');
     await fireEvent.changeText(screen.getByLabelText('Day of month'), '1');
     await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(screen.getByText('Car')).toBeTruthy());
