@@ -55,6 +55,7 @@ export const loansBillers = {
   'budget.startDay': 'Salary day',
   'budget.startDayHint': 'Same as your salary day in Profile.',
   'profile.salaryDay': 'Salary day',
+  'budget.startDay.dayN': 'Day {n}',
   'budget.startDay.last': 'Last day',
   'budget.daysLeft': '{count} days left',
   'budget.daysLeft1': '1 day left',

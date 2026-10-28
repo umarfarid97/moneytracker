@@ -596,6 +596,7 @@ export const ms: Record<StringKey, string> = {
   'budget.startDay': 'Hari gaji',
   'budget.startDayHint': 'Sama dengan hari gaji dalam Profil.',
   'profile.salaryDay': 'Hari gaji',
+  'budget.startDay.dayN': 'Hari {n}',
   'budget.startDay.last': 'Hari terakhir',
   'budget.daysLeft': '{count} hari lagi',
   'budget.daysLeft1': '1 hari lagi',
