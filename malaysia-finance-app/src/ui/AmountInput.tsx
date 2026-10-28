@@ -23,32 +23,41 @@ type Props = {
   placeholder?: string;
   /** Marks the label with a red asterisk. */
   required?: boolean;
+  /** A flat form field like the other inputs in a form: 50 high, thin border, no shadow, a label in the form's style. */
+  plain?: boolean;
 };
 
-export function AmountInput({ label, value, onChange, autoFocus, compact = false, large = false, placeholder, required = false }: Props) {
+export function AmountInput({ label, value, onChange, autoFocus, compact = false, large = false, placeholder, required = false, plain = false }: Props) {
   const { c, scheme } = useTheme();
   const [focused, setFocused] = useState(false);
   const invalid = value.trim() !== '' && parseRM(value) === null;
   return (
     <View style={{ gap: compact ? 4 : 8 }}>
-      <AppText variant="eyebrow" tone="muted">
-        {label}
-        {required ? <AppText variant="eyebrow" color={c.negative}> *</AppText> : null}
-      </AppText>
+      {plain ? (
+        <AppText variant="smallStrong">
+          {label}
+          {required ? <AppText variant="smallStrong" color={c.negative}> *</AppText> : null}
+        </AppText>
+      ) : (
+        <AppText variant="eyebrow" tone="muted">
+          {label}
+          {required ? <AppText variant="eyebrow" color={c.negative}> *</AppText> : null}
+        </AppText>
+      )}
       <View
         style={[
           {
-            height: large ? 88 : compact ? 56 : 64,
-            borderRadius: radius.control + 2,
+            height: plain ? 50 : large ? 88 : compact ? 56 : 64,
+            borderRadius: plain ? radius.control : radius.control + 2,
             backgroundColor: c.surface,
-            borderWidth: 1.5,
-            borderColor: invalid ? c.negative : focused ? c.accent : c.border,
+            borderWidth: plain ? 1 : 1.5,
+            borderColor: invalid ? c.negative : focused ? c.accent : plain ? c.control : c.border,
             flexDirection: 'row',
             alignItems: 'center',
             paddingHorizontal: 16,
             gap: 10,
           },
-          elevation(scheme),
+          plain ? null : elevation(scheme),
         ]}
       >
         <View style={{ backgroundColor: c.accentSoft, borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 3 }}>
@@ -65,10 +74,10 @@ export function AmountInput({ label, value, onChange, autoFocus, compact = false
           keyboardType="decimal-pad"
           inputMode="decimal"
           placeholder={placeholder ?? t('amount.placeholder')}
-          placeholderTextColor={c.control}
+          placeholderTextColor={plain ? c.muted : c.control}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          style={[{ flex: 1, minWidth: 0, color: c.text, fontFamily: fontFamily.bold, fontSize: large ? 40 : compact ? 26 : 28, fontVariant: ['tabular-nums'] }, NO_WEB_OUTLINE]}
+          style={[{ flex: 1, minWidth: 0, color: c.text, fontFamily: plain ? fontFamily.medium : fontFamily.bold, fontSize: plain ? 16 : large ? 40 : compact ? 26 : 28, fontVariant: ['tabular-nums'] }, NO_WEB_OUTLINE]}
         />
       </View>
       {invalid ? (

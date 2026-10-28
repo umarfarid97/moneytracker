@@ -82,7 +82,7 @@ describe('Commitments screen', () => {
     await renderWithData(db, <Commitments />);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Add commitment' })).toBeTruthy());
     await fireEvent.press(screen.getByRole('button', { name: 'Add commitment' }));
-    await fireEvent.press(screen.getByRole('button', { name: /^Other commitment\./ }));
+    await fireEvent.press(screen.getByRole('button', { name: /^Subscription\./ }));
     expect(screen.getByRole('button', { name: /^Save/ })).toBeDisabled();
     await fireEvent.changeText(screen.getByLabelText('Name'), 'Netflix');
     await fireEvent.changeText(screen.getByLabelText('Amount'), '55');
