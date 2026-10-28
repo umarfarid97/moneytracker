@@ -46,7 +46,7 @@ export function withExpenseDefaults(input: NewExpense): Omit<Expense, 'id'> {
 
 export type Budget = { categoryId: number; month: string; limit: Sen };
 export type CommitmentKind = 'bill' | 'loan' | 'subscription';
-export type LoanType = 'home' | 'car' | 'ptptn' | 'personal' | 'bnpl';
+export type LoanType = 'home' | 'car' | 'ptptn' | 'personal' | 'bnpl' | 'installment';
 
 export type Commitment = {
   id: number;
@@ -76,6 +76,8 @@ export type Commitment = {
   loanOriginal: Sen | null;
   /** Yearly interest in percent; null means none is charged on the balance. */
   loanRatePct: number | null;
+  /** Loans only: date of the first instalment (YYYY-MM-DD), which tells what number the current instalment is; null when not entered. */
+  loanStart: string | null;
   /** First day the bill counts (YYYY-MM-DD); null means it has always applied. */
   startsOn: string | null;
   /** Last day the bill counts, e.g. when a subscription or plan ends; null means it never ends. */
@@ -84,7 +86,7 @@ export type Commitment = {
 
 type CommitmentExtras =
   | 'categoryId' | 'paymentMethodId' | 'reliefId' | 'autoRecord' | 'startDate' | 'lastAutoDue' | 'variable'
-  | 'loanType' | 'loanBalance' | 'loanBalanceDate' | 'loanOriginal' | 'loanRatePct' | 'startsOn' | 'endsOn';
+  | 'loanType' | 'loanBalance' | 'loanBalanceDate' | 'loanOriginal' | 'loanRatePct' | 'loanStart' | 'startsOn' | 'endsOn';
 export type NewCommitment = Omit<Commitment, 'id' | CommitmentExtras> & Partial<Pick<Commitment, CommitmentExtras>>;
 
 export function withCommitmentDefaults(input: NewCommitment): Omit<Commitment, 'id'> {
@@ -101,6 +103,7 @@ export function withCommitmentDefaults(input: NewCommitment): Omit<Commitment, '
     loanBalanceDate: null,
     loanOriginal: null,
     loanRatePct: null,
+    loanStart: null,
     startsOn: null,
     endsOn: null,
     ...input,

@@ -10,7 +10,7 @@ import type { Commitment, Expense, LoanType } from './types';
  */
 export type { LoanType };
 
-export const LOAN_TYPES: LoanType[] = ['home', 'car', 'ptptn', 'personal', 'bnpl'];
+export const LOAN_TYPES: LoanType[] = ['home', 'car', 'ptptn', 'personal', 'bnpl', 'installment'];
 
 export type Bnpl = {
   id: string;
@@ -31,7 +31,7 @@ export const BNPL_PROVIDERS: Bnpl[] = [
 export const bnplFor = matcher(BNPL_PROVIDERS);
 
 /** Loan details held on a commitment. All fields are null on an ordinary bill. */
-export type LoanFields = Pick<Commitment, 'loanType' | 'loanBalance' | 'loanBalanceDate' | 'loanOriginal' | 'loanRatePct'>;
+export type LoanFields = Pick<Commitment, 'loanType' | 'loanBalance' | 'loanBalanceDate' | 'loanOriginal' | 'loanRatePct' | 'loanStart'>;
 
 const MAX_MONTHS = 1200;
 
@@ -123,6 +123,25 @@ export function activeMonthly(list: Commitment[], expenses: Expense[], amountOf:
 }
 
 export const NO_LOAN: LoanFields = {
-  loanType: null, loanBalance: null, loanBalanceDate: null, loanOriginal: null, loanRatePct: null,
+  loanType: null, loanBalance: null, loanBalanceDate: null, loanOriginal: null, loanRatePct: null, loanStart: null,
 };
+
+/** The due date of the instalment that falls in `today`'s month, keeping the loan's due day. */
+export function dueThisMonth(dayOfMonth: number, today: string): string {
+  return addMonthsToDue(today, dayOfMonth, 0);
+}
+
+/** Which instalment `today`'s month holds, counting the one on `loanStart` as number 1; null when not known or not started yet. */
+export function instalmentNumber(c: Pick<Commitment, 'loanStart'>, today: string): number | null {
+  if (c.loanStart === null) return null;
+  const [sy, sm] = c.loanStart.split('-').map(Number);
+  const [ty, tm] = today.split('-').map(Number);
+  const n = (ty - sy) * 12 + (tm - sm) + 1;
+  return n >= 1 ? n : null;
+}
+
+/** The first instalment's date when the loan is on instalment `n` this month. */
+export function startFromCycle(n: number, dayOfMonth: number, today: string): string {
+  return addMonthsToDue(dueThisMonth(dayOfMonth, today), dayOfMonth, -(n - 1));
+}
 

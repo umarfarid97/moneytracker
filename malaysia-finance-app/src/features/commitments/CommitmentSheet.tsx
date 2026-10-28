@@ -3,7 +3,7 @@ import { Switch, TextInput, View } from 'react-native';
 import { resolveTaxData } from '@/data/tax';
 import { BILLER_GROUPS, billersIn, type BillerGroup } from '@/domain/billers';
 import { SUBSCRIPTION_GROUPS, subscriptionsIn, type SubscriptionGroup } from '@/domain/subscriptions';
-import { BNPL_PROVIDERS, bnplFor, LOAN_TYPES } from '@/domain/loanTracker';
+import { BNPL_PROVIDERS, bnplFor, instalmentNumber, LOAN_TYPES, startFromCycle } from '@/domain/loanTracker';
 import { isValidDate } from '@/domain/dates';
 import { parsePercent, parseRM, senToInput, type Sen } from '@/domain/money';
 import type { Commitment, CommitmentKind, LoanType, NewCommitment } from '@/domain/types';
@@ -66,6 +66,9 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
   const [balanceText, setBalanceText] = useState(startBalance !== null ? senToInput(startBalance) : '');
   const [originalText, setOriginalText] = useState(existing?.loanOriginal != null ? senToInput(existing.loanOriginal) : '');
   const [rateText, setRateText] = useState(existing?.loanRatePct != null ? String(existing.loanRatePct) : '');
+  const [schedule, setSchedule] = useState<'none' | 'start' | 'cycle'>(existing?.loanStart ? 'start' : 'none');
+  const [loanStart, setLoanStart] = useState(existing?.loanStart ?? today);
+  const [cycleText, setCycleText] = useState('');
   const [hasStart, setHasStart] = useState(existing?.startsOn != null);
   const [startsOn, setStartsOn] = useState(existing?.startsOn ?? today);
   const [hasEnd, setHasEnd] = useState(existing?.endsOn != null);
@@ -80,9 +83,13 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
   const balance = optionalRM(balanceText);
   const original = optionalRM(originalText);
   const rate = rateText.trim() === '' ? null : parsePercent(rateText, 100);
+  const cycle = /^\d{1,3}$/.test(cycleText.trim()) ? Number(cycleText) : NaN;
+  const scheduleOk =
+    schedule === 'none' || (schedule === 'start' ? isValidDate(loanStart) : cycle >= 1);
   const loanValid =
     !isLoan ||
-    ((balanceText.trim() === '' || balance !== null) &&
+    (scheduleOk &&
+      (balanceText.trim() === '' || balance !== null) &&
       (originalText.trim() === '' || original !== null) &&
       (rateText.trim() === '' || rate !== null));
 
@@ -108,8 +115,8 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
    * The loan columns to save. A balance typed in (or a changed rate) starts counting payments from today;
    * leaving both alone keeps the saved balance and its date, so earlier payments keep counting.
    */
-  function loanFields(): Pick<Commitment, 'loanType' | 'loanBalance' | 'loanBalanceDate' | 'loanOriginal' | 'loanRatePct'> {
-    if (!isLoan) return { loanType: null, loanBalance: null, loanBalanceDate: null, loanOriginal: null, loanRatePct: null };
+  function loanFields(): Pick<Commitment, 'loanType' | 'loanBalance' | 'loanBalanceDate' | 'loanOriginal' | 'loanRatePct' | 'loanStart'> {
+    if (!isLoan) return { loanType: null, loanBalance: null, loanBalanceDate: null, loanOriginal: null, loanRatePct: null, loanStart: null };
     const unchanged =
       existing?.loanBalance != null && balance === startBalance && rate === existing.loanRatePct;
     return {
@@ -118,6 +125,7 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
       loanBalanceDate: balance === null ? null : unchanged ? existing!.loanBalanceDate : today,
       loanOriginal: original,
       loanRatePct: rate,
+      loanStart: schedule === 'none' ? null : schedule === 'start' ? loanStart : startFromCycle(cycle, day, today),
     };
   }
 
@@ -316,6 +324,39 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
             <View style={{ gap: 6 }}>
               <AmountInput label={t('loans.balance')} value={balanceText} onChange={(text) => setBalanceText(text)} />
               <AppText variant="small" tone="muted">{t('loans.balanceHint')}</AppText>
+            </View>
+            <View style={{ gap: 8 }}>
+              <AppText variant="smallStrong">{t('loans.schedule')}</AppText>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {(['none', 'start', 'cycle'] as const).map((m) => (
+                  <Chip key={m} label={t(`loans.schedule.${m}`)} selected={schedule === m} onPress={() => setSchedule(m)} />
+                ))}
+              </View>
+              {schedule === 'start' ? (
+                <>
+                  <DateField label={t('loans.startDate')} value={loanStart} onChange={setLoanStart} />
+                  <AppText variant="small" tone="muted">{t('loans.startHint')}</AppText>
+                  {isValidDate(loanStart) && instalmentNumber({ loanStart }, today) !== null ? (
+                    <AppText variant="small" tone="muted">{t('loans.instalmentNo', { n: instalmentNumber({ loanStart }, today)! })}</AppText>
+                  ) : null}
+                </>
+              ) : null}
+              {schedule === 'cycle' ? (
+                <>
+                  <AppText variant="smallStrong">{t('loans.cycleNo')}</AppText>
+                  <TextInput
+                    accessibilityLabel={t('loans.cycleNo')}
+                    value={cycleText}
+                    onChangeText={(text) => setCycleText(sanitizeNumber(text, 0))}
+                    keyboardType="number-pad"
+                    maxLength={3}
+                    placeholder="1"
+                    placeholderTextColor={c.muted}
+                    style={field}
+                  />
+                  <AppText variant="small" tone="muted">{t('loans.cycleHint')}</AppText>
+                </>
+              ) : null}
             </View>
             <AmountInput label={t('loans.original')} value={originalText} onChange={(text) => setOriginalText(text)} />
             <View style={{ gap: 8 }}>

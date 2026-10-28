@@ -7,7 +7,7 @@ const SELECT = `SELECT id, name, amount, day_of_month AS dayOfMonth, kind, activ
   category_id AS categoryId, payment_method_id AS paymentMethodId, relief_id AS reliefId,
   auto_record AS autoRecord, start_date AS startDate, last_auto_due AS lastAutoDue, variable,
   loan_type AS loanType, loan_balance AS loanBalance, loan_balance_date AS loanBalanceDate,
-  loan_original AS loanOriginal, loan_rate_pct AS loanRatePct, starts_on AS startsOn, ends_on AS endsOn FROM commitments`;
+  loan_original AS loanOriginal, loan_rate_pct AS loanRatePct, loan_start AS loanStart, starts_on AS startsOn, ends_on AS endsOn FROM commitments`;
 
 const toCommitment = (r: Row): Commitment => ({
   ...r, active: r.active === 1, autoRecord: r.autoRecord === 1, variable: r.variable === 1,
@@ -16,7 +16,7 @@ const toCommitment = (r: Row): Commitment => ({
 const values = (c: Omit<Commitment, 'id'>) => [
   c.name, c.amount, c.dayOfMonth, c.kind, c.active ? 1 : 0, c.categoryId, c.paymentMethodId, c.reliefId,
   c.autoRecord ? 1 : 0, c.startDate, c.lastAutoDue, c.variable ? 1 : 0,
-  c.loanType, c.loanBalance, c.loanBalanceDate, c.loanOriginal, c.loanRatePct, c.startsOn, c.endsOn,
+  c.loanType, c.loanBalance, c.loanBalanceDate, c.loanOriginal, c.loanRatePct, c.loanStart, c.startsOn, c.endsOn,
 ];
 
 export async function listCommitments(db: Db): Promise<Commitment[]> {
@@ -29,7 +29,7 @@ export async function addCommitment(db: Db, input: NewCommitment): Promise<Commi
   const r = await db.run(
     `INSERT INTO commitments (name, amount, day_of_month, kind, active, category_id, payment_method_id,
        relief_id, auto_record, start_date, last_auto_due, variable, loan_type, loan_balance, loan_balance_date,
-       loan_original, loan_rate_pct, starts_on, ends_on) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       loan_original, loan_rate_pct, loan_start, starts_on, ends_on) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     values(full),
   );
   return { id: r.lastInsertRowId, ...full };
@@ -39,7 +39,7 @@ export async function updateCommitment(db: Db, c: Commitment): Promise<void> {
   await db.run(
     `UPDATE commitments SET name = ?, amount = ?, day_of_month = ?, kind = ?, active = ?, category_id = ?,
        payment_method_id = ?, relief_id = ?, auto_record = ?, start_date = ?, last_auto_due = ?, variable = ?,
-       loan_type = ?, loan_balance = ?, loan_balance_date = ?, loan_original = ?, loan_rate_pct = ?, starts_on = ?, ends_on = ? WHERE id = ?`,
+       loan_type = ?, loan_balance = ?, loan_balance_date = ?, loan_original = ?, loan_rate_pct = ?, loan_start = ?, starts_on = ?, ends_on = ? WHERE id = ?`,
     [...values(c), c.id],
   );
 }

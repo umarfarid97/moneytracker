@@ -8,7 +8,7 @@ import type { LoanType } from './types';
 /** `icon` is an Ionicons name drawn on the badge when no real logo or brand mark is bundled for the id. */
 export type BillBrand = { id: string; initials: string; color: string; ink: string; icon?: string };
 
-export const LOAN_ICON: Record<LoanType, string> = { home: 'home', car: 'car', ptptn: 'school', personal: 'cash', bnpl: 'card' };
+export const LOAN_ICON: Record<LoanType, string> = { home: 'home', car: 'car', ptptn: 'school', personal: 'cash', bnpl: 'card', installment: 'receipt' };
 
 const LOAN_LOOK: Record<LoanType, { color: string; initials: string }> = {
   home: { color: '#2563eb', initials: 'HL' },
@@ -16,6 +16,7 @@ const LOAN_LOOK: Record<LoanType, { color: string; initials: string }> = {
   ptptn: { color: '#1e3a8a', initials: 'PTPTN' },
   personal: { color: '#7c3aed', initials: 'PL' },
   bnpl: { color: '#475569', initials: 'PL' },
+  installment: { color: '#b45309', initials: 'IN' },
 };
 
 /** Lenders that are not payment methods in banks.ts. Brand-like colours, no logos. */
