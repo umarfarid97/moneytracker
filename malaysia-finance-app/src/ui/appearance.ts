@@ -3,7 +3,10 @@
  * is set to; "system" follows the device and "dark" forces dark. Changed from More > Appearance.
  */
 import { useSyncExternalStore } from 'react';
-import { loadAppearance, saveAppearance } from './appearanceStorage';
+import { loadAppearance, loadThemeName, saveAppearance, saveThemeName } from './appearanceStorage';
+import { applyTheme } from './theme';
+import { THEME_NAMES, type ThemeName } from './themeDefs';
+import { loadThemeFonts } from './themeFonts';
 
 export type Appearance = 'system' | 'light' | 'dark';
 export const APPEARANCES: readonly Appearance[] = ['light', 'dark', 'system'];
@@ -36,4 +39,42 @@ function subscribe(listener: () => void) {
 
 export function useAppearance(): Appearance {
   return useSyncExternalStore(subscribe, getAppearance, getAppearance);
+}
+
+/**
+ * Which design theme the app wears (More > Appearance > Theme). It sits beside the light/dark choice: every
+ * theme has its own light and dark palette. Stored on this device only; it isn't part of backup or sync.
+ */
+let currentTheme: ThemeName | undefined;
+const themeListeners = new Set<() => void>();
+
+const isThemeName = (v: unknown): v is ThemeName => THEME_NAMES.includes(v as ThemeName);
+
+export function getThemeName(): ThemeName {
+  if (currentTheme === undefined) {
+    const saved = loadThemeName();
+    currentTheme = isThemeName(saved) ? saved : 'classic';
+    applyTheme(currentTheme);
+  }
+  return currentTheme;
+}
+
+/** Switches theme once its fonts are ready, so the screen never flashes in a fallback font. */
+export async function setThemeName(next: ThemeName): Promise<void> {
+  await loadThemeFonts(next);
+  currentTheme = next;
+  applyTheme(next);
+  saveThemeName(next);
+  themeListeners.forEach((l) => l());
+}
+
+function subscribeTheme(listener: () => void) {
+  themeListeners.add(listener);
+  return () => {
+    themeListeners.delete(listener);
+  };
+}
+
+export function useThemeName(): ThemeName {
+  return useSyncExternalStore(subscribeTheme, getThemeName, getThemeName);
 }

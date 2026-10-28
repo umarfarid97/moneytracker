@@ -10,7 +10,7 @@ import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
 import { BackButton } from '@/ui/BackButton';
 import { Card } from '@/ui/Card';
-import { HeroCard, onHero } from '@/ui/HeroCard';
+import { HeroCard } from '@/ui/HeroCard';
 import { Screen } from '@/ui/Screen';
 import { useTheme } from '@/ui/useTheme';
 
@@ -44,8 +44,8 @@ export default function NetWorth() {
       <BackButton />
       <AppText variant="title">{t('netWorth.title')}</AppText>
       <HeroCard style={{ gap: 4 }}>
-        <AppText variant="eyebrow" color={onHero.soft}>{t('netWorth.title')}</AppText>
-        <AppText testID="net-worth" variant="kpi" color={onHero.ink}>{formatRM(nw.net)}</AppText>
+        <AppText variant="eyebrow" color={c.heroSoft}>{t('netWorth.title')}</AppText>
+        <AppText testID="net-worth" variant="kpi" color={c.heroInk}>{formatRM(nw.net)}</AppText>
         <AppText variant="small" tone="muted">{t('netWorth.hint')}</AppText>
         {savings.length === 0 && nw.totalLiabilities > nw.totalAssets ? (
           <AppText variant="small" tone="muted">{t('netWorth.addAssets')}</AppText>

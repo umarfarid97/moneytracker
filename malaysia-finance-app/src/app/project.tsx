@@ -23,7 +23,7 @@ import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Chip } from '@/ui/Chip';
 import { confirmDelete } from '@/ui/confirm';
-import { HeroCard, onHero } from '@/ui/HeroCard';
+import { HeroCard } from '@/ui/HeroCard';
 import { PressableScale } from '@/ui/PressableScale';
 import { Screen } from '@/ui/Screen';
 import { useTheme } from '@/ui/useTheme';
@@ -148,8 +148,8 @@ export default function Project() {
 
       <HeroCard style={{ gap: 12 }}>
         <View style={{ gap: 4 }}>
-          <AppText variant="eyebrow" color={onHero.soft}>{t('owed.owedToMe')}</AppText>
-          <AppText testID="project-owed" variant="kpi" color={onHero.ink}>{formatRM(summary.owedToMe)}</AppText>
+          <AppText variant="eyebrow" color={c.heroSoft}>{t('owed.owedToMe')}</AppText>
+          <AppText testID="project-owed" variant="kpi" color={c.heroInk}>{formatRM(summary.owedToMe)}</AppText>
         </View>
         {summary.iOwe > 0 ? <AppText testID="project-iowe" variant="small" tone="muted">{t('owed.iOwe')}: {formatRM(summary.iOwe)}</AppText> : null}
       </HeroCard>

@@ -4,6 +4,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { space } from './theme';
 import { useTheme } from './useTheme';
+import { Wallpaper } from './Wallpaper';
 
 type Props = {
   children: ReactNode;
@@ -45,6 +46,7 @@ export function Screen({ children, scroll = true, fab = false, compact = false, 
   const enter = useAnimatedStyle(() => ({ opacity: shown.value, transform: [{ translateY: (1 - shown.value) * 10 }] }));
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.ground }}>
+      <Wallpaper />
       <Animated.View style={[{ flex: 1 }, enter]}>
         {/* On iOS the keyboard lifts the pinned footer with the content; Android and web resize the window instead. */}
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>

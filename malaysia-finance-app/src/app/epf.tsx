@@ -19,8 +19,9 @@ import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { confirmDelete } from '@/ui/confirm';
 import { EmptyState } from '@/ui/EmptyState';
-import { HeroCard, onHero } from '@/ui/HeroCard';
+import { HeroCard } from '@/ui/HeroCard';
 import { Screen } from '@/ui/Screen';
+import { useTheme } from '@/ui/useTheme';
 
 function Stat({ label, value, testID }: { label: string; value: string; testID?: string }) {
   return (
@@ -36,6 +37,7 @@ function entryTitle(e: RetirementEntry): string {
 }
 
 export default function Epf() {
+  const { c } = useTheme();
   const today = useToday();
   const year = Number(today.slice(0, 4));
   const { data: profile } = useProfile();
@@ -91,8 +93,8 @@ export default function Epf() {
       <AppText variant="title">{t('epf.title')}</AppText>
       <HeroCard style={{ gap: 14 }}>
         <View style={{ gap: 4 }}>
-          <AppText variant="eyebrow" color={onHero.soft}>{t('epf.balance')}</AppText>
-          <AppText testID="epf-balance" variant="kpi" color={onHero.ink}>{formatRM(epf.balance)}</AppText>
+          <AppText variant="eyebrow" color={c.heroSoft}>{t('epf.balance')}</AppText>
+          <AppText testID="epf-balance" variant="kpi" color={c.heroInk}>{formatRM(epf.balance)}</AppText>
         </View>
         <AppText variant="small" tone="muted">{t('epf.thisYear', { year })}</AppText>
         <View style={{ flexDirection: 'row', gap: 12 }}>

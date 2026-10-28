@@ -5,7 +5,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { t } from '@/i18n/t';
 import { AppText } from './AppText';
-import { elevation, radius } from './theme';
+import { cardChrome, radius } from './theme';
 import { useTheme } from './useTheme';
 
 export type ReorderItem = {
@@ -132,7 +132,7 @@ function Row({ item, index, count, from, to, dy, onMove, onToggle }: RowProps) {
           borderRadius: radius.control,
           opacity: item.visible ? 1 : 0.6,
         },
-        scheme === 'dark' ? { borderWidth: 1, borderColor: c.border } : elevation(scheme),
+        cardChrome(c, scheme),
         style,
       ]}
     >

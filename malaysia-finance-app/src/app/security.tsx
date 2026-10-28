@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Switch, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { PinPad } from '@/features/security/PinPad';
 import { t } from '@/i18n/t';
 import type { StringKey } from '@/i18n/en';
@@ -14,6 +14,7 @@ import { Card } from '@/ui/Card';
 import { Chip } from '@/ui/Chip';
 import { Screen } from '@/ui/Screen';
 import { useTheme } from '@/ui/useTheme';
+import { Toggle } from '@/ui/Toggle';
 
 type Step = 'create' | 'confirm' | 'turnOff' | 'current' | 'new' | 'newConfirm';
 
@@ -134,7 +135,7 @@ export default function Security() {
                 <AppText variant="bodyStrong">{t('security.on')}</AppText>
                 <AppText variant="small" tone="muted">{t('security.onHint')}</AppText>
               </View>
-              <Switch
+              <Toggle
                 accessibilityLabel={t('security.on')}
                 value={lock.enabled}
                 onValueChange={(on) => start(on ? 'create' : 'turnOff')}
@@ -148,7 +149,7 @@ export default function Security() {
                     {canBiometric ? t('security.biometricHint') : t('security.biometricUnavailable')}
                   </AppText>
                 </View>
-                <Switch
+                <Toggle
                   accessibilityLabel={t('security.biometric')}
                   value={lock.biometric}
                   disabled={!canBiometric}

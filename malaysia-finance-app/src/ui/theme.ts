@@ -6,72 +6,43 @@
  * - Green for money in, red-orange for money out.
  * - A large round blue + in the middle of the tab bar adds spending.
  * Dark mode keeps the same structure on iOS greys with a lighter blue.
+ *
+ * That is the Classic theme. SaaS, Terminal and Notepad (themeDefs.ts) swap only fonts, colours, wallpaper and
+ * card outlines; layout, sizes and components are shared.
  */
 import type { Ionicons } from '@expo/vector-icons';
 import { Platform, type ViewStyle } from 'react-native';
 import type { Status } from '@/domain/budget';
+import { THEMES, type Fonts, type Palette, type Scheme, type ThemeName } from './themeDefs';
 
-export type Scheme = 'light' | 'dark';
+export type { Palette, Scheme, ThemeName } from './themeDefs';
 
-export const palette = {
-  light: {
-    ground: '#f4f5f7',
-    surface: '#ffffff',
-    raised: '#f6f7f9',
-    border: '#e6e8ec',
-    control: '#d8dce3',
-    track: '#e9ecf1',
-    text: '#111318',
-    muted: '#62677a',
-    accent: '#0d5bd3',
-    onAccent: '#ffffff',
-    accentSoft: '#e8f0fc',
-    accentInk: '#0a47a6',
-    positive: '#13a150',
-    negative: '#d9430c',
-    warning: '#a14a05',
-    /** Solid: primary buttons and the + use the plain accent. */
-    brand: ['#0d5bd3', '#0d5bd3'],
-    /** No wash: screens sit on the plain ground. */
-    wash: ['#f4f5f7', '#f4f5f7'],
-  },
-  dark: {
-    ground: '#000000',
-    surface: '#1c1c1e',
-    raised: '#2c2c2e',
-    border: '#38383a',
-    control: '#48484a',
-    track: '#2c2c2e',
-    text: '#f5f5f7',
-    muted: '#9a9aa1',
-    accent: '#5b9bff',
-    onAccent: '#04122b',
-    accentSoft: '#13274a',
-    accentInk: '#a9c8ff',
-    positive: '#4fd27f',
-    negative: '#ff8a5c',
-    warning: '#f5b565',
-    brand: ['#5b9bff', '#5b9bff'],
-    wash: ['#000000', '#000000'],
-  },
-} as const;
+/** The Classic palettes: what the app has always looked like. Other themes live in THEMES. */
+export const palette = THEMES.classic.palette;
 
-export type Palette = (typeof palette)[Scheme];
+let activeName: ThemeName = 'classic';
+
+/** The theme currently applied (see applyTheme). */
+export function activeTheme(): ThemeName {
+  return activeName;
+}
 
 export const radius = { card: 22, control: 14, sm: 10, xs: 6, pill: 999 } as const;
 export const space = { xs: 4, s: 8, m: 12, gap: 16, pad: 20, xl: 24, xxl: 32 } as const;
 export const controlHeight = 50;
 
 /**
- * Outfit, a rounded geometric sans close to the KWSP app's font. Each weight is its own loaded family
- * (see the root layout), so text sets the family for its weight instead of fontWeight.
+ * The active theme's font families (Classic uses Outfit). Each weight is its own loaded family
+ * (see themeFonts.ts), so text sets the family for its weight instead of fontWeight.
+ * applyTheme() rewrites these in place before screens re-render, so `fontFamily.medium` is always current.
  */
-export const fontFamily = {
-  regular: 'Outfit_400Regular',
-  medium: 'Outfit_500Medium',
-  semibold: 'Outfit_600SemiBold',
-  bold: 'Outfit_700Bold',
-} as const;
+export const fontFamily: Fonts = { ...THEMES.classic.fonts };
+
+/** Switches the module-level theme state (fonts, card outlines, status colours). The app calls it via setThemeName. */
+export function applyTheme(name: ThemeName): void {
+  activeName = name;
+  Object.assign(fontFamily, THEMES[name].fonts);
+}
 
 export const fontSize = { title: 32, section: 20, kpi: 36, body: 16, small: 14 } as const;
 
@@ -89,6 +60,19 @@ export function elevation(scheme: Scheme): ViewStyle {
     shadowOffset: { width: 0, height: 6 },
     elevation: 3,
   };
+}
+
+/** Outline and/or shadow that lifts a card off the ground, as the active theme prescribes. */
+export function cardChrome(c: Palette, scheme: Scheme): ViewStyle {
+  const kind = THEMES[activeName].card[scheme];
+  const border: ViewStyle = { borderWidth: 1, borderColor: c.border };
+  if (kind === 'border') return border;
+  if (kind === 'both') return { ...border, ...(Platform.OS === 'android' ? { elevation: 1 } : lightShadow()) };
+  return elevation(scheme);
+}
+
+function lightShadow(): ViewStyle {
+  return { shadowColor: '#0b1530', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } };
 }
 
 /** Lift under a prominent surface such as the tab bar's + button. `color` tints the shadow slightly. */
@@ -165,26 +149,14 @@ export function categoryLook(name: string, icon?: string): { icon: IconName; col
   return { icon: picked ?? CATEGORY_ICON[name] ?? 'pricetag-outline', color: CATEGORY_COLOR };
 }
 
-/** Tint for a category tag. The design keeps tags neutral, so every category shares the same grey. */
-export function categoryTint(_name: string, scheme: Scheme): { bg: string; ink: string } {
-  return scheme === 'dark' ? { bg: '#2a2f34', ink: '#d3d7db' } : { bg: '#eef0f3', ink: '#3a3f4b' };
+/** Tint for a category tag. The design keeps tags neutral, so every category shares the same tag colours. */
+export function categoryTint(_name: string, scheme: Scheme, theme: ThemeName = activeName): { bg: string; ink: string } {
+  const p = THEMES[theme].palette[scheme];
+  return { bg: p.tagBg, ink: p.tagInk };
 }
 
-const STATUS: Record<Scheme, Record<Status, { bg: string; ink: string }>> = {
-  light: {
-    'on-track': { bg: '#dcfae5', ink: '#04250e' },
-    tight: { bg: '#ffefc2', ink: '#7a3410' },
-    over: { bg: '#ffedea', ink: '#831c1e' },
-  },
-  dark: {
-    'on-track': { bg: '#123b22', ink: '#a8efc0' },
-    tight: { bg: '#43310a', ink: '#ffd98a' },
-    over: { bg: '#4a1a1c', ink: '#ffbcbd' },
-  },
-};
-
-export function statusStyle(status: Status, scheme: Scheme): { bg: string; ink: string } {
-  return STATUS[scheme][status];
+export function statusStyle(status: Status, scheme: Scheme, theme: ThemeName = activeName): { bg: string; ink: string } {
+  return THEMES[theme].status[scheme][status];
 }
 
 function luminance(hex: string): number {

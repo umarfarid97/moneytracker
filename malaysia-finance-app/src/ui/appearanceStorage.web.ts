@@ -46,3 +46,19 @@ export function saveHideBalance(hidden: boolean): void {
     // Ignore: storage blocked, the choice lasts for this visit only.
   }
 }
+
+export function loadThemeName(): string | null {
+  try {
+    return localStorage.getItem('duit.theme');
+  } catch {
+    return null;
+  }
+}
+
+export function saveThemeName(value: string): void {
+  try {
+    localStorage.setItem('duit.theme', value);
+  } catch {
+    // Ignore: storage blocked, the choice lasts for this visit only.
+  }
+}

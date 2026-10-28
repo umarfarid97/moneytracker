@@ -31,7 +31,7 @@ import { Chip } from '@/ui/Chip';
 import { MethodBadge } from '@/ui/MethodBadge';
 import { confirmDelete } from '@/ui/confirm';
 import { EmptyState } from '@/ui/EmptyState';
-import { HeroCard, onHero } from '@/ui/HeroCard';
+import { HeroCard } from '@/ui/HeroCard';
 import { BrandBadge } from '@/ui/BrandBadge';
 import { IconBadge } from '@/ui/IconBadge';
 import { Screen } from '@/ui/Screen';
@@ -289,9 +289,9 @@ export default function Spending() {
                   hitSlop={12}
                   onPress={() => setMonth((m) => shiftMonth(m, -1))}
                 >
-                  <Ionicons name="chevron-back" size={24} color={onHero.ink} />
+                  <Ionicons name="chevron-back" size={24} color={c.heroInk} />
                 </Pressable>
-                <AppText variant="section" color={onHero.ink}>{monthLabel(month)}</AppText>
+                <AppText variant="section" color={c.heroInk}>{monthLabel(month)}</AppText>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={t('spending.nextMonth')}
@@ -301,11 +301,11 @@ export default function Spending() {
                   onPress={() => setMonth((m) => shiftMonth(m, 1))}
                   style={{ opacity: month >= thisMonth ? 0.3 : 1 }}
                 >
-                  <Ionicons name="chevron-forward" size={24} color={onHero.ink} />
+                  <Ionicons name="chevron-forward" size={24} color={c.heroInk} />
                 </Pressable>
               </View>
-              <View style={{ alignSelf: 'center', backgroundColor: onHero.chip, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 6 }}>
-                <AppText variant="bodyStrong" color={onHero.ink} style={{ textAlign: 'center' }}>
+              <View style={{ alignSelf: 'center', backgroundColor: c.heroChip, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 6 }}>
+                <AppText variant="bodyStrong" color={c.heroInk} style={{ textAlign: 'center' }}>
                   {t('spending.monthTotal', { amount: formatRM(monthSpent(expenses, month)) })}
                 </AppText>
               </View>
