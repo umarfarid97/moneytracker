@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
-import { CATEGORY_PRESETS } from '@/domain/categoryPresets';
 import { FALLBACK_CATEGORY } from '@/db/repos/categories';
 import type { Category } from '@/domain/types';
 import { useCategories } from '@/hooks/useCategories';
@@ -9,7 +9,6 @@ import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
 import { BackButton } from '@/ui/BackButton';
 import { Button } from '@/ui/Button';
-import { Chip } from '@/ui/Chip';
 import { PressableScale } from '@/ui/PressableScale';
 import { IconBadge } from '@/ui/IconBadge';
 import { IconPicker } from '@/ui/IconPicker';
@@ -18,7 +17,6 @@ import { categoryLook, controlHeight, fontFamily, radius, type IconName } from '
 import { useTheme } from '@/ui/useTheme';
 
 const MAX_NAME = 24;
-const NEW_ICON: IconName = 'pricetag-outline';
 
 function TextAction({ label, accessibilityLabel, onPress }: { label: string; accessibilityLabel: string; onPress: () => void }) {
   const { c } = useTheme();
@@ -33,11 +31,10 @@ function TextAction({ label, accessibilityLabel, onPress }: { label: string; acc
 
 export default function Categories() {
   const { c } = useTheme();
-  const { data: categories, add, rename, setIcon, remove } = useCategories();
-  const [newName, setNewName] = useState('');
-  const [newIcon, setNewIcon] = useState<IconName>(NEW_ICON);
-  /** Which icon the picker is choosing: the new category's, or an existing category's id. */
-  const [picking, setPicking] = useState<'new' | number | null>(null);
+  const router = useRouter();
+  const { data: categories, rename, setIcon, remove } = useCategories();
+  /** The id of the category whose icon the picker is choosing. */
+  const [picking, setPicking] = useState<number | null>(null);
   const [editing, setEditing] = useState<{ id: number; text: string } | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -74,22 +71,16 @@ export default function Categories() {
     fontSize: 16,
   } as const;
 
-  const suggestions = CATEGORY_PRESETS.filter((preset) => !taken(preset.name));
-
-  const pickingCat = typeof picking === 'number' ? categories.find((cat) => cat.id === picking) : undefined;
+  const pickingCat = picking !== null ? categories.find((cat) => cat.id === picking) : undefined;
 
   // Tapping a category's icon opens the picker; a small pencil shows it can be changed.
-  const iconButton = (icon: IconName, label: string, onPress: () => void, onGround = false) => (
+  const iconButton = (icon: IconName, label: string, onPress: () => void) => (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onPress}
       hitSlop={6}
-      style={[
-        { width: 44, height: 44, borderRadius: radius.control, backgroundColor: c.ground, alignItems: 'center', justifyContent: 'center' },
-        // Beside the new-category field it sits on the page, so it takes the field's white box instead.
-        onGround && { width: controlHeight, height: controlHeight, backgroundColor: c.surface, borderWidth: 1, borderColor: c.control },
-      ]}
+      style={{ width: 44, height: 44, borderRadius: radius.control, backgroundColor: c.ground, alignItems: 'center', justifyContent: 'center' }}
     >
       <IconBadge icon={icon} size={34} />
       <View style={{ position: 'absolute', right: -3, bottom: -3, width: 18, height: 18, borderRadius: 9, backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center' }}>
@@ -174,46 +165,7 @@ export default function Categories() {
     <Screen>
       <BackButton />
       <AppText variant="title">{t('categories.title')}</AppText>
-      <View style={{ gap: 8 }}>
-        <AppText variant="smallStrong">{t('categories.new')}</AppText>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          {iconButton(newIcon, t('categories.icon'), () => setPicking('new'), true)}
-          <TextInput
-            accessibilityLabel={t('categories.new')}
-            value={newName}
-            onChangeText={setNewName}
-            placeholderTextColor={c.muted}
-            style={[field, { flex: 1 }]}
-          />
-        </View>
-        {nameProblem(newName) ? (
-          <AppText variant="small" tone="negative">
-            {nameProblem(newName)}
-          </AppText>
-        ) : null}
-        <Button
-          title={t('categories.add')}
-          disabled={!valid(newName)}
-          onPress={() => run(async () => { await add({ name: newName.trim(), icon: newIcon }); setNewName(''); setNewIcon(NEW_ICON); })}
-        />
-      </View>
-      {suggestions.length > 0 ? (
-        <View style={{ gap: 8 }}>
-          <AppText variant="smallStrong">{t('categories.suggestions')}</AppText>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {suggestions.map((preset) => (
-              <Chip
-                key={preset.name}
-                compact
-                label={preset.name}
-                icon={preset.icon as IconName}
-                accessibilityLabel={t('categories.addPreset', { name: preset.name })}
-                onPress={() => run(() => add({ name: preset.name, icon: preset.icon }))}
-              />
-            ))}
-          </View>
-        </View>
-      ) : null}
+      <Button title={t('categories.addNew')} onPress={() => router.push('/category-new')} />
       {error ? (
         <AppText variant="small" tone="negative">
           {error}
@@ -222,13 +174,12 @@ export default function Categories() {
       <View style={{ gap: 8 }}>{categories.map(renderRow)}</View>
       <IconPicker
         visible={picking !== null}
-        selected={picking === 'new' ? newIcon : pickingCat ? categoryLook(pickingCat.name, pickingCat.icon).icon : undefined}
+        selected={pickingCat ? categoryLook(pickingCat.name, pickingCat.icon).icon : undefined}
         onClose={() => setPicking(null)}
         onPick={(icon) => {
           const target = picking;
           setPicking(null);
-          if (target === 'new') setNewIcon(icon);
-          else if (target !== null) run(() => setIcon(target, icon));
+          if (target !== null) run(() => setIcon(target, icon));
         }}
       />
     </Screen>
