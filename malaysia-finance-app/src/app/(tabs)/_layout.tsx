@@ -30,7 +30,7 @@ const LEFT = 2;
  */
 function TabBar({ state, descriptors, navigateToTab, emitter }: BottomTabBarProps) {
   const { c, scheme, theme } = useTheme();
-  const green = theme === 'green';
+  const green = theme !== 'classic';
   const bordered = theme !== 'classic';
   const insets = useSafeAreaInsets();
 

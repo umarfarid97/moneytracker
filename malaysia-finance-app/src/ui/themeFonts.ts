@@ -23,6 +23,15 @@ const LOADERS: Record<ThemeName, () => Promise<FontMap>> = {
     ]);
     return { Manrope_400Regular: a.Manrope_400Regular, Manrope_500Medium: b.Manrope_500Medium, Manrope_600SemiBold: c.Manrope_600SemiBold, Manrope_700Bold: d.Manrope_700Bold };
   },
+  pastel: async () => {
+    const [a, b, c, d] = await Promise.all([
+      import('@expo-google-fonts/inter/400Regular'),
+      import('@expo-google-fonts/inter/500Medium'),
+      import('@expo-google-fonts/inter/600SemiBold'),
+      import('@expo-google-fonts/inter/700Bold'),
+    ]);
+    return { Inter_400Regular: a.Inter_400Regular, Inter_500Medium: b.Inter_500Medium, Inter_600SemiBold: c.Inter_600SemiBold, Inter_700Bold: d.Inter_700Bold };
+  },
 };
 
 const loaded = new Map<ThemeName, Promise<void>>();

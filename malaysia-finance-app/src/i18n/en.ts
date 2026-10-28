@@ -536,6 +536,8 @@ export const en = {
   'more.theme.classic': 'Classic',
   'more.theme.classic.hint': 'The original Duit look: white cards and royal blue.',
   'more.theme.green': 'Dark green',
+  'more.theme.pastel': 'Pastel dark',
+  'more.theme.pastel.hint': 'Slate navy with a soft purple glow, bold pastel tiles, grey-blue buttons and a clean sans font. Dark only.',
   'more.theme.green.hint': 'Near-black with soft green light, lime accents and a sage balance card. Dark only.',
   'more.settings': 'Settings',
   'more.demo': 'Demo data',

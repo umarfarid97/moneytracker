@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { THEMES } from './themeDefs';
 import { useTheme } from './useTheme';
 
@@ -14,7 +14,27 @@ const STREAKS = [
 /** Wallpaper behind a screen's content (Dark green's light streaks). Classic stays plain. It never receives touches. */
 export function Wallpaper() {
   const { c, theme } = useTheme();
-  if (THEMES[theme].wallpaper !== 'streaks') return null;
+  const kind = THEMES[theme].wallpaper;
+  if (kind === 'vignette') {
+    // Pastel dark: a violet glow in the top corner and a blue one low on the opposite side, fading into the slate ground.
+    return (
+      <Svg pointerEvents="none" style={StyleSheet.absoluteFill} width="100%" height="100%">
+        <Defs>
+          <RadialGradient id="glowA" cx="0.5" cy="0.5" r="0.5">
+            <Stop offset="0" stopColor={c.wallpaperInk} stopOpacity="0.5" />
+            <Stop offset="1" stopColor={c.wallpaperInk} stopOpacity="0" />
+          </RadialGradient>
+          <RadialGradient id="glowB" cx="0.5" cy="0.5" r="0.5">
+            <Stop offset="0" stopColor={c.wallpaperAccent} stopOpacity="0.32" />
+            <Stop offset="1" stopColor={c.wallpaperAccent} stopOpacity="0" />
+          </RadialGradient>
+        </Defs>
+        <Rect x="-40%" y="-30%" width="180%" height="70%" fill="url(#glowA)" />
+        <Rect x="-60%" y="60%" width="160%" height="60%" fill="url(#glowB)" />
+      </Svg>
+    );
+  }
+  if (kind !== 'streaks') return null;
   return (
     <Svg pointerEvents="none" style={StyleSheet.absoluteFill} width="100%" height="100%">
       <Defs>

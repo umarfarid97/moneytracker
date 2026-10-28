@@ -71,6 +71,13 @@ describe.each(THEME_NAMES.flatMap((n) => schemes.map((s) => [n, s] as const)))('
       expect(contrast(st.ink, st.bg)).toBeGreaterThanOrEqual(4.5);
     }
   });
+  test('ink is readable on every pastel tile fill, including the soft text', () => {
+    for (const fill of p.tilePalette ?? []) {
+      expect(contrast(p.tileInk, fill)).toBeGreaterThanOrEqual(7);
+      expect(contrast(p.heroInk, fill)).toBeGreaterThanOrEqual(7);
+      expect(contrast(p.heroSoft, fill)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
   test('the theme names a font for every weight', () => {
     expect(Object.keys(THEMES[name].fonts).sort()).toEqual(['bold', 'medium', 'regular', 'semibold']);
   });
