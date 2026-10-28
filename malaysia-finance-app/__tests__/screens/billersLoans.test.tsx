@@ -49,14 +49,14 @@ describe('biller presets', () => {
     ]);
   });
 
-  test('Subscription quick picks are separate from bill billers and grouped', async () => {
+  test('Subscription quick picks are separate from bill billers and shown in one list', async () => {
     const db = await freshDb();
     await openAdd(db, 'Subscription');
     expect(screen.getByRole('button', { name: 'Subscription Netflix' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Biller TNB electricity' })).toBeNull();
-    await fireEvent.press(screen.getByRole('button', { name: 'Cloud storage' }));
+    // No type chips: every service is in the one list.
+    expect(screen.queryByRole('button', { name: 'Cloud storage' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Subscription Google One' })).toBeTruthy();
-    await fireEvent.press(screen.getByRole('button', { name: 'AI' }));
     expect(screen.getByRole('button', { name: 'Subscription Claude' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Subscription ChatGPT' })).toBeTruthy();
   });

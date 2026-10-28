@@ -562,6 +562,9 @@ export const ms: Record<StringKey, string> = {
   'subscriptions.group.life': 'Gaya hidup',
   'subscriptions.hint': 'Ketik satu untuk isi nama dan kategori. Kemudian tambah jumlah dan hari ia dicaj.',
 
+  'loans.pick': 'Pilih jenis pinjaman atau penyedia',
+  'suggest.search': 'Cari',
+  'suggest.none': 'Tiada padanan. Taip nama di bawah.',
   'loans.type': 'Jenis pinjaman',
   'loans.type.home': 'Pinjaman rumah',
   'loans.type.car': 'Pinjaman kereta',

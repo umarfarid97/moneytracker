@@ -16,6 +16,9 @@ export const loansBillers = {
   'subscriptions.group.life': 'Lifestyle',
   'subscriptions.hint': 'Tap one to fill in the name and category. Then add the amount and the day it is charged.',
 
+  'loans.pick': 'Pick a loan type or provider',
+  'suggest.search': 'Search',
+  'suggest.none': 'Nothing matches. Type the name below.',
   'loans.type': 'Type of loan',
   'loans.type.home': 'Home loan',
   'loans.type.car': 'Car loan',
