@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { ReactNode } from 'react';
 import { AppText } from './AppText';
 import { PressableScale } from './PressableScale';
-import { radius } from './theme';
+import { contrast, radius } from './theme';
 import { useTheme } from './useTheme';
 
 type Props = {
@@ -22,7 +22,7 @@ type Props = {
 export function Chip({ label, selected = false, onPress, accessibilityLabel, compact = false, icon, color, leading }: Props) {
   const { c } = useTheme();
   const tone = color ?? c.accent;
-  const ink = selected ? (color ? '#ffffff' : c.onAccent) : c.text;
+  const ink = selected ? (color && contrast('#ffffff', color) >= 3 ? '#ffffff' : c.onAccent) : c.text;
   return (
     <PressableScale
       accessibilityRole="button"

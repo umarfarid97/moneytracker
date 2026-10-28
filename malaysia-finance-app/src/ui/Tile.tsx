@@ -4,7 +4,7 @@ import { t } from '@/i18n/t';
 import { AppText, OnHeroContext } from './AppText';
 import { IconBadge } from './IconBadge';
 import { PressableScale } from './PressableScale';
-import { categoryLook, cardChrome, radius, statusStyle } from './theme';
+import { categoryLook, cardChrome, cardRadius, radius, statusStyle } from './theme';
 import { useTheme } from './useTheme';
 
 type Props = {
@@ -36,7 +36,7 @@ export function Tile({ title, leftText, status, detail, tintName, icon, index = 
       accessibilityLabel={[title, leftText, detail, pillText].filter(Boolean).join(', ')}
       onPress={onPress}
       style={[
-        { flex: 1, backgroundColor: fills ? fills[index % fills.length] : c.surface, borderRadius: radius.card, padding: 14, gap: 10, justifyContent: 'space-between' },
+        { flex: 1, backgroundColor: fills ? fills[index % fills.length] : c.surface, borderRadius: cardRadius(), padding: 14, gap: 10, justifyContent: 'space-between' },
         fills ? null : cardChrome(c, scheme),
       ]}
     >

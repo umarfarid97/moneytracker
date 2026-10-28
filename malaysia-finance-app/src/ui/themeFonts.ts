@@ -23,6 +23,15 @@ const LOADERS: Record<ThemeName, () => Promise<FontMap>> = {
     ]);
     return { Manrope_400Regular: a.Manrope_400Regular, Manrope_500Medium: b.Manrope_500Medium, Manrope_600SemiBold: c.Manrope_600SemiBold, Manrope_700Bold: d.Manrope_700Bold };
   },
+  mint: async () => {
+    const [a, b, c, d] = await Promise.all([
+      import('@expo-google-fonts/urbanist/400Regular'),
+      import('@expo-google-fonts/urbanist/500Medium'),
+      import('@expo-google-fonts/urbanist/600SemiBold'),
+      import('@expo-google-fonts/urbanist/700Bold'),
+    ]);
+    return { Urbanist_400Regular: a.Urbanist_400Regular, Urbanist_500Medium: b.Urbanist_500Medium, Urbanist_600SemiBold: c.Urbanist_600SemiBold, Urbanist_700Bold: d.Urbanist_700Bold };
+  },
   pastel: async () => {
     const [a, b, c, d] = await Promise.all([
       import('@expo-google-fonts/inter/400Regular'),

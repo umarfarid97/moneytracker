@@ -8,6 +8,7 @@ import type { StringKey } from '@/i18n/en';
 import { AppText } from '@/ui/AppText';
 import { PressableScale } from '@/ui/PressableScale';
 import { glow } from '@/ui/theme';
+import { THEMES } from '@/ui/themeDefs';
 import { useTheme } from '@/ui/useTheme';
 
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -30,7 +31,9 @@ const LEFT = 2;
  */
 function TabBar({ state, descriptors, navigateToTab, emitter }: BottomTabBarProps) {
   const { c, scheme, theme } = useTheme();
-  const green = theme !== 'classic';
+  const indicator = THEMES[theme].tabIndicator;
+  const green = indicator !== 'none';
+  const drop = indicator === 'drop';
   const bordered = theme !== 'classic';
   const insets = useSafeAreaInsets();
 
@@ -39,6 +42,7 @@ function TabBar({ state, descriptors, navigateToTab, emitter }: BottomTabBarProp
     const focused = index === state.index;
     const label = descriptors[route.key].options.title ?? route.name;
     const color = focused ? c.accent : green ? c.muted : c.text;
+    const iconColor = drop && focused ? c.onAccent : color;
     const onPress = () => {
       const event = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
       if (!focused && !event.defaultPrevented) navigateToTab(route.key);
@@ -53,14 +57,16 @@ function TabBar({ state, descriptors, navigateToTab, emitter }: BottomTabBarProp
         style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: green ? 2 : 4, paddingTop: green ? 8 : 10 }}
       >
         {green ? (
-          // Dark green: the active tab sits in a soft pill with a green glow.
+          // The coloured themes: the active tab sits in a soft pill with a glow (Mint dark: a solid drop).
           <View
             style={[
-              { width: 56, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-              focused ? [{ backgroundColor: c.accentSoft }, glow(c.accent, scheme)] : null,
+              drop
+                ? { width: 34, height: 34, marginBottom: 5, borderTopLeftRadius: 17, borderTopRightRadius: 17, borderBottomLeftRadius: 17, borderBottomRightRadius: 5, transform: [{ rotate: '45deg' }], alignItems: 'center', justifyContent: 'center' }
+                : { width: 56, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+              focused ? [{ backgroundColor: drop ? c.accent : c.accentSoft }, glow(c.accent, scheme)] : null,
             ]}
           >
-            <Ionicons name={ICONS[route.name] ?? 'ellipse-outline'} size={24} color={color} />
+            <Ionicons name={ICONS[route.name] ?? 'ellipse-outline'} size={24} color={iconColor} style={drop ? { transform: [{ rotate: '-45deg' }] } : undefined} />
           </View>
         ) : (
           <Ionicons name={ICONS[route.name] ?? 'ellipse-outline'} size={25} color={color} />
