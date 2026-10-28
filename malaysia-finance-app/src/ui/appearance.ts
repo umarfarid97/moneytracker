@@ -59,13 +59,18 @@ export function getThemeName(): ThemeName {
   return currentTheme;
 }
 
-/** Switches theme once its fonts are ready, so the screen never flashes in a fallback font. */
-export async function setThemeName(next: ThemeName): Promise<void> {
-  await loadThemeFonts(next);
+/**
+ * Switches theme straight away and fetches its fonts in the background. Waiting for the font download first made the
+ * tap look dead on a slow connection (Safari); text shows in the system font for a moment, then the browser swaps
+ * the theme font in on its own once it arrives.
+ */
+export function setThemeName(next: ThemeName): Promise<void> {
+  const fonts = loadThemeFonts(next);
   currentTheme = next;
   applyTheme(next);
   saveThemeName(next);
   themeListeners.forEach((l) => l());
+  return fonts;
 }
 
 function subscribeTheme(listener: () => void) {
