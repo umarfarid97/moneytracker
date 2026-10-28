@@ -1,15 +1,14 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { FALLBACK_PAYMENT_METHOD } from '@/db/repos/paymentMethods';
-import { BRANDS } from '@/domain/banks';
-import type { PaymentKind, PaymentMethod } from '@/domain/types';
+import type { PaymentMethod } from '@/domain/types';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { methodLabel } from '@/i18n/content';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
 import { BackButton } from '@/ui/BackButton';
 import { Button } from '@/ui/Button';
-import { Chip } from '@/ui/Chip';
 import { MethodBadge } from '@/ui/MethodBadge';
 import { PressableScale } from '@/ui/PressableScale';
 import { Screen } from '@/ui/Screen';
@@ -17,7 +16,6 @@ import { controlHeight, fontFamily, radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
 const MAX_NAME = 24;
-const KINDS: PaymentKind[] = ['cash', 'debit', 'credit', 'ewallet', 'transfer'];
 
 function TextAction({ label, accessibilityLabel, onPress }: { label: string; accessibilityLabel: string; onPress: () => void }) {
   const { c } = useTheme();
@@ -32,9 +30,8 @@ function TextAction({ label, accessibilityLabel, onPress }: { label: string; acc
 
 export default function PaymentMethods() {
   const { c } = useTheme();
-  const { data: methods, add, rename, remove } = usePaymentMethods();
-  const [newName, setNewName] = useState('');
-  const [newKind, setNewKind] = useState<PaymentKind>('debit');
+  const router = useRouter();
+  const { data: methods, rename, remove } = usePaymentMethods();
   const [editing, setEditing] = useState<{ id: number; text: string } | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -58,9 +55,6 @@ export default function PaymentMethods() {
       setError(t('common.saveFailed'));
     }
   }
-
-  // Banks and e-wallets not added yet, offered as one-tap names.
-  const presets = BRANDS.filter((b) => !taken(b.name));
 
   const field = {
     height: controlHeight,
@@ -155,57 +149,7 @@ export default function PaymentMethods() {
     <Screen>
       <BackButton />
       <AppText variant="title">{t('methods.title')}</AppText>
-      {presets.length > 0 ? (
-        <View style={{ gap: 8 }}>
-          <AppText variant="smallStrong">{t('methods.presets')}</AppText>
-          <AppText variant="small" tone="muted">
-            {t('methods.presetsHint')}
-          </AppText>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {presets.map((b) => (
-              <Chip
-                key={b.id}
-                label={b.name}
-                accessibilityLabel={t('methods.preset', { name: b.name })}
-                leading={<MethodBadge name={b.name} kind={b.kind} size={22} />}
-                selected={newName.trim() === b.name}
-                onPress={() => { setNewName(b.name); setNewKind(b.kind); }}
-              />
-            ))}
-          </View>
-        </View>
-      ) : null}
-      <View style={{ gap: 8 }}>
-        <AppText variant="smallStrong">{t('methods.new')}</AppText>
-        <TextInput
-          accessibilityLabel={t('methods.new')}
-          value={newName}
-          onChangeText={setNewName}
-          placeholderTextColor={c.muted}
-          style={field}
-        />
-        {problem(newName) ? (
-          <AppText variant="small" tone="negative">
-            {problem(newName)}
-          </AppText>
-        ) : null}
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {KINDS.map((k) => (
-            <Chip
-              key={k}
-              label={t(`methods.kind.${k}`)}
-              accessibilityLabel={t('methods.kindLabel', { kind: t(`methods.kind.${k}`) })}
-              selected={newKind === k}
-              onPress={() => setNewKind(k)}
-            />
-          ))}
-        </View>
-        <Button
-          title={t('methods.add')}
-          disabled={!valid(newName)}
-          onPress={() => run(async () => { await add({ name: newName.trim(), kind: newKind }); setNewName(''); })}
-        />
-      </View>
+      <Button title={t('methods.addNew')} onPress={() => router.push('/payment-method-new')} />
       {error ? (
         <AppText variant="small" tone="negative">
           {error}

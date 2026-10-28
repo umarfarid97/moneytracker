@@ -2,6 +2,9 @@ import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import PaymentMethods from '@/app/payment-methods';
 import { addExpenseRow, CAT, freshDb, renderWithData } from './helpers';
 
+const mockPush = jest.fn();
+jest.mock('expo-router', () => ({ ...jest.requireActual('expo-router'), useRouter: () => ({ push: mockPush, back: jest.fn() }) }));
+
 beforeEach(() => jest.clearAllMocks());
 
 const methods = (db: Awaited<ReturnType<typeof freshDb>>) =>
@@ -18,38 +21,14 @@ describe('Payment methods screen', () => {
     expect(screen.queryByRole('button', { name: 'Delete Cash' })).toBeNull();
   });
 
-  test('adds a method of a chosen kind', async () => {
+  test('the Add new button opens the add page', async () => {
     const db = await freshDb();
     await renderWithData(db, <PaymentMethods />);
-    await waitFor(() => expect(screen.getByLabelText('New payment method name')).toBeTruthy());
-    expect(screen.getByRole('button', { name: 'Add payment method' })).toBeDisabled();
-    await fireEvent.changeText(screen.getByLabelText('New payment method name'), ' Maybank Visa ');
-    await fireEvent.press(screen.getByRole('button', { name: 'Kind Credit card' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Add payment method' }));
-    await waitFor(() => expect(screen.getByText('Maybank Visa')).toBeTruthy());
-    expect((await methods(db)).find((m) => m.name === 'Maybank Visa')).toEqual({ name: 'Maybank Visa', kind: 'credit' });
-    expect(screen.getByLabelText('New payment method name').props.value).toBe('');
-  });
-
-  test('a bank preset fills the name and kind, then shows its badge once added', async () => {
-    const db = await freshDb();
-    await renderWithData(db, <PaymentMethods />);
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Use Maybank' })).toBeTruthy());
-    await fireEvent.press(screen.getByRole('button', { name: 'Use Maybank' }));
-    expect(screen.getByLabelText('New payment method name').props.value).toBe('Maybank');
-    await fireEvent.press(screen.getByRole('button', { name: 'Add payment method' }));
-    await waitFor(() => expect(screen.getByTestId('brand-maybank')).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add new' })).toBeTruthy());
+    expect(screen.queryByLabelText('New payment method name')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Use Maybank' })).toBeNull();
-    expect((await methods(db)).find((m) => m.name === 'Maybank')).toEqual({ name: 'Maybank', kind: 'debit' });
-  });
-
-  test('refuses a name already used, ignoring case', async () => {
-    const db = await freshDb();
-    await renderWithData(db, <PaymentMethods />);
-    await waitFor(() => expect(screen.getByLabelText('New payment method name')).toBeTruthy());
-    await fireEvent.changeText(screen.getByLabelText('New payment method name'), 'cash');
-    expect(screen.getByText('That name is already used')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Add payment method' })).toBeDisabled();
+    await fireEvent.press(screen.getByRole('button', { name: 'Add new' }));
+    expect(mockPush).toHaveBeenCalledWith('/payment-method-new');
   });
 
   test('renames a method', async () => {
