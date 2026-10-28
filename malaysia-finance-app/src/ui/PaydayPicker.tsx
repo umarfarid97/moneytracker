@@ -1,76 +1,72 @@
-import { type ComponentRef, useEffect, useRef } from 'react';
-import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, View } from 'react-native';
+import { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable, View } from 'react-native';
 import { t } from '@/i18n/t';
 import { AppText } from './AppText';
-import { fontFamily, radius } from './theme';
+import { Sheet } from './Sheet';
+import { controlHeight, radius } from './theme';
 import { useTheme } from './useTheme';
 
-const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
-const ITEM = 40;
-const VISIBLE = 3;
+const DAYS = Array.from({ length: 30 }, (_, i) => i + 1);
+const COLUMNS = 6;
 
 /**
- * Scroll wheel for the salary day, 1 to 31 (31 reads "Last day"). The salary day and the budget start day
- * are one setting (`profile.budgetStartDay`), so the profile and budget screens both use this picker.
- * It saves as it scrolls: whatever day sits in the middle row is the value.
+ * Salary day, 1 to 31 (31 means the last day of the month). The salary day and the budget start day are one
+ * setting (`profile.budgetStartDay`), so the profile and budget screens both use this picker. One row shows the
+ * chosen day; tapping it opens a grid of days, and picking one saves it straight away.
  */
 export function PaydayPicker({ value, onChange }: { value: number; onChange: (day: number) => void }) {
   const { c } = useTheme();
-  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
-  const settle = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const [open, setOpen] = useState(false);
+  const label = (day: number) => (day === 31 ? t('budget.startDay.last') : t('budget.startDay.dayN', { n: day }));
 
-  useEffect(() => {
-    scroll.current?.scrollTo({ y: (value - 1) * ITEM, animated: false });
-    return () => clearTimeout(settle.current);
-  }, [value]);
-
-  function pickAt(e: NativeSyntheticEvent<NativeScrollEvent>) {
-    const day = Math.min(31, Math.max(1, Math.round(e.nativeEvent.contentOffset.y / ITEM) + 1));
+  function pick(day: number) {
+    setOpen(false);
     if (day !== value) onChange(day);
   }
 
-  function onScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
-    // Web has no momentum-end event, so treat a pause in scrolling as the wheel settling.
-    const y = e.nativeEvent.contentOffset.y;
-    clearTimeout(settle.current);
-    settle.current = setTimeout(() => pickAt({ nativeEvent: { contentOffset: { y } } } as NativeSyntheticEvent<NativeScrollEvent>), 120);
-  }
-
   return (
-    <View style={{ height: ITEM * VISIBLE, borderRadius: radius.control, backgroundColor: c.surface, borderWidth: 1, borderColor: c.control, overflow: 'hidden' }}>
-      <View
-        pointerEvents="none"
-        style={{ position: 'absolute', left: 0, right: 0, top: ITEM, height: ITEM, backgroundColor: c.accent, opacity: 0.1 }}
-      />
-      <ScrollView
-        ref={scroll}
-        testID="payday-wheel"
-        showsVerticalScrollIndicator={false}
-        snapToInterval={ITEM}
-        decelerationRate="fast"
-        scrollEventThrottle={32}
-        onScroll={onScroll}
-        onMomentumScrollEnd={pickAt}
-        onScrollEndDrag={pickAt}
-        contentContainerStyle={{ paddingVertical: ITEM }}
+    <>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${t('profile.salaryDay')}: ${label(value)}`}
+        onPress={() => setOpen(true)}
+        style={{
+          flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: controlHeight, borderRadius: radius.control,
+          backgroundColor: c.surface, borderWidth: 1, borderColor: c.control, paddingHorizontal: 14,
+        }}
       >
-        {DAYS.map((day) => (
-          <Pressable
-            key={day}
-            accessibilityRole="button"
-            accessibilityLabel={`Budget starts ${day === 31 ? 'on the last day' : `on day ${day}`}`}
-            onPress={() => onChange(day)}
-            style={{ height: ITEM, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <AppText
-              variant={day === value ? 'bodyStrong' : 'body'}
-              style={{ fontFamily: day === value ? fontFamily.semibold : fontFamily.medium, color: day === value ? c.accent : c.muted }}
-            >
-              {day === 31 ? t('budget.startDay.last') : String(day)}
-            </AppText>
-          </Pressable>
-        ))}
-      </ScrollView>
-    </View>
+        <AppText variant="bodyStrong">{label(value)}</AppText>
+        <Ionicons name="chevron-down" size={18} color={c.muted} />
+      </Pressable>
+      <Sheet visible={open} title={t('profile.salaryDay')} onClose={() => setOpen(false)}>
+        <View style={{ gap: 8, paddingBottom: 8 }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {DAYS.map((day) => (
+              <Cell key={day} width={`${100 / COLUMNS - 2}%`} selected={day === value} label={String(day)} a11y={`Budget starts on day ${day}`} onPress={() => pick(day)} />
+            ))}
+          </View>
+          <Cell width="100%" selected={value === 31} label={t('budget.startDay.last')} a11y="Budget starts on the last day" onPress={() => pick(31)} />
+        </View>
+      </Sheet>
+    </>
+  );
+}
+
+function Cell({ width, selected, label, a11y, onPress }: { width: `${number}%`; selected: boolean; label: string; a11y: string; onPress: () => void }) {
+  const { c } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={a11y}
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={{
+        width, height: 44, borderRadius: radius.control, alignItems: 'center', justifyContent: 'center',
+        backgroundColor: selected ? c.accent : c.ground, borderWidth: 1, borderColor: selected ? c.accent : c.control,
+      }}
+    >
+      <AppText variant="bodyStrong" color={selected ? c.onAccent : c.text}>{label}</AppText>
+    </Pressable>
   );
 }

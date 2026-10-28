@@ -23,7 +23,8 @@ describe('Budget period', () => {
   test('a payday on the 25th starts the period on 25 Sep today, and budgets are saved under it', async () => {
     const db = await freshDb();
     await renderWithData(db, <Budget />);
-    await waitFor(() => expect(screen.getByLabelText('Budget starts on day 25')).toBeTruthy());
+    await waitFor(() => expect(screen.getByLabelText('Salary day: Day 1')).toBeTruthy());
+    await fireEvent.press(screen.getByLabelText('Salary day: Day 1'));
     await fireEvent.press(screen.getByLabelText('Budget starts on day 25'));
     await waitFor(() => expect(screen.getByText('25 Sep - 24 Oct')).toBeTruthy());
     expect(screen.getByText('1 day left')).toBeTruthy();
@@ -33,7 +34,8 @@ describe('Budget period', () => {
   test('the salary day on the profile is the budget start day', async () => {
     const db = await freshDb();
     await renderWithData(db, <Profile />);
-    await waitFor(() => expect(screen.getByLabelText('Budget starts on day 25')).toBeTruthy());
+    await waitFor(() => expect(screen.getByLabelText('Salary day: Day 1')).toBeTruthy());
+    await fireEvent.press(screen.getByLabelText('Salary day: Day 1'));
     await fireEvent.press(screen.getByLabelText('Budget starts on day 25'));
     await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(screen.getByText('Saved')).toBeTruthy());
@@ -53,15 +55,18 @@ describe('Budget period', () => {
     ]);
   });
 
-  test('the wheel offers every day from 1 to 31, saves on change, and 31 reads as the last day', async () => {
+  test('the picker offers every day from 1 to 31, saves on pick, and 31 reads as the last day', async () => {
     const db = await freshDb();
     await renderWithData(db, <Budget />);
-    await waitFor(() => expect(screen.getByLabelText('Budget starts on day 26')).toBeTruthy());
+    await waitFor(() => expect(screen.getByLabelText('Salary day: Day 1')).toBeTruthy());
+    await fireEvent.press(screen.getByLabelText('Salary day: Day 1'));
     expect(screen.getAllByLabelText(/^Budget starts on day \d+$/)).toHaveLength(30);
     await fireEvent.press(screen.getByLabelText('Budget starts on day 26'));
     await waitFor(async () => expect(await startDay(db)).toBe(26));
+    await fireEvent.press(screen.getByLabelText('Salary day: Day 26'));
     await fireEvent.press(screen.getByLabelText('Budget starts on the last day'));
     await waitFor(async () => expect(await startDay(db)).toBe(31));
     await waitFor(() => expect(screen.getByText('30 Sep - 30 Oct')).toBeTruthy());
+    expect(screen.getByLabelText('Salary day: Last day')).toBeTruthy();
   });
 });
