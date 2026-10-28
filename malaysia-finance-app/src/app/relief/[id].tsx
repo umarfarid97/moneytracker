@@ -17,6 +17,7 @@ import { AppText } from '@/ui/AppText';
 import { BackButton } from '@/ui/BackButton';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { ProgressBar } from '@/ui/ProgressBar';
 import { confirmDelete } from '@/ui/confirm';
 import { ReceiptField } from '@/ui/ReceiptField';
 import { Screen } from '@/ui/Screen';
@@ -39,6 +40,7 @@ export default function ReliefPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
 
   if (!def) {
     return (
@@ -80,6 +82,7 @@ export default function ReliefPage() {
   }
 
   function resetForm() {
+    setFormOpen(false);
     setEditingId(null);
     setAmountText('');
     setNote('');
@@ -119,6 +122,8 @@ export default function ReliefPage() {
     </View>
   );
 
+  // Existing claims keep the form folded away until you add or edit one; an empty relief shows it straight away.
+  const showForm = formOpen || editingId !== null || (spendingRows.length === 0 && manualClaims.length === 0);
   const canSave = amount !== null && amount > 0 && !busy;
   const footer = (
     <View style={{ gap: 8 }}>
@@ -127,7 +132,9 @@ export default function ReliefPage() {
           {error}
         </AppText>
       ) : null}
-      {editingId !== null ? (
+      {!showForm ? (
+        <Button title={t('tax.addAnother')} onPress={() => setFormOpen(true)} />
+      ) : editingId !== null || formOpen ? (
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <View style={{ flex: 2 }}>
             <Button title={t('common.save')} onPress={saveClaim} disabled={!canSave} />
@@ -147,18 +154,10 @@ export default function ReliefPage() {
       <BackButton />
       <View style={{ gap: 4 }}>
         <AppText variant="title">{reliefLabel(def)}</AppText>
-        <AppText variant="bodyStrong" tone="muted">
-          {t('tax.limit', { amount: formatRM(def.limit) })}
-        </AppText>
         {def.perItem ? (
-          <>
-            <AppText variant="small" tone="muted">
-              {t('tax.eachChild')}
-            </AppText>
-            <AppText variant="small" tone="muted">
-              {t('tax.eachChildSpending')}
-            </AppText>
-          </>
+          <AppText variant="small" tone="muted">
+            {t('tax.eachChild')}. {t('tax.eachChildSpending')}
+          </AppText>
         ) : null}
         {def.note ? (
           <AppText variant="small" tone="muted">
@@ -167,14 +166,12 @@ export default function ReliefPage() {
         ) : null}
       </View>
 
-      <Card style={{ gap: 4 }}>
-        <AppText variant="small" tone="muted">
-          {t('tax.claims')}
-        </AppText>
+      <Card style={{ gap: 6 }}>
         <AppText variant="kpi">{formatRM(entry?.allowed ?? 0)}</AppText>
         <AppText variant="small" tone="muted">
           {t('tax.claimedOf', { claimed: formatRM(entry?.allowed ?? 0), limit: formatRM(def.limit) })}
         </AppText>
+        <ProgressBar fraction={def.perItem ? (entry ? 1 : 0) : (entry?.allowed ?? 0) / def.limit} />
         {surplus > 0 ? (
           <AppText variant="small" tone="negative">
             {t('tax.notClaimable', { amount: formatRM(surplus) })}
@@ -263,31 +260,35 @@ export default function ReliefPage() {
         </View>
       ) : null}
 
-      {editingId !== null ? (
-        <AppText variant="section">{t('tax.editClaim')}</AppText>
+      {showForm ? (
+        <Card style={{ gap: 14 }}>
+        {editingId !== null ? (
+          <AppText variant="section">{t('tax.editClaim')}</AppText>
+        ) : null}
+        <AmountInput label={t('common.amount')} value={amountText} onChange={(text) => setAmountText(text)} />
+        <View style={{ gap: 8 }}>
+          <AppText variant="smallStrong">{t('common.note')}</AppText>
+          <TextInput
+            accessibilityLabel={t('common.note')}
+            value={note}
+            onChangeText={setNote}
+            placeholderTextColor={c.muted}
+            style={{
+              height: controlHeight,
+              borderRadius: radius.control,
+              backgroundColor: c.surface,
+              borderWidth: 1,
+              borderColor: c.control,
+              paddingHorizontal: 14,
+              color: c.text,
+              fontFamily: fontFamily.medium,
+              fontSize: 16,
+            }}
+          />
+        </View>
+        <ReceiptField uri={receiptUri} onChange={setReceiptUri} />
+        </Card>
       ) : null}
-      <AmountInput label={t('common.amount')} value={amountText} onChange={(text) => setAmountText(text)} />
-      <View style={{ gap: 8 }}>
-        <AppText variant="smallStrong">{t('common.note')}</AppText>
-        <TextInput
-          accessibilityLabel={t('common.note')}
-          value={note}
-          onChangeText={setNote}
-          placeholderTextColor={c.muted}
-          style={{
-            height: controlHeight,
-            borderRadius: radius.control,
-            backgroundColor: c.surface,
-            borderWidth: 1,
-            borderColor: c.control,
-            paddingHorizontal: 14,
-            color: c.text,
-            fontFamily: fontFamily.medium,
-            fontSize: 16,
-          }}
-        />
-      </View>
-      <ReceiptField uri={receiptUri} onChange={setReceiptUri} />
     </Screen>
   );
 }

@@ -164,7 +164,6 @@ export const ms: Record<StringKey, string> = {
   'pack.shareFailed': 'Tidak dapat berkongsi. Sila cuba lagi.',
   'pack.source.spending': 'Daripada perbelanjaan',
   'pack.source.manual': 'Ditaip sendiri',
-  'tax.upTo': 'Sehingga {amount}',
   'tax.claimedOf': '{claimed} daripada {limit}',
   'tax.limit': 'Had {amount} setahun',
   'tax.editClaim': 'Sunting tuntutan',
