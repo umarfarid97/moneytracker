@@ -137,6 +137,12 @@ export function mergeSnapshots(local: Snapshot, remote: Snapshot): Snapshot {
       }
     : null;
 
+  // The theme choice is one piece too: the newer copy wins (a tie goes to remote).
+  const themePrefs =
+    !local.themePrefs || (remote.themePrefs && remote.themePrefs.updatedAt >= local.themePrefs.updatedAt)
+      ? remote.themePrefs ?? null
+      : local.themePrefs;
+
   const tables = { budgets: [...finalBudgets.values()] } as Snapshot['tables'];
   for (const t of ENTITY_TABLES) tables[t] = [...rows[t].values()];
   return {
@@ -147,6 +153,7 @@ export function mergeSnapshots(local: Snapshot, remote: Snapshot): Snapshot {
     tables,
     profile,
     homeLayout,
+    themePrefs,
     deleted: [...tombs.values()],
   };
 }

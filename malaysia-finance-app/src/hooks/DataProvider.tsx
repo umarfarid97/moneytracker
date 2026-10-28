@@ -40,6 +40,8 @@ import type { NewOwedEntry, NewOwedProject, OwedEntry, OwedProject } from '@/dom
 import { clampPaymentDate, missedDueDates } from '@/domain/bills';
 import { todayKL } from '@/domain/dates';
 import { byDateDesc as givingNewest, type GivingRecord, type NewGivingRecord } from '@/domain/giving';
+import { THEME_KEY, APPEARANCE_KEY, THEME_AT_KEY } from '@/domain/themePrefs';
+import { applyThemePrefs, getAppearance, getThemeName, onThemePrefsChanged } from '@/ui/appearance';
 import { HOME_LAYOUT_AT_KEY, HOME_LAYOUT_KEY, parseHomeLayout, type HomeLayoutPrefs } from '@/domain/homeLayout';
 import { isPaidOff, loanBalance, nextPayment } from '@/domain/loanTracker';
 import type { Sen } from '@/domain/money';
@@ -168,23 +170,26 @@ type Loaded = {
   retirementEntries: RetirementEntry[]; givingRecords: GivingRecord[]; savingsAccounts: SavingsAccount[];
   owedEntries: OwedEntry[]; owedProjects: OwedProject[]; incomeRules: IncomeRule[]; incomeEntries: IncomeEntry[];
   homeLayout: HomeLayoutPrefs; demoLoaded: boolean;
+  themeSaved: { theme: string | null; appearance: string | null; at: number };
 };
 
 async function loadAll(db: Db): Promise<Loaded> {
   const [
     categories, expenses, budgets, commitments, reliefClaims, profile, paymentMethods,
-    retirementEntries, givingRecords, savingsAccounts, owedEntries, owedProjects, incomeRules, incomeEntries, homeLayoutRaw, demoLoaded,
+    retirementEntries, givingRecords, savingsAccounts, owedEntries, owedProjects, incomeRules, incomeEntries, homeLayoutRaw, demoLoaded, themeRaw, appearanceRaw, themeAt,
   ] = await Promise.all([
     listCategories(db), listAllExpenses(db), listAllBudgets(db),
     listCommitments(db), listAllReliefClaims(db), getProfile(db), listPaymentMethods(db),
     listRetirementEntries(db), listGivingRecords(db), listSavingsAccounts(db),
     listOwedEntries(db), listOwedProjects(db), listIncomeRules(db), listIncomeEntries(db),
     getSetting(db, HOME_LAYOUT_KEY), isDemoLoaded(db),
+    getSetting(db, THEME_KEY), getSetting(db, APPEARANCE_KEY), getSetting(db, THEME_AT_KEY),
   ]);
   return {
     categories, expenses, budgets, commitments, reliefClaims, profile, paymentMethods,
     retirementEntries, givingRecords, savingsAccounts, owedEntries, owedProjects, incomeRules, incomeEntries,
     homeLayout: parseHomeLayout(homeLayoutRaw), demoLoaded,
+    themeSaved: { theme: themeRaw, appearance: appearanceRaw, at: Number(themeAt) || 0 },
   };
 }
 
@@ -224,6 +229,8 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
     setSavingsAccounts(data.savingsAccounts);
     setOwedEntries(data.owedEntries); setOwedProjects(data.owedProjects); setIncomeRules(data.incomeRules); setIncomeEntries(data.incomeEntries);
     setHomeLayout(data.homeLayout);
+    // A theme choice synced from another device takes over here.
+    if (data.themeSaved.at) applyThemePrefs(data.themeSaved);
     setDemoLoaded(data.demoLoaded);
   }, [
     setCategories, setExpenses, setBudgets, setCommitments, setReliefClaims, setProfile, setPaymentMethods,
@@ -245,6 +252,19 @@ export function DataProvider({ db: injected, children }: { db?: Db; children: Re
       .catch((e: Error) => alive && setFailure(e));
     return () => { alive = false; };
   }, [db, apply]);
+
+  // Picking a theme or light/dark mode is saved into the synced settings with a timestamp.
+  useEffect(() => {
+    if (!db) return;
+    onThemePrefsChanged(() => {
+      void (async () => {
+        await setSetting(db, THEME_KEY, getThemeName());
+        await setSetting(db, APPEARANCE_KEY, getAppearance());
+        await setSetting(db, THEME_AT_KEY, String(Date.now()));
+      })().catch(() => {});
+    });
+    return () => onThemePrefsChanged(null);
+  }, [db]);
 
   const value = useMemo<DataContextValue | null>(() => {
     if (!db || !loaded || !profile) return null;
