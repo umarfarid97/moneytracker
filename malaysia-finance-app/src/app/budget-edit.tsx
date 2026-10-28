@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { Platform, TextInput, View, type TextStyle } from 'react-native';
 import { periodKey, periodLabel } from '@/domain/budgetPeriod';
 import { formatRM, parseRM, senToInput } from '@/domain/money';
 import { useBudgets } from '@/hooks/useBudgets';
@@ -8,15 +8,21 @@ import { useCategories } from '@/hooks/useCategories';
 import { useProfile } from '@/hooks/useProfile';
 import { useToday } from '@/hooks/useToday';
 import { t } from '@/i18n/t';
-import { AmountInput } from '@/ui/AmountInput';
 import { AppText } from '@/ui/AppText';
 import { BackButton } from '@/ui/BackButton';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { sanitizeNumber } from '@/ui/numeric';
 import { Screen } from '@/ui/Screen';
+import { fontFamily, radius } from '@/ui/theme';
+import { useTheme } from '@/ui/useTheme';
+
+/** Browsers draw their own focus ring inside the field. */
+const NO_WEB_OUTLINE = (Platform.OS === 'web' ? { outlineStyle: 'none' } : {}) as TextStyle;
 
 /** Edit the budget amount of every category for the current budget period. */
 export default function BudgetEdit() {
+  const { c } = useTheme();
   const today = useToday();
   const { data: profile } = useProfile();
   const startDay = profile.budgetStartDay;
@@ -89,16 +95,55 @@ export default function BudgetEdit() {
         <AppText testID="budget-total" variant="kpi">{formatRM(total)}</AppText>
       </Card>
       <Button title={t('budget.copyLast')} variant="secondary" onPress={() => copyFromLast().catch(() => setError(t('common.saveFailed')))} />
-      <View style={{ gap: 16 }}>
-        {parsed.map(({ category }) => (
-          <AmountInput
-            key={category.id}
-            label={category.name}
-            value={drafts[category.id] ?? ''}
-            onChange={(next) => setDrafts((prev) => ({ ...prev, [category.id]: next }))}
-          />
-        ))}
-      </View>
+      <Card style={{ paddingVertical: 4 }}>
+        {parsed.map(({ category, text, sen }, i) => {
+          const invalid = text !== '' && sen === null;
+          return (
+            <View
+              key={category.id}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
+                paddingVertical: 8,
+                borderTopWidth: i === 0 ? 0 : 1,
+                borderTopColor: c.border,
+              }}
+            >
+              <AppText variant="bodyStrong" style={{ flex: 1 }} numberOfLines={1}>{category.name}</AppText>
+              <View
+                style={{
+                  width: 140,
+                  height: 40,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  paddingHorizontal: 10,
+                  borderRadius: radius.control,
+                  borderWidth: 1,
+                  borderColor: invalid ? c.negative : c.control,
+                  backgroundColor: c.surface,
+                }}
+              >
+                <AppText variant="smallStrong" tone="muted">RM</AppText>
+                <TextInput
+                  accessibilityLabel={category.name}
+                  value={drafts[category.id] ?? ''}
+                  onChangeText={(raw) => setDrafts((prev) => ({ ...prev, [category.id]: sanitizeNumber(raw) }))}
+                  keyboardType="decimal-pad"
+                  inputMode="decimal"
+                  placeholder={t('amount.placeholder')}
+                  placeholderTextColor={c.muted}
+                  style={[
+                    { flex: 1, minWidth: 0, textAlign: 'right', color: c.text, fontFamily: fontFamily.medium, fontSize: 15, fontVariant: ['tabular-nums'] },
+                    NO_WEB_OUTLINE,
+                  ]}
+                />
+              </View>
+            </View>
+          );
+        })}
+      </Card>
     </Screen>
   );
 }
