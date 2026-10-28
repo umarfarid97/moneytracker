@@ -53,15 +53,12 @@ describe('Budget period', () => {
     ]);
   });
 
-  test('any day from 1 to 31 can be typed, and the last day is one tap', async () => {
+  test('the wheel offers every day from 1 to 31, saves on change, and 31 reads as the last day', async () => {
     const db = await freshDb();
     await renderWithData(db, <Budget />);
-    await waitFor(() => expect(screen.getByLabelText('Day (1 to 31)')).toBeTruthy());
-    expect(screen.getByRole('button', { name: 'Set' })).toBeDisabled();
-    await fireEvent.changeText(screen.getByLabelText('Day (1 to 31)'), '32');
-    expect(screen.getByRole('button', { name: 'Set' })).toBeDisabled();
-    await fireEvent.changeText(screen.getByLabelText('Day (1 to 31)'), '26');
-    await fireEvent.press(screen.getByRole('button', { name: 'Set' }));
+    await waitFor(() => expect(screen.getByLabelText('Budget starts on day 26')).toBeTruthy());
+    expect(screen.getAllByLabelText(/^Budget starts on day \d+$/)).toHaveLength(30);
+    await fireEvent.press(screen.getByLabelText('Budget starts on day 26'));
     await waitFor(async () => expect(await startDay(db)).toBe(26));
     await fireEvent.press(screen.getByLabelText('Budget starts on the last day'));
     await waitFor(async () => expect(await startDay(db)).toBe(31));

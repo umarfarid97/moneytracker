@@ -593,14 +593,10 @@ export const ms: Record<StringKey, string> = {
   'loans.totalOwed': 'Masih terhutang untuk pinjaman',
 
   'budget.period': 'Tempoh bajet',
-  'budget.startDay': 'Hari gaji / bulan bajet bermula pada',
-  'budget.startDayHint': 'Ini juga hari gaji dalam profil anda. Bajet, baki tinggal dan bil belum dibayar semuanya berjalan dari hari ini hingga sehari sebelum hari seterusnya.',
-  'profile.salaryDay': 'Gaji dibayar pada hari',
-  'profile.salaryDayHint': 'Sama dengan hari mula bajet. Gaji bersih dikira diterima pada hari ini, dan baki di Utama berjalan dari sini hingga sehari sebelum hari seterusnya.',
-  'budget.startDay.day': 'Hari (1 hingga 31)',
+  'budget.startDay': 'Hari gaji',
+  'budget.startDayHint': 'Sama dengan hari gaji dalam Profil.',
+  'profile.salaryDay': 'Hari gaji',
   'budget.startDay.last': 'Hari terakhir',
-  'budget.startDay.set': 'Tetapkan',
-  'budget.startDay.invalid': 'Masukkan hari dari 1 hingga 31',
   'budget.daysLeft': '{count} hari lagi',
   'budget.daysLeft1': '1 hari lagi',
 
