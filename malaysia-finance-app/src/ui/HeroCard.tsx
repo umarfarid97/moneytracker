@@ -1,23 +1,20 @@
 import type { ReactNode } from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
-import { cardChrome, radius, type Hero } from './theme';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { OnHeroContext } from './AppText';
+import { radius } from './theme';
 import { useTheme } from './useTheme';
 
 /** `hero` is kept so each tab can still name its card; every hero now looks the same. */
-type Props = { children: ReactNode; hero?: Hero; style?: StyleProp<ViewStyle> };
+type Props = { children: ReactNode; hero?: string; style?: StyleProp<ViewStyle> };
 
-/** Summary card at the top of a tab: a large white card with a soft shadow and a big blue figure. */
+/** Summary card at the top of a tab: a sage-green gradient with dark ink, light lime top-left to teal sage bottom-right. */
 export function HeroCard({ children, style }: Props) {
-  const { c, scheme } = useTheme();
+  const { c } = useTheme();
   return (
-    <View
-      style={[
-        { backgroundColor: c.surface, borderRadius: radius.card, padding: 22 },
-        cardChrome(c, scheme),
-        style,
-      ]}
-    >
-      {children}
+    <View style={[{ borderRadius: radius.card, overflow: 'hidden', padding: 22 }, style]}>
+      <LinearGradient colors={c.heroGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+      <OnHeroContext.Provider value>{children}</OnHeroContext.Provider>
     </View>
   );
 }

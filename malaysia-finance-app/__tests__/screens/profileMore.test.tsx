@@ -72,21 +72,17 @@ describe('More tab', () => {
   test('Settings no longer holds the pending bills switch', async () => {
     const db = await freshDb();
     await renderWithData(db, <Settings />);
-    await waitFor(() => expect(screen.getByText('Appearance')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Language')).toBeTruthy());
     expect(screen.queryByLabelText('Show unpaid bills in Spending')).toBeNull();
   });
 
-  test('Settings shows appearance and language as rows with the current value, and picks from a sheet', async () => {
+  test('Settings shows language as a row with the current value and no theme or appearance choice', async () => {
     const db = await freshDb();
     await renderWithData(db, <Settings />);
-    await waitFor(() => expect(screen.getByText('Appearance')).toBeTruthy());
-    expect(screen.getByText('Light')).toBeTruthy();
+    await waitFor(() => expect(screen.getByText('Language')).toBeTruthy());
+    expect(screen.queryByText('Appearance')).toBeNull();
+    expect(screen.queryByText('Theme')).toBeNull();
     expect(screen.getByText('English')).toBeTruthy();
-    await fireEvent.press(screen.getByText('Appearance'));
-    await fireEvent.press(screen.getByRole('button', { name: 'Dark' }));
-    expect(screen.getByText('Dark')).toBeTruthy();
-    await fireEvent.press(screen.getByText('Appearance'));
-    await fireEvent.press(screen.getByRole('button', { name: 'Light' }));
     await fireEvent.press(screen.getByText('Language'));
     await fireEvent.press(screen.getByRole('button', { name: 'Bahasa Malaysia' }));
     expect(screen.getByText('Tetapan')).toBeTruthy();

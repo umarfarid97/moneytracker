@@ -1,20 +1,4 @@
-// Web build only: the appearance choice lives in localStorage next to the sql.js database.
-export function loadAppearance(): string | null {
-  try {
-    return localStorage.getItem('duit.appearance');
-  } catch {
-    return null;
-  }
-}
-
-export function saveAppearance(value: string): void {
-  try {
-    localStorage.setItem('duit.appearance', value);
-  } catch {
-    // Ignore: storage blocked, the choice lasts for this visit only.
-  }
-}
-
+// Web build only: the language and balance choices live in localStorage next to the sql.js database.
 export function loadLanguage(): string | null {
   try {
     return localStorage.getItem('duit.language');
@@ -42,22 +26,6 @@ export function loadHideBalance(): boolean {
 export function saveHideBalance(hidden: boolean): void {
   try {
     localStorage.setItem('duit.hideBalance', hidden ? 'true' : 'false');
-  } catch {
-    // Ignore: storage blocked, the choice lasts for this visit only.
-  }
-}
-
-export function loadThemeName(): string | null {
-  try {
-    return localStorage.getItem('duit.theme');
-  } catch {
-    return null;
-  }
-}
-
-export function saveThemeName(value: string): void {
-  try {
-    localStorage.setItem('duit.theme', value);
   } catch {
     // Ignore: storage blocked, the choice lasts for this visit only.
   }

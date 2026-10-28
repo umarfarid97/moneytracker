@@ -1,107 +1,43 @@
 /**
- * Design direction (since 2026-10-25): modelled on the KWSP i-Akaun app.
- * - Light grey ground, plain white rounded cards with a soft neutral shadow. No gradients.
- * - One strong royal blue for actions, links, chevrons, the active tab and headline balances.
- * - Plain black line icons, iOS-style list rows with thin dividers and blue chevrons.
- * - Green for money in, red-orange for money out.
- * - A large round blue + in the middle of the tab bar adds spending.
- * Dark mode keeps the same structure on iOS greys with a lighter blue.
- *
- * That is the Classic theme. SaaS, Terminal and Notepad (themeDefs.ts) swap only fonts, colours, wallpaper and
- * card outlines; layout, sizes and components are shared.
+ * Design direction: one dark green look modelled on the Aether mockup.
+ * - Near-black ground with soft green light streaks (Wallpaper), charcoal rounded cards, no shadows.
+ * - A pale lime-mint accent for buttons, highlights and the active tab; mint for gains, lilac for losses.
+ * - A sage-green gradient summary card at the top of each tab.
+ * - Manrope, spaced uppercase eyebrow labels, a floating pill behind the active tab.
+ * All tokens live in themeDefs.ts; screens read them through useTheme() and never hard-code colours.
  */
 import type { Ionicons } from '@expo/vector-icons';
 import { Platform, type ViewStyle } from 'react-native';
 import type { Status } from '@/domain/budget';
-import { THEMES, type Fonts, type Palette, type Scheme, type ThemeName } from './themeDefs';
+import { FONTS, PALETTE, STATUS, type Fonts, type Palette, type Scheme } from './themeDefs';
 
-export type { Palette, Scheme, ThemeName } from './themeDefs';
+export type { Palette, Scheme } from './themeDefs';
 
-/** The Classic palettes: what the app has always looked like. Other themes live in THEMES. */
-export const palette = THEMES.classic.palette;
-
-let activeName: ThemeName = 'classic';
-
-/** The theme currently applied (see applyTheme). */
-export function activeTheme(): ThemeName {
-  return activeName;
-}
+export const palette = PALETTE;
 
 export const radius = { card: 22, control: 14, sm: 10, xs: 6, pill: 999 } as const;
 export const space = { xs: 4, s: 8, m: 12, gap: 16, pad: 20, xl: 24, xxl: 32 } as const;
 export const controlHeight = 50;
 
-/**
- * The active theme's font families (Classic uses Outfit). Each weight is its own loaded family
- * (see themeFonts.ts), so text sets the family for its weight instead of fontWeight.
- * applyTheme() rewrites these in place before screens re-render, so `fontFamily.medium` is always current.
- */
-export const fontFamily: Fonts = { ...THEMES.classic.fonts };
-
-/** Switches the module-level theme state (fonts, card outlines, status colours). The app calls it via setThemeName. */
-export function applyTheme(name: ThemeName): void {
-  activeName = name;
-  Object.assign(fontFamily, THEMES[name].fonts);
-}
+/** Manrope. Each weight is its own loaded family (see themeFonts.ts), so text sets the family instead of fontWeight. */
+export const fontFamily: Fonts = FONTS;
 
 export const fontSize = { title: 32, section: 20, kpi: 36, body: 16, small: 14 } as const;
 
-/**
- * Soft neutral elevation for cards; dark mode relies on the lighter surface instead.
- * Android draws every elevation as a real shadow layer, so it gets a light one to keep scrolling smooth.
- */
-export function elevation(scheme: Scheme): ViewStyle {
-  if (scheme === 'dark') return {};
-  if (Platform.OS === 'android') return { elevation: 2 };
-  return {
-    shadowColor: '#0b1530',
-    shadowOpacity: 0.07,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
-  };
+/** Cards are flat charcoal with a hairline edge; the dark ground does the separating, so no shadow. */
+export function elevation(_scheme: Scheme): ViewStyle {
+  return {};
 }
 
-/** Outline and/or shadow that lifts a card off the ground, as the active theme prescribes. */
-export function cardChrome(c: Palette, scheme: Scheme): ViewStyle {
-  const kind = THEMES[activeName].card[scheme];
-  const border: ViewStyle = { borderWidth: 1, borderColor: c.border };
-  if (kind === 'border') return border;
-  if (kind === 'both') return { ...border, ...(Platform.OS === 'android' ? { elevation: 1 } : lightShadow()) };
-  return elevation(scheme);
+/** Outline that lifts a card off the ground. */
+export function cardChrome(c: Palette, _scheme: Scheme): ViewStyle {
+  return { borderWidth: 1, borderColor: c.border };
 }
 
-function lightShadow(): ViewStyle {
-  return { shadowColor: '#0b1530', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } };
-}
-
-/** Lift under a prominent surface such as the tab bar's + button. `color` tints the shadow slightly. */
-export function glow(color: string, scheme: Scheme): ViewStyle {
-  if (scheme === 'dark') return {};
-  if (Platform.OS === 'android') return { elevation: 4 };
-  return { shadowColor: color, shadowOpacity: 0.28, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 6 };
-}
-
-export type Hero = 'brand' | 'ocean' | 'mint' | 'sunset';
-
-/** Gradients behind each tab's summary card. White text stays readable (4.5:1) on every stop. */
-const HEROES: Record<Scheme, Record<Hero, readonly [string, string, string]>> = {
-  light: {
-    brand: ['#4f46e5', '#7c3aed', '#c026d3'],
-    ocean: ['#1d4ed8', '#4f46e5', '#7c3aed'],
-    mint: ['#0f766e', '#0e7490', '#1d4ed8'],
-    sunset: ['#c2410c', '#be123c', '#a21caf'],
-  },
-  dark: {
-    brand: ['#3730a3', '#5b21b6', '#86198f'],
-    ocean: ['#1e3a8a', '#3730a3', '#5b21b6'],
-    mint: ['#115e59', '#155e75', '#1e3a8a'],
-    sunset: ['#9a3412', '#9f1239', '#86198f'],
-  },
-};
-
-export function heroGradient(hero: Hero, scheme: Scheme): readonly [string, string, string] {
-  return HEROES[scheme][hero];
+/** Soft green glow under a prominent surface such as the active tab pill and the + button. */
+export function glow(color: string, _scheme: Scheme): ViewStyle {
+  if (Platform.OS === 'android') return { elevation: 6, shadowColor: color };
+  return { shadowColor: color, shadowOpacity: 0.55, shadowRadius: 18, shadowOffset: { width: 0, height: 0 }, elevation: 6 };
 }
 
 export type IconName = keyof typeof Ionicons.glyphMap;
@@ -117,7 +53,7 @@ const CATEGORY_ICON: Record<string, IconName> = {
   Pendidikan: 'school-outline',
   'Lain-lain': 'apps-outline',
 };
-const CATEGORY_COLOR = palette.light.accent;
+const CATEGORY_COLOR = palette.accent;
 
 /** Line icons a user can pick for a category, grouped loosely by theme (food, travel, home, health, ...). */
 export const CATEGORY_ICONS: readonly IconName[] = [
@@ -150,13 +86,12 @@ export function categoryLook(name: string, icon?: string): { icon: IconName; col
 }
 
 /** Tint for a category tag. The design keeps tags neutral, so every category shares the same tag colours. */
-export function categoryTint(_name: string, scheme: Scheme, theme: ThemeName = activeName): { bg: string; ink: string } {
-  const p = THEMES[theme].palette[scheme];
-  return { bg: p.tagBg, ink: p.tagInk };
+export function categoryTint(_name: string, _scheme: Scheme = 'dark'): { bg: string; ink: string } {
+  return { bg: palette.tagBg, ink: palette.tagInk };
 }
 
-export function statusStyle(status: Status, scheme: Scheme, theme: ThemeName = activeName): { bg: string; ink: string } {
-  return THEMES[theme].status[scheme][status];
+export function statusStyle(status: Status, _scheme: Scheme = 'dark'): { bg: string; ink: string } {
+  return STATUS[status];
 }
 
 function luminance(hex: string): number {

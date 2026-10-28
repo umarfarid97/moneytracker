@@ -1,35 +1,39 @@
 import { StyleSheet } from 'react-native';
-import Svg, { Defs, Line, Pattern, Rect } from 'react-native-svg';
-import { THEMES } from './themeDefs';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useTheme } from './useTheme';
 
-const RULE = 32;
-const GRID = 28;
+/** Soft diagonal green light streaks fading from the top of the screen into the near-black ground. */
+const STREAKS = [
+  { x: '-10%', width: '28%', opacity: 0.34, angle: 18 },
+  { x: '18%', width: '14%', opacity: 0.22, angle: 18 },
+  { x: '38%', width: '30%', opacity: 0.26, angle: 18 },
+  { x: '70%', width: '16%', opacity: 0.16, angle: 18 },
+] as const;
 
-/**
- * Faint wallpaper behind a screen's content: ruled paper with a margin line (Notepad) or an editor grid
- * (Terminal). Classic and SaaS stay plain. It never receives touches and sits under every card.
- */
+/** Never receives touches and sits under every card. */
 export function Wallpaper() {
-  const { c, theme } = useTheme();
-  const kind = THEMES[theme].wallpaper;
-  if (kind === 'none') return null;
+  const { c } = useTheme();
   return (
     <Svg pointerEvents="none" style={StyleSheet.absoluteFill} width="100%" height="100%">
       <Defs>
-        {kind === 'ruled' ? (
-          <Pattern id="paper" width={RULE} height={RULE} patternUnits="userSpaceOnUse">
-            <Line x1="0" y1={RULE - 0.5} x2={RULE} y2={RULE - 0.5} stroke={c.wallpaperInk} strokeWidth={1} />
-          </Pattern>
-        ) : (
-          <Pattern id="grid" width={GRID} height={GRID} patternUnits="userSpaceOnUse">
-            <Line x1="0.5" y1="0" x2="0.5" y2={GRID} stroke={c.wallpaperInk} strokeWidth={1} />
-            <Line x1="0" y1="0.5" x2={GRID} y2="0.5" stroke={c.wallpaperInk} strokeWidth={1} />
-          </Pattern>
-        )}
+        <LinearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor={c.streak} stopOpacity="1" />
+          <Stop offset="0.55" stopColor={c.streak} stopOpacity="0.35" />
+          <Stop offset="1" stopColor={c.streak} stopOpacity="0" />
+        </LinearGradient>
       </Defs>
-      <Rect x="0" y="0" width="100%" height="100%" fill={kind === 'ruled' ? 'url(#paper)' : 'url(#grid)'} />
-      {kind === 'ruled' ? <Line x1={14} y1="0" x2={14} y2="100%" stroke={c.wallpaperAccent} strokeWidth={1.5} /> : null}
+      {STREAKS.map((s) => (
+        <Rect
+          key={s.x}
+          x={s.x}
+          y="-8%"
+          width={s.width}
+          height="46%"
+          fill="url(#fade)"
+          opacity={s.opacity}
+          transform={`rotate(${s.angle} 200 0)`}
+        />
+      ))}
     </Svg>
   );
 }

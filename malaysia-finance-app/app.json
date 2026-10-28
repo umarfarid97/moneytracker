@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": ["duit", "my.duit.app"],
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "ios": {
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "my.duit.app"
@@ -30,7 +30,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#1d5fd6",
+          "backgroundColor": "#090b0a",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
@@ -38,7 +38,7 @@
       [
         "expo-notifications",
         {
-          "color": "#1d5fd6"
+          "color": "#c5e9a1"
         }
       ],
       [
