@@ -41,12 +41,10 @@ export const ms: Record<StringKey, string> = {
   'home.balanceSetup': 'Masukkan gaji dalam profil untuk lihat baki setiap bulan',
   'home.balanceSetupButton': 'Tambah gaji',
 
-  'spending.monthTotal': '{amount} dibelanjakan bulan ini',
   'spending.search': 'Cari perbelanjaan',
   'spending.filters': 'Penapis',
   'spending.filtersCount': 'Penapis ({count})',
   'spending.clear': 'Kosongkan penapis',
-  'spending.byMethod': 'Mengikut cara bayaran',
   'spending.noMatch': 'Tiada yang sepadan dengan penapis ini',
   'spending.showing': 'Menunjukkan {count} daripada {total}',
   'spending.taggedOnly': 'Pelepasan cukai sahaja',

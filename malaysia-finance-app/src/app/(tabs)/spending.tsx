@@ -3,16 +3,17 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, TextInput, View } from 'react-native';
 import { LATEST_TAX_YEAR } from '@/data/tax';
-import { dayLabel, shortDate, monthKey, monthLabel, shiftMonth } from '@/domain/dates';
+import { dayLabel, dayMonth, shortDate, monthLabel, shiftMonth } from '@/domain/dates';
+import { periodEnd, periodKey, periodLabel } from '@/domain/budgetPeriod';
 import { billEstimate, lastPaidFor } from '@/domain/bills';
 import { loanBalance, nextPayment } from '@/domain/loanTracker';
 import { formatRM } from '@/domain/money';
 import { brandForBill, brandForNote } from '@/domain/brandLookup';
 import { pendingBills, type PendingBill } from '@/domain/pendingBills';
 import {
-  activeFilterCount, EMPTY_FILTERS, filterExpenses, totalsByMethod, type SpendingFilters,
+  activeFilterCount, EMPTY_FILTERS, filterExpenses, type SpendingFilters,
 } from '@/domain/spendingFilter';
-import { groupByDay, monthSpent } from '@/domain/summary';
+import { groupByDay } from '@/domain/summary';
 import type { Category, Commitment, Expense, PaymentMethod } from '@/domain/types';
 import { MarkPaidSheet } from '@/features/commitments/MarkPaidSheet';
 import { useCategories } from '@/hooks/useCategories';
@@ -26,18 +27,16 @@ import { methodLabel } from '@/i18n/content';
 import { t } from '@/i18n/t';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
-import { Card } from '@/ui/Card';
 import { Chip } from '@/ui/Chip';
 import { MethodBadge } from '@/ui/MethodBadge';
 import { confirmDelete } from '@/ui/confirm';
 import { EmptyState } from '@/ui/EmptyState';
-import { HeroCard } from '@/ui/HeroCard';
 import { BrandBadge } from '@/ui/BrandBadge';
 import { IconBadge } from '@/ui/IconBadge';
 import { Screen } from '@/ui/Screen';
 import { Sheet } from '@/ui/Sheet';
 import { SwipeRow } from '@/ui/SwipeRow';
-import { categoryLook, categoryTint, controlHeight, elevation, fontFamily, radius, space, statusStyle } from '@/ui/theme';
+import { categoryLook, cardChrome, cardRadius, categoryTint, controlHeight, elevation, fontFamily, radius, space, statusStyle } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
 type Item =
@@ -46,6 +45,10 @@ type Item =
   | { type: 'pending'; key: string; bill: PendingBill };
 
 const RELIEFS = LATEST_TAX_YEAR.reliefs;
+
+/** "1 Oct - 31 Oct" for the period, even for a calendar month (periodLabel alone gives just the month name there). */
+const rangeLabel = (key: string, startDay: number) =>
+  startDay === 1 ? `${dayMonth(`${key}-01`)} - ${dayMonth(periodEnd(key, 1))}` : periodLabel(key, startDay);
 
 /** A bill that is due but not paid yet: muted, with a quick Mark paid. It is not spending until it is paid. */
 const PendingRow = memo(function PendingRow({ bill, amount, onPay }: { bill: PendingBill; amount: number; onPay: (b: PendingBill) => void }) {
@@ -160,7 +163,10 @@ const Row = memo(function Row({
 export default function Spending() {
   const { c, scheme } = useTheme();
   const today = useToday();
-  const thisMonth = monthKey(today);
+  const { profile } = useData();
+  const startDay = profile.budgetStartDay;
+  // The "month" is the user's budget period (payday to payday); a start day of 1 is the calendar month.
+  const thisMonth = periodKey(today, startDay);
   const [month, setMonth] = useState(thisMonth);
   const [filters, setFilters] = useState<SpendingFilters>(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -174,15 +180,16 @@ export default function Spending() {
     setMonth(thisMonth);
   }, [params.categoryId, params.at]);
   const { data: expenses, remove } = useExpenses();
-  const { payBill, profile } = useData();
+  const { payBill } = useData();
   const { data: commitments } = useCommitments();
   const [showPending, setShowPending] = useShowPending();
   const [pay, setPay] = useState<{ bill: PendingBill | null; nonce: number }>({ bill: null, nonce: 0 });
   const { data: categories } = useCategories();
   const { data: methods } = usePaymentMethods();
 
+  const tileInk = c.tilePalette ? c.tileInk : c.onAccent;
   const filterCount = activeFilterCount(filters);
-  const inMonth = useMemo(() => expenses.filter((e) => monthKey(e.date) === month), [expenses, month]);
+  const inMonth = useMemo(() => expenses.filter((e) => periodKey(e.date, startDay) === month), [expenses, month, startDay]);
   const visible = useMemo(
     () => filterExpenses(inMonth, filters, { categories, methods, reliefs: RELIEFS }),
     [inMonth, filters, categories, methods],
@@ -212,7 +219,6 @@ export default function Spending() {
   const categoryById = useMemo(() => new Map(categories.map((cat) => [cat.id, cat])), [categories]);
   const filterCategory = filters.categoryId !== null ? categoryById.get(filters.categoryId) : undefined;
   const methodById = useMemo(() => new Map(methods.map((m) => [m.id, m])), [methods]);
-  const methodTotals = useMemo(() => totalsByMethod(inMonth, methods, t('methods.noMethod')), [inMonth, methods]);
   const narrowed = filterCount > 0 || filters.text.trim() !== '';
 
   const open = useCallback((e: Expense) => {
@@ -281,7 +287,14 @@ export default function Spending() {
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <View style={{ gap: 12, marginBottom: 8 }}>
-            <HeroCard hero="ocean" style={{ gap: 10 }}>
+            <View
+              testID="month-tile"
+              style={[
+                // A coloured tile in the theme's own palette; Classic falls back to its accent.
+                { backgroundColor: c.tilePalette?.[0] ?? c.accent, borderRadius: cardRadius(), paddingHorizontal: 22, paddingVertical: 18 },
+                cardChrome(c, scheme),
+              ]}
+            >
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Pressable
                   accessibilityRole="button"
@@ -289,9 +302,14 @@ export default function Spending() {
                   hitSlop={12}
                   onPress={() => setMonth((m) => shiftMonth(m, -1))}
                 >
-                  <Ionicons name="chevron-back" size={24} color={c.heroInk} />
+                  <Ionicons name="chevron-back" size={24} color={tileInk} />
                 </Pressable>
-                <AppText variant="section" color={c.heroInk}>{monthLabel(month)}</AppText>
+                <View style={{ alignItems: 'center', gap: 2 }}>
+                  <AppText variant="section" color={tileInk}>{monthLabel(month)}</AppText>
+                  <AppText testID="month-range" variant="bodyStrong" color={tileInk} style={{ opacity: 0.75 }}>
+                    {rangeLabel(month, startDay)}
+                  </AppText>
+                </View>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={t('spending.nextMonth')}
@@ -301,34 +319,10 @@ export default function Spending() {
                   onPress={() => setMonth((m) => shiftMonth(m, 1))}
                   style={{ opacity: month >= thisMonth ? 0.3 : 1 }}
                 >
-                  <Ionicons name="chevron-forward" size={24} color={c.heroInk} />
+                  <Ionicons name="chevron-forward" size={24} color={tileInk} />
                 </Pressable>
               </View>
-              <View style={{ alignSelf: 'center', backgroundColor: c.heroChip, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 6 }}>
-                <AppText variant="bodyStrong" color={c.heroInk} style={{ textAlign: 'center' }}>
-                  {t('spending.monthTotal', { amount: formatRM(monthSpent(expenses, month)) })}
-                </AppText>
-              </View>
-            </HeroCard>
-
-            {methodTotals.length > 0 ? (
-              <Card style={{ gap: 8 }}>
-                <AppText variant="eyebrow" tone="muted">
-                  {t('spending.byMethod')}
-                </AppText>
-                {methodTotals.map((m) => (
-                  <View key={m.methodId ?? 'none'} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                      {m.kind ? <MethodBadge name={m.name} kind={m.kind} size={24} /> : null}
-                      <AppText variant="body">{m.name}</AppText>
-                    </View>
-                    <AppText testID={`method-total-${m.methodId ?? 'none'}`} variant="bodyStrong">
-                      {formatRM(m.total)}
-                    </AppText>
-                  </View>
-                ))}
-              </Card>
-            ) : null}
+            </View>
 
             <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
               <View
