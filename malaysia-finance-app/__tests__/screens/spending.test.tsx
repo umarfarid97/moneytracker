@@ -24,10 +24,9 @@ describe('Spending: pending bills', () => {
     expect(screen.getByText('Pending bills')).toBeTruthy();
     expect(screen.getByText('Pending')).toBeTruthy();
     expect(screen.getByText(/^Due (\w{3} )?30 Oct$/)).toBeTruthy();
-    expect(screen.getByText('RM 10.00 spent this month')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Mark paid Internet' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Confirm paid' }));
-    await waitFor(() => expect(screen.getByText('RM 40.00 spent this month')).toBeTruthy());
+    await waitFor(() => expect(screen.queryByTestId('pending-row')).toBeNull());
     expect(screen.queryByTestId('pending-row')).toBeNull();
     expect(screen.queryByText('Pending bills')).toBeNull();
     expect(screen.getByText('Internet')).toBeTruthy(); // now a real transaction
@@ -80,7 +79,8 @@ describe('Spending', () => {
     expect(screen.getByText('nasi lemak')).toBeTruthy();
     expect(screen.getByText('RM 17.50')).toBeTruthy();
     expect(screen.getAllByText('RM 20.00')).toHaveLength(2); // day total and the dinner row
-    expect(screen.getByText('RM 37.50 spent this month')).toBeTruthy();
+    expect(screen.getByTestId('month-range').props.children).toBe('1 Oct - 31 Oct');
+    expect(screen.queryByText(/spent this month/)).toBeNull();
     expect(screen.queryByText('last month')).toBeNull();
   });
 

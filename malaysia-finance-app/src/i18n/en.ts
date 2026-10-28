@@ -41,12 +41,10 @@ export const en = {
   'home.balanceSetup': 'Add your salary in your profile to see what is left each month',
   'home.balanceSetupButton': 'Add salary',
 
-  'spending.monthTotal': '{amount} spent this month',
   'spending.search': 'Search spending',
   'spending.filters': 'Filters',
   'spending.filtersCount': 'Filters ({count})',
   'spending.clear': 'Clear filters',
-  'spending.byMethod': 'By payment method',
   'spending.noMatch': 'Nothing matches these filters',
   'spending.showing': 'Showing {count} of {total}',
   'spending.taggedOnly': 'Tax relief only',

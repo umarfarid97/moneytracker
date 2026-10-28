@@ -25,14 +25,11 @@ async function seeded() {
 }
 const shown = () => screen.queryAllByTestId('spending-note').map((n) => n.props.children);
 
-describe('Spending: totals by payment method', () => {
-  test('shows what was paid with each method this month, biggest first', async () => {
+describe('Spending: payment method tiles', () => {
+  test('are gone from the page', async () => {
     await seeded();
-    expect(screen.getByText('By payment method')).toBeTruthy();
-    expect(screen.getByTestId('method-total-3').props.children).toBe('RM 125.00');
-    expect(screen.getByTestId('method-total-1').props.children).toBe('RM 12.50');
-    expect(screen.getByTestId('method-total-none').props.children).toBe('RM 7.00');
-    expect(screen.getByText('No method')).toBeTruthy();
+    expect(screen.queryByText('By payment method')).toBeNull();
+    expect(screen.queryByTestId('method-total-3')).toBeNull();
   });
 });
 
