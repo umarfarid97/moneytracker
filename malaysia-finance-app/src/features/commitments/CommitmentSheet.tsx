@@ -1,9 +1,9 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
 import { resolveTaxData } from '@/data/tax';
-import { BILLER_GROUPS, billersIn, type BillerGroup } from '@/domain/billers';
-import { SUBSCRIPTION_GROUPS, subscriptionsIn, type SubscriptionGroup } from '@/domain/subscriptions';
+import { BILLERS } from '@/domain/billers';
+import { SUBSCRIPTIONS } from '@/domain/subscriptions';
 import { BNPL_PROVIDERS, bnplFor, instalmentNumber, LOAN_TYPES, startFromCycle } from '@/domain/loanTracker';
 import { isValidDate } from '@/domain/dates';
 import { parsePercent, parseRM, senToInput, type Sen } from '@/domain/money';
@@ -140,8 +140,6 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
   const [startsOn, setStartsOn] = useState(existing?.startsOn ?? today);
   const [hasEnd, setHasEnd] = useState(existing?.endsOn != null);
   const [endsOn, setEndsOn] = useState(existing?.endsOn ?? today);
-  const [group, setGroup] = useState<BillerGroup>('utilities');
-  const [subGroup, setSubGroup] = useState<SubscriptionGroup>('streaming');
   const [step, setStep] = useState<'choose' | 'form'>(existing ? 'form' : 'choose');
   const [moreOpen, setMoreOpen] = useState(existing !== null);
   const [catOpen, setCatOpen] = useState(false);
@@ -363,14 +361,9 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
 
   const quickPicks = existing ? null : kind === 'subscription' ? (
     <View style={{ gap: 8 }}>
-      <Label text={t('subscriptions.pick')} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-        {SUBSCRIPTION_GROUPS.map((g) => (
-          <Chip key={g} compact label={t(`subscriptions.group.${g}`)} selected={subGroup === g} onPress={() => setSubGroup(g)} />
-        ))}
-      </ScrollView>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-        {subscriptionsIn(subGroup).map((b) => (
+      <Label text={t('addflow.suggestions')} />
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {SUBSCRIPTIONS.map((b) => (
           <Chip
             key={b.id}
             label={b.name}
@@ -385,19 +378,14 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
             }}
           />
         ))}
-      </ScrollView>
+      </View>
       <AppText variant="small" tone="muted">{t('subscriptions.hint')}</AppText>
     </View>
   ) : (
     <View style={{ gap: 8 }}>
-      <Label text={t('billers.pick')} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-        {BILLER_GROUPS.map((g) => (
-          <Chip key={g} compact label={t(`billers.group.${g}`)} selected={group === g} onPress={() => setGroup(g)} />
-        ))}
-      </ScrollView>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-        {billersIn(group).map((b) => (
+      <Label text={t('addflow.suggestions')} />
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {BILLERS.map((b) => (
           <Chip
             key={b.id}
             label={b.name}
@@ -413,7 +401,7 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
             }}
           />
         ))}
-      </ScrollView>
+      </View>
       <AppText variant="small" tone="muted">{t('billers.hint')}</AppText>
     </View>
   );
@@ -507,8 +495,9 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
           {isLoan ? (
             <>
             <Section title={t('loans.sec.about')}>
+              {nameField}
               <View style={{ gap: 8 }}>
-                <AppText variant="smallStrong">{t('loans.type')}</AppText>
+                <Label text={t('addflow.suggestions')} />
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   {LOAN_TYPES.map((lt) => (
                     <Chip
@@ -522,9 +511,6 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
                       }}
                     />
                   ))}
-                </View>
-                {loanType === 'bnpl' ? (
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                     {BNPL_PROVIDERS.map((p) => (
                       <Chip
                         key={p.id}
@@ -532,13 +518,11 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
                         accessibilityLabel={`Pay later ${p.name}`}
                         leading={<BrandBadge id={p.id} initials={p.initials} color={p.color} ink={p.ink} size={22} />}
                         selected={bnplFor(name)?.id === p.id}
-                        onPress={() => setName(p.name)}
+                        onPress={() => { setLoanType('bnpl'); setName(p.name); }}
                       />
                     ))}
-                  </View>
-                ) : null}
+                </View>
               </View>
-              {nameField}
             </Section>
             <Section title={t('loans.sec.amounts')}>
               <AmountInput plain required label={t('loans.payment')} value={amountText} onChange={(text) => setAmountText(text)} />

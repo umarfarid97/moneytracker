@@ -49,16 +49,27 @@ describe('biller presets', () => {
     ]);
   });
 
-  test('Subscription quick picks are separate from bill billers and grouped', async () => {
+  test('Subscription suggestions appear together without type filters', async () => {
     const db = await freshDb();
     await openAdd(db, 'Subscription');
     expect(screen.getByRole('button', { name: 'Subscription Netflix' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Biller TNB electricity' })).toBeNull();
-    await fireEvent.press(screen.getByRole('button', { name: 'Cloud storage' }));
+    expect(screen.queryByRole('button', { name: 'Cloud storage' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Streaming' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Subscription Google One' })).toBeTruthy();
-    await fireEvent.press(screen.getByRole('button', { name: 'AI' }));
+    expect(screen.queryByRole('button', { name: 'AI' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Subscription Claude' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Subscription ChatGPT' })).toBeTruthy();
+  });
+
+  test('bill suggestions include all types immediately without type filters', async () => {
+    const db = await freshDb();
+    await openAdd(db);
+    expect(screen.queryByRole('button', { name: 'Utilities' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Internet' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Biller TNB electricity' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Biller Unifi' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Biller House rent' })).toBeTruthy();
   });
 
   test('a bill named after a biller gets its badge in the list', async () => {
@@ -136,7 +147,7 @@ describe('loans', () => {
   test('pay later providers fill in the name', async () => {
     const db = await freshDb();
     await openAdd(db, 'Loan / Instalment');
-    await fireEvent.press(screen.getByRole('button', { name: 'Pay later' }));
+    expect(screen.getByText('Suggestions')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Pay later Atome' }));
     expect(screen.getByLabelText('Name').props.value).toBe('Atome');
     await fireEvent.press(screen.getByRole('button', { name: 'Pay later ShopeePayLater' }));
