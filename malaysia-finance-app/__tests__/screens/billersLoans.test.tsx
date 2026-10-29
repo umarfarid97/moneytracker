@@ -72,6 +72,26 @@ describe('biller presets', () => {
     expect(screen.getByRole('button', { name: 'Biller House rent' })).toBeTruthy();
   });
 
+  test('changing commitment type clears the previous name, while returning to the same type keeps it', async () => {
+    const db = await freshDb();
+    await openAdd(db, 'Subscription');
+    await fireEvent.press(screen.getByRole('button', { name: 'Subscription Google One' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Back' }));
+    await fireEvent.press(screen.getByRole('button', { name: /^Subscription\./ }));
+    expect(screen.getByLabelText('Name').props.value).toBe('Google One');
+    await fireEvent.press(screen.getByRole('button', { name: 'Back' }));
+    await fireEvent.press(screen.getByRole('button', { name: /^Loan \/ Instalment\./ }));
+    expect(screen.getByLabelText('Name').props.value).toBe('');
+    await fireEvent.press(screen.getByRole('button', { name: 'Home loan' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Back' }));
+    await fireEvent.press(screen.getByRole('button', { name: /^Bills\./ }));
+    expect(screen.getByLabelText('Name').props.value).toBe('');
+    await fireEvent.changeText(screen.getByLabelText('Name'), 'My custom bill');
+    await fireEvent.press(screen.getByRole('button', { name: 'Back' }));
+    await fireEvent.press(screen.getByRole('button', { name: /^Subscription\./ }));
+    expect(screen.getByLabelText('Name').props.value).toBe('');
+  });
+
   test('a bill named after a biller gets its badge in the list', async () => {
     const db = await freshDb();
     await db.run("INSERT INTO commitments (name, amount, day_of_month, kind, start_date) VALUES ('Unifi Home', 12900, 5, 'bill', '2026-10-01')");

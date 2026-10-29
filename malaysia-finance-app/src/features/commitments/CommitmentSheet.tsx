@@ -329,6 +329,7 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
   const flowTone = flow === 'bill' ? c.accent : flow === 'loan' ? c.positive : c.negative;
   const choosing = step === 'choose';
   const chooseFlow = (f: Flow) => {
+    if (FLOW_KIND[f] !== kind) setName('');
     setKind(FLOW_KIND[f]);
     setVariable(false);
     setStep('form');
