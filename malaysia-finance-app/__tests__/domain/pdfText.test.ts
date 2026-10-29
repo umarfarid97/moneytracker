@@ -59,6 +59,14 @@ describe('extractPdfLines', () => {
 });
 
 describe('PDF resource limits', () => {
+  test('scans long digit runs without quadratic object-header retries', () => {
+    const pdf = enc('%PDF\n' + '1'.repeat(100000) + '\n');
+    expect(vm.runInNewContext('parse(bytes)', { parse: extractPdfLines, bytes: pdf }, { timeout: 1500 })).toEqual([]);
+  });
+  test('scans long digit runs in reference lists without quadratic retries', () => {
+    const pdf = enc('%PDF\n1 0 obj << /Type /Page /Contents [' + '1'.repeat(100000) + '] >> endobj');
+    expect(vm.runInNewContext('parse(bytes)', { parse: extractPdfLines, bytes: pdf }, { timeout: 1500 })).toEqual([]);
+  });
   test('rejects input over 10 MiB at parser entry', () => {
     expect(() => extractPdfLines(new Uint8Array(10 * 1024 * 1024 + 1))).toThrow(/limit|large/i);
   });

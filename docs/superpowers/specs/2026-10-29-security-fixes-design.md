@@ -1,6 +1,6 @@
 # Duit security fixes design
 
-Status: proposed implementation design, awaiting review. Date: 29 October 2026.
+Status: approved by the user in chat; implemented locally, pending integration and release checks. Date: 29 October 2026.
 
 ## Intent and agreed scope
 
@@ -12,7 +12,7 @@ Do not deploy, run production migrations, modify live accounts, read production 
 
 The conversation selected incremental fixes in three batches: input safety, device privacy, backend consistency. Retain Expo 58, React Native, existing storage adapters, D1/R2 and encryption.
 
-For backend consistency, the builder proposes a per-account Cloudflare Durable Object coordinator for account data operations. It provides a single enforced ordering point across awaited R2/D1 operations. Atomic OTP accounting remains in D1, keyed by email/code identity. This is an implementation choice proposed here, not a previously approved infrastructure change.
+For backend consistency, the builder proposes a per-account Cloudflare Durable Object coordinator for account data operations. It provides a single enforced ordering point across awaited R2/D1 operations. Atomic OTP accounting remains in D1, keyed by email/code identity. The user approved this coordinator approach in chat before implementation.
 
 Alternative: implement storage reservations, deletion fencing, recovery leases and reconciliation solely in D1/R2. That avoids a new binding but introduces more distributed failure states. An in-memory Worker mutex is rejected because it cannot coordinate multiple Worker instances. Prefer the coordinator, with restart-safe state and tests; a single-threaded object alone is insufficient because requests can interleave across awaits.
 

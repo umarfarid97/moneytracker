@@ -1,8 +1,12 @@
+import { mem } from '../test-support/securityMocks';
+import { enableLock, resetLockForTests } from '@/security/appLock';
 import { NO_LOAN } from '@/domain/loanTracker';
 import * as Notifications from 'expo-notifications';
 import { notifyBudgetAlert, scheduleReminders } from '@/notifications';
 import type { Commitment } from '@/domain/types';
 
+jest.mock('expo-crypto', () => jest.requireActual('../test-support/securityMocks').cryptoMock());
+jest.mock('@/security/lockStorage', () => jest.requireActual('../test-support/securityMocks').lockStorageMock());
 jest.mock('expo-notifications', () => ({
   SchedulableTriggerInputTypes: { DATE: 'date' },
   AndroidImportance: { HIGH: 4 },
@@ -10,6 +14,9 @@ jest.mock('expo-notifications', () => ({
   requestPermissionsAsync: jest.fn(),
   setNotificationChannelAsync: jest.fn(),
   cancelAllScheduledNotificationsAsync: jest.fn(),
+  dismissAllNotificationsAsync: jest.fn(),
+  getPresentedNotificationsAsync: jest.fn(async () => []),
+  dismissNotificationAsync: jest.fn(),
   scheduleNotificationAsync: jest.fn(),
 }));
 
@@ -22,6 +29,7 @@ const c = (id: number, name: string, amount: number, dayOfMonth: number, active 
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mem.settings = null; mem.pin = null; mem.attempts = null; mem.failRead = false; mem.failWrite = false; resetLockForTests();
   n.getPermissionsAsync.mockResolvedValue({ granted: true, canAskAgain: true } as never);
 });
 
@@ -179,4 +187,77 @@ describe('reminders and bill dates', () => {
     const first = (n.scheduleNotificationAsync.mock.calls[0][0] as { trigger: { date: Date } }).trigger.date.toISOString();
     expect(first).toBe('2026-12-23T01:00:00.000Z');
   });
+});
+
+test('cancellation failure is reported so privacy refresh cannot claim success', async () => {
+  await enableLock('824613', 6);
+  n.cancelAllScheduledNotificationsAsync.mockRejectedValueOnce(new Error('cancel failed'));
+  await expect(scheduleReminders([c(1, 'Astro', 8900, 24)], now)).rejects.toThrow('cancel failed');
+});
+test('lock-enabled refresh removes delivered notifications and hides amounts in replacements', async () => {
+  n.scheduleNotificationAsync.mockReset(); n.scheduleNotificationAsync.mockResolvedValue('id');
+  await enableLock('824613', 6);
+  await scheduleReminders([c(1, 'Astro', 8900, 24)], now);
+  expect(n.getPresentedNotificationsAsync).toHaveBeenCalled();
+  const bodies = n.scheduleNotificationAsync.mock.calls.map(call => call[0].content.body);
+  expect(bodies).toHaveLength(3);
+  expect(bodies.every(body => !body?.includes('89.00'))).toBe(true);
+});
+
+test('an in-flight amount-bearing replacement cannot win after the locked replacement', async () => {
+  const pending: string[] = [];
+  let release!: () => void;
+  let entered!: () => void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  const held = new Promise<void>(resolve => { release = resolve; });
+  n.cancelAllScheduledNotificationsAsync.mockImplementation(async () => { pending.length = 0; });
+  let first = true;
+  n.scheduleNotificationAsync.mockImplementation(async request => {
+    if (first) { first = false; entered(); await held; }
+    pending.push(request.content.body as string);
+    return 'id';
+  });
+  const old = scheduleReminders([c(1, 'Astro', 8900, 24)], now);
+  await started;
+  await enableLock('824613', 6);
+  const privacy = scheduleReminders([c(1, 'Astro', 8900, 24)], now);
+  release(); await Promise.all([old, privacy]);
+  expect(pending).toHaveLength(3);
+  expect(pending.every(body => !body.includes('89.00'))).toBe(true);
+});
+
+test('delivered privacy refresh preserves pinned quick add while dismissing financial details', async () => {
+  n.scheduleNotificationAsync.mockReset(); n.scheduleNotificationAsync.mockResolvedValue('id');
+  await enableLock('824613', 6);
+  n.getPresentedNotificationsAsync.mockResolvedValueOnce([
+    { date: 1, request: { identifier: 'quick-add', trigger: null, content: { title: 'Add spending', body: null, subtitle: null, sound: null, badge: null, categoryIdentifier: '', data: { url: '/add-expense' } } } },
+    { date: 1, request: { identifier: 'old-bill', trigger: null, content: { title: 'Astro', body: 'RM 89.00', subtitle: null, sound: null, badge: null, categoryIdentifier: '', data: {} } } },
+  ] as never);
+  await scheduleReminders([c(1, 'Astro', 8900, 24)], now);
+  expect(n.dismissNotificationAsync.mock.calls).toEqual([['old-bill']]);
+});
+
+test('a budget alert cannot finish after the privacy refresh and leave an old amount visible', async () => {
+  const delivered: { request: { identifier: string; content: { body: string; data: object } } }[] = [];
+  let entered!: () => void;
+  let release!: () => void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  const held = new Promise<void>(resolve => { release = resolve; });
+  n.scheduleNotificationAsync.mockImplementationOnce(async request => {
+    entered(); await held;
+    delivered.push({ request: { identifier: 'budget', content: { body: String(request.content.body), data: {} } } });
+    return 'budget';
+  });
+  n.getPresentedNotificationsAsync.mockImplementation(async () => delivered as never);
+  n.dismissNotificationAsync.mockImplementation(async () => { delivered.length = 0; });
+  const budget = notifyBudgetAlert('Food', { status: 'over', spent: 12000, limit: 10000 });
+  await started;
+  await enableLock('824613', 6);
+  let refreshed = false;
+  const privacy = scheduleReminders([], now).then(() => { refreshed = true; });
+  await new Promise(resolve => setImmediate(resolve));
+  const completedBeforeOldAlert = refreshed;
+  release(); await Promise.all([budget, privacy]);
+  expect(completedBeforeOldAlert).toBe(false);
+  expect(delivered).toEqual([]);
 });

@@ -1,25 +1,25 @@
 import { router } from 'expo-router';
 import * as Notifications from 'expo-notifications';
-import { useEffect, useRef } from 'react';
+import { getLockState, useAppLock } from '@/security/appLock';
+import { useCallback, useEffect, useRef } from 'react';
 import { useLanguage } from '@/i18n/language';
 import {
   hideQuickAddNotification, isQuickAddResponse, listenForShortcut, setShortcuts, showQuickAddNotification,
   useQuickAddEnabled, ADD_SPENDING_ROUTE,
 } from './quickAdd';
 
-const openAddSpending = () => {
-  // After the current tick, so the navigator exists when the app was opened cold from the shortcut.
-  setTimeout(() => {
-    try {
-      router.push(ADD_SPENDING_ROUTE);
-    } catch {
-      // Navigator not ready: the person lands on Home and can tap + instead.
-    }
-  });
-};
-
 /** Keeps the quick-add notification and home screen shortcut in step with the setting and the language. */
 export function QuickAddSync() {
+  const { locked } = useAppLock();
+  const pending = useRef(false);
+  const openAddSpending = useCallback(() => {
+    pending.current = true;
+    setTimeout(() => {
+      if (!pending.current || getLockState().locked) return;
+      try { router.push(ADD_SPENDING_ROUTE); pending.current = false; } catch { /* Navigator not ready. */ }
+    });
+  }, []);
+  useEffect(() => { if (!locked && pending.current) openAddSpending(); }, [locked, openAddSpending]);
   const enabled = useQuickAddEnabled();
   const language = useLanguage();
   const response = Notifications.useLastNotificationResponse();
@@ -29,7 +29,7 @@ export function QuickAddSync() {
     setShortcuts();
   }, [language]);
 
-  useEffect(() => listenForShortcut(openAddSpending), []);
+  useEffect(() => listenForShortcut(openAddSpending), [openAddSpending]);
 
   useEffect(() => {
     if (enabled) showQuickAddNotification().catch(() => {});
@@ -43,7 +43,7 @@ export function QuickAddSync() {
     if (handled.current === id) return;
     handled.current = id;
     openAddSpending();
-  }, [response]);
+  }, [response, openAddSpending]);
 
   return null;
 }

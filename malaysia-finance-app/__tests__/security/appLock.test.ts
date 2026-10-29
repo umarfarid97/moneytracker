@@ -1,16 +1,17 @@
 import {
   changePin, disableLock, enableLock, getLockState, lockNow, noteBackground, noteForeground, resetLockForTests,
-  setLockTimeout, unlock, verifyPin,
+  setLockTimeout, setBiometric, authenticateToUnlock, authenticateWithPin, unlock, verifyPin,
 } from '@/security/appLock';
 import { mem } from '../../test-support/securityMocks';
 
 jest.mock('expo-crypto', () => require('../../test-support/securityMocks').cryptoMock());
 jest.mock('@/security/lockStorage', () => require('../../test-support/securityMocks').lockStorageMock());
-jest.mock('expo-local-authentication', () => ({}));
+jest.mock('expo-local-authentication', () => ({ authenticateAsync: jest.fn() }));
 
 beforeEach(() => {
   mem.settings = null;
   mem.pin = null;
+  mem.attempts = null; mem.failRead = false; mem.failWrite = false;
   resetLockForTests();
 });
 
@@ -95,4 +96,91 @@ describe('app lock', () => {
     lockNow();
     expect(getLockState().locked).toBe(false);
   });
+});
+
+test('persists cooldown across reloads and serializes simultaneous attempts', async () => {
+  await enableLock('824613', 6);
+  const results = await Promise.all(Array.from({ length: 8 }, () => verifyPin('000001', 1000000)));
+  expect(results.slice(4)).toEqual(Array(4).fill({ ok: false, waitSeconds: 30 }));
+  resetLockForTests();
+  expect(await verifyPin('824613', 1010000)).toEqual({ ok: false, waitSeconds: 20 });
+});
+test('corrupt or unreadable attempt storage denies even the correct PIN', async () => {
+  await enableLock('824613', 6);
+  mem.attempts = '{bad';
+  expect(await verifyPin('824613')).toMatchObject({ ok: false, storageError: true });
+  mem.failRead = true;
+  expect(await verifyPin('824613')).toMatchObject({ ok: false, storageError: true });
+});
+test('failed attempt writes fail closed until storage can be retried', async () => {
+  await enableLock('824613', 6);
+  mem.failWrite = true;
+  expect(await verifyPin('000001')).toMatchObject({ ok: false, storageError: true });
+  expect(await verifyPin('824613')).toMatchObject({ ok: false, storageError: true });
+  mem.failWrite = false;
+  expect(await verifyPin('824613')).toEqual({ ok: true });
+});
+
+test('a failed throttle reset during a PIN length change preserves the working PIN and length', async () => {
+  await enableLock('824613', 6);
+  const originalPin = mem.pin;
+  mem.failWrite = true;
+  await expect(changePin('1357', 4)).rejects.toThrow();
+  expect(mem.pin).toBe(originalPin);
+  expect(getLockState().pinLength).toBe(6);
+  mem.failWrite = false;
+  resetLockForTests();
+  expect(await verifyPin('824613')).toEqual({ ok: true });
+});
+
+test('only previously enabled biometrics can repair corrupt attempts and failed repair stays locked', async () => {
+  const auth = jest.requireMock('expo-local-authentication').authenticateAsync;
+  auth.mockResolvedValue({ success: true });
+  await enableLock('824613', 6);
+  lockNow(); mem.attempts = '{bad';
+  expect(await authenticateToUnlock()).toBe(false);
+  expect(getLockState().locked).toBe(true);
+  unlock(); setBiometric(true); lockNow();
+  mem.failWrite = true;
+  expect(await authenticateToUnlock()).toBe(false);
+  expect(getLockState().locked).toBe(true);
+  mem.failWrite = false;
+  expect(await authenticateToUnlock()).toBe(true);
+  expect(getLockState().locked).toBe(false);
+});
+test('a biometric result from before backgrounding cannot unlock a later lifecycle', async () => {
+  const auth = jest.requireMock('expo-local-authentication').authenticateAsync;
+  let finish!: (v: unknown) => void;
+  auth.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+  await enableLock('824613', 6); setBiometric(true); lockNow();
+  const pending = authenticateToUnlock();
+  noteBackground(); noteForeground();
+  finish({ success: true });
+  expect(await pending).toBe(false);
+  expect(getLockState().locked).toBe(true);
+});
+
+test('a PIN result from before backgrounding cannot unlock a later lifecycle', async () => {
+  await enableLock('824613', 6); lockNow();
+  const storage = jest.requireMock('@/security/lockStorage');
+  let release!: (value: string | null) => void;
+  const pendingRead = new Promise<string | null>(resolve => { release = resolve; });
+  const load = jest.spyOn(storage, 'loadAttemptRecord').mockImplementationOnce(() => pendingRead);
+  try {
+    const pending = authenticateWithPin('824613');
+    noteBackground(); noteForeground();
+    release(mem.attempts);
+    expect((await pending).ok).toBe(false);
+    expect(getLockState().locked).toBe(true);
+  } finally { release(mem.attempts); load.mockRestore(); }
+});
+
+test('valid legacy PIN migrates once and subsequent missing throttle fails closed', async () => {
+  await enableLock('824613', 6);
+  const legacy = JSON.parse(mem.pin!); delete legacy.attemptVersion;
+  mem.pin = JSON.stringify(legacy); mem.attempts = null;
+  expect(await verifyPin('824613')).toEqual({ ok: true });
+  expect(JSON.parse(mem.pin!).attemptVersion).toBe(1);
+  mem.attempts = null; resetLockForTests();
+  expect(await verifyPin('824613')).toMatchObject({ ok: false, storageError: true });
 });

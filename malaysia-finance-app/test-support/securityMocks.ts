@@ -1,7 +1,9 @@
 // Shared in-memory stand-ins for the native lock modules, used through jest.mock factories in the security tests.
-export const mem = { settings: null as string | null, pin: null as string | null };
+export const mem = { settings: null as string | null, pin: null as string | null, attempts: null as string | null, failRead: false, failWrite: false };
 
 export const lockStorageMock = () => ({
+  loadAttemptRecord: async () => { if (mem.failRead) throw new Error('storage'); return mem.attempts; },
+  saveAttemptRecord: async (v: string) => { if (mem.failWrite) throw new Error('storage'); mem.attempts = v; },
   loadLockSettings: () => mem.settings,
   saveLockSettings: (v: string) => {
     mem.settings = v;

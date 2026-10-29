@@ -1,5 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image, Modal, Pressable, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { useAppLock } from '@/security/appLock';
+import { AppState, Image, Modal, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { t } from '@/i18n/t';
 
@@ -8,10 +10,21 @@ type Props = { uri: string | null; onClose: () => void };
 /** The receipt photo full screen on black, fitted to the screen; tap Close or the back button to leave. */
 export function ReceiptPreview({ uri, onClose }: Props) {
   const insets = useSafeAreaInsets();
+  const { locked } = useAppLock();
+  const [foreground, setForeground] = useState((AppState.currentState ?? 'active') === 'active');
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', next => {
+      setForeground(next === 'active');
+      if (next !== 'active') onClose();
+    });
+    return () => sub.remove();
+  }, [onClose]);
+  useEffect(() => { if (uri && (locked || !foreground)) onClose(); }, [uri, locked, foreground, onClose]);
+  const visible = uri !== null && !locked && foreground;
   return (
-    <Modal visible={uri !== null} animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={visible} animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       <View style={{ flex: 1, backgroundColor: '#000000' }}>
-        {uri ? (
+        {visible && uri ? (
           <Image
             source={{ uri }}
             accessibilityLabel={t('receipt.preview')}

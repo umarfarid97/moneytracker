@@ -6,6 +6,7 @@ import { getSetting, setSetting } from '@/db/repos/appSettings';
 import { THEME_KEY, APPEARANCE_KEY, THEME_AT_KEY } from '@/domain/themePrefs';
 import { HOME_LAYOUT_KEY, HOME_LAYOUT_AT_KEY, parseHomeLayout } from '@/domain/homeLayout';
 import { isReceiptReference } from '@/receiptReference';
+import { receiptReferenceForExport } from '@/receiptExport';
 
 /**
  * A copy of all the user's data that does not depend on this phone's row ids, so it can be merged with
@@ -95,6 +96,7 @@ export async function exportSnapshot(db: Db, now: number = Date.now()): Promise<
   const tables = { budgets: [] as Row[] } as Snapshot['tables'];
   for (const t of ENTITY_TABLES) {
     tables[t] = raw[t].map(({ id: _id, ...row }) => {
+      if (t === 'expenses' || t === 'relief_claims') row.receipt_uri = receiptReferenceForExport(row.receipt_uri);
       for (const [col, parent] of Object.entries(REFS[t])) row[col] = toUid(parent!, row[col]);
       return row;
     });

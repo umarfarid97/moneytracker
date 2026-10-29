@@ -99,6 +99,18 @@ describe('web receipts', () => {
     expect(receiptSize(key!)).toBe(pdf.size);
   });
 
+  it('opens a legitimate PDF through the app-created blob URL', async () => {
+    const open = jest.fn();
+    Object.assign(globalThis, { window: { open } });
+    await saveReceiptBlob('receipts/safe.pdf', new Blob(['%PDF-1.4'], { type: 'application/pdf' }));
+    const blobUrl = resolveReceiptUri('receipts/safe.pdf');
+    await openReceipt('receipts/safe.pdf', 'Open');
+    expect(blobUrl).toMatch(/^blob:test\//);
+    expect(open).toHaveBeenCalledWith(blobUrl, '_blank', 'noopener');
+    await openReceipt('javascript:window.audit=1//.pdf', 'Open');
+    expect(open).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects a document over the size limit and a type receipts do not allow', async () => {
     const big = new File(['x'], 'big.pdf', { type: 'application/pdf' });
     Object.defineProperty(big, 'size', { value: 11 * 1024 * 1024 });

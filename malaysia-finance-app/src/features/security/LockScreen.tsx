@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { t } from '@/i18n/t';
-import { biometricAvailable, promptBiometric, unlock, useAppLock, verifyPin } from '@/security/appLock';
+import { biometricAvailable, authenticateToUnlock, authenticateWithPin, useAppLock } from '@/security/appLock';
 import { AppText } from '@/ui/AppText';
 import { useTheme } from '@/ui/useTheme';
 import { PinPad } from './PinPad';
@@ -21,7 +21,7 @@ export function LockScreen({ interactive }: { interactive: boolean }) {
   const asked = useRef(false);
 
   const tryBiometric = useCallback(async () => {
-    if (await promptBiometric()) unlock();
+    if (!(await authenticateToUnlock())) setMessage('Unable to unlock with biometrics. Retry storage or use your PIN.');
   }, []);
 
   useEffect(() => {
@@ -49,16 +49,15 @@ export function LockScreen({ interactive }: { interactive: boolean }) {
     setPin(next);
     if (next.length < pinLength) return;
     setBusy(true);
-    const result = await verifyPin(next);
+    const result = await authenticateWithPin(next);
     setBusy(false);
     if (result.ok) {
       setPin('');
       setMessage(null);
-      unlock();
       return;
     }
     setPin('');
-    setMessage(result.waitSeconds > 0 ? t('lock.wait', { seconds: result.waitSeconds }) : t('lock.wrong'));
+    setMessage(result.storageError ? 'Lock storage is unavailable. Retry your PIN when storage works. If configured, use biometrics. An OS app reset and restoring a backup is a last resort and may lose unsynced data.' : result.waitSeconds > 0 ? t('lock.wait', { seconds: result.waitSeconds }) : t('lock.wrong'));
   }
 
   return (

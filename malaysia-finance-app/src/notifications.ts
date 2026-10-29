@@ -43,13 +43,22 @@ function reminderTitle(name: string, leadDays: number): string {
 /**
  * Replaces every scheduled reminder with the next few per active commitment (09:00 KL, `leadDays` before each is due).
  * Due dates that already have a payment are skipped, so call this at launch and whenever commitments change.
- * Returns how many reminders were scheduled; never throws, because reminders are a convenience.
+ * Returns how many reminders were scheduled; privacy replacement failures are retryable.
  */
 async function replaceReminders(commitments: Commitment[], now: Date, leadDays: number, expenses: Expense[]): Promise<number> {
+  await Notifications.cancelAllScheduledNotificationsAsync();
+  if (getLockState().enabled) {
+    const delivered = await Notifications.getPresentedNotificationsAsync();
+    for (const notification of delivered) {
+      // The persistent shortcut contains no finance data and must remain usable.
+      if (notification.request.content.data?.url !== '/add-expense') {
+        await Notifications.dismissNotificationAsync(notification.request.identifier);
+      }
+    }
+  }
   try {
     const active = commitments.filter((c) => c.active);
     if (active.length === 0) {
-      await Notifications.cancelAllScheduledNotificationsAsync();
       return 0;
     }
     if (!(await ensurePermission())) return 0;
@@ -59,9 +68,7 @@ async function replaceReminders(commitments: Commitment[], now: Date, leadDays: 
         importance: Notifications.AndroidImportance.HIGH,
       });
     }
-    await Notifications.cancelAllScheduledNotificationsAsync();
-    // With the app lock on, amounts stay out of the notification shade.
-    const hideAmounts = getLockState().enabled;
+    // Read current privacy for each awaited notification.
     let scheduled = 0;
     for (const c of active) {
       const paid = new Set(paidDueDatesFor(c.id, expenses));
@@ -77,7 +84,7 @@ async function replaceReminders(commitments: Commitment[], now: Date, leadDays: 
         await Notifications.scheduleNotificationAsync({
           content: {
             title: reminderTitle(c.name, leadDays),
-            body: hideAmounts
+            body: getLockState().enabled
               ? t('commitments.reminder.bodyHidden', { date: shortDate(dueDate) })
               : t(c.variable ? 'commitments.reminder.bodyVariable' : 'commitments.reminder.body', {
                   amount: formatRM(c.amount),
@@ -90,7 +97,8 @@ async function replaceReminders(commitments: Commitment[], now: Date, leadDays: 
       }
     }
     return scheduled;
-  } catch {
+  } catch (error) {
+    if (getLockState().enabled) throw error;
     return 0;
   }
 }
@@ -111,7 +119,14 @@ export function scheduleReminders(commitments: Commitment[], now: Date = new Dat
 }
 
 /** Tells the user a category has reached 80% of its budget or gone over it. Never throws. */
-export async function notifyBudgetAlert(categoryName: string, alert: BudgetAlert): Promise<void> {
+export function notifyBudgetAlert(categoryName: string, alert: BudgetAlert): Promise<void> {
+  // Share ordering with privacy refreshes: an already-admitted alert must finish before cleanup.
+  const run = queue.then(() => sendBudgetAlert(categoryName, alert));
+  queue = run.catch(() => undefined);
+  return run;
+}
+
+async function sendBudgetAlert(categoryName: string, alert: BudgetAlert): Promise<void> {
   try {
     if (!(await ensurePermission())) return;
     const percent = Math.round((alert.spent * 100) / alert.limit);

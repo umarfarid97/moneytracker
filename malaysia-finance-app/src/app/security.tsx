@@ -78,7 +78,7 @@ export default function Security() {
       } else {
         const result = await verifyPin(next);
         if (!result.ok) {
-          return setError(result.waitSeconds > 0 ? t('lock.wait', { seconds: result.waitSeconds }) : t('lock.wrong'));
+          return setError(result.storageError ? 'Lock storage is unavailable. Retry when storage works.' : result.waitSeconds > 0 ? t('lock.wait', { seconds: result.waitSeconds }) : t('lock.wrong'));
         }
         if (step === 'turnOff') {
           await disableLock();
@@ -89,7 +89,6 @@ export default function Security() {
       }
     } catch {
       setError(t('security.saveFailed'));
-      cancel();
     }
   }
 

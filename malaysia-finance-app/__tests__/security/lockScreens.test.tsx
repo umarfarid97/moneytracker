@@ -1,8 +1,10 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { AppState } from 'react-native';
+import { ReceiptPreview } from '@/ui/ReceiptPreview';
+import { AppState, Text, TextInput } from 'react-native';
+import { useState } from 'react';
+import { Screen } from '@/ui/Screen';
 import Security from '@/app/security';
 import { AppLockGate } from '@/features/security/AppLockGate';
-import { Text } from 'react-native';
 import { getLockState, resetLockForTests, enableLock, lockNow } from '@/security/appLock';
 import { mem } from '../../test-support/securityMocks';
 
@@ -127,4 +129,71 @@ describe('AppLockGate', () => {
     await act(async () => lockNow());
     expect(screen.getByTestId('lock-screen')).toBeTruthy();
   });
+});
+
+test('dismisses native router modals on cold locked start', async () => {
+  const router = jest.requireMock('expo-router').router;
+  router.canDismiss = jest.fn(() => true); router.dismissAll = jest.fn();
+  await enableLock('824613', 6); resetLockForTests();
+  await render(<AppLockGate><Text>private</Text></AppLockGate>);
+  expect(router.dismissAll).toHaveBeenCalledTimes(1);
+});
+
+test('brief backgrounding covers a modal without discarding its unsaved form', async () => {
+  AppState.currentState = 'active';
+  const router = jest.requireMock('expo-router').router;
+  router.canDismiss = jest.fn(() => true); router.dismissAll = jest.fn();
+  const changes = new Set<(state: string) => void>();
+  jest.spyOn(AppState, 'addEventListener').mockImplementation(((_: string, listener: (state: string) => void) => {
+    changes.add(listener); return { remove: () => changes.delete(listener) };
+  }) as never);
+  const now = jest.spyOn(Date, 'now').mockReturnValue(100000);
+  const Draft = () => {
+    const [value, setValue] = useState('');
+    return <Screen><TextInput accessibilityLabel="Draft amount" value={value} onChangeText={setValue} /></Screen>;
+  };
+  await enableLock('824613', 6);
+  await render(<AppLockGate><Draft /></AppLockGate>);
+  await fireEvent.changeText(screen.getByLabelText('Draft amount'), '12.50');
+  await act(async () => { for (const listener of changes) listener('background'); });
+  expect(router.dismissAll).not.toHaveBeenCalled();
+  expect(screen.getByTestId('screen-privacy-cover')).toBeTruthy();
+  now.mockReturnValue(110000);
+  await act(async () => { for (const listener of changes) listener('active'); });
+  expect(screen.getByLabelText('Draft amount').props.value).toBe('12.50');
+  expect(router.dismissAll).not.toHaveBeenCalled();
+  now.mockRestore();
+});
+test('receipt modal is hidden and its owner cleared when locking', async () => {
+  AppState.currentState = 'active';
+  await enableLock('824613', 6);
+  const close = jest.fn();
+  await render(<ReceiptPreview uri="file:///dummy.jpg" onClose={close} />);
+  expect(screen.getByLabelText('Receipt, full screen')).toBeTruthy();
+  await act(async () => lockNow());
+  expect(close).toHaveBeenCalled();
+  expect(screen.queryByLabelText('Receipt, full screen')).toBeNull();
+});
+
+
+test('receipt owner is cleared when leaving the foreground before lock timeout', async () => {
+  AppState.currentState = 'active';
+  await enableLock('824613', 6);
+  let change: (s: string) => void = () => {};
+  jest.spyOn(AppState, 'addEventListener').mockImplementation(((_: string, listener: (s: string) => void) => {
+    change = listener; return { remove: jest.fn() };
+  }) as never);
+  const close = jest.fn();
+  await render(<ReceiptPreview uri="file:///dummy.jpg" onClose={close} />);
+  await act(async () => change('inactive'));
+  expect(close).toHaveBeenCalled();
+  expect(screen.queryByLabelText('Receipt, full screen')).toBeNull();
+  expect(getLockState().locked).toBe(false);
+});
+
+test('a receipt provided while backgrounded is cleared instead of reopening on return', async () => {
+  AppState.currentState = 'background';
+  const close = jest.fn();
+  await render(<ReceiptPreview uri="file:///dummy.jpg" onClose={close} />);
+  expect(close).toHaveBeenCalled();
 });

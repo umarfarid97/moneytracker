@@ -7,7 +7,7 @@ import { useSyncExternalStore } from 'react';
 import { Platform } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { t } from '@/i18n/t';
-import { clearPinRecord, loadLockSettings, loadPinRecord, saveLockSettings, savePinRecord } from './lockStorage';
+import { loadAttemptRecord, saveAttemptRecord, clearPinRecord, loadLockSettings, loadPinRecord, saveLockSettings, savePinRecord } from './lockStorage';
 import { checkPin, isValidPin, lockoutSeconds, makePinRecord, type PinLength } from './pin';
 
 /** Seconds in the background before the app locks; 0 locks as soon as it is left. */
@@ -35,6 +35,7 @@ function readSettings(): Settings {
 }
 
 let state: LockState | undefined;
+let lifecycle = 0;
 const listeners = new Set<() => void>();
 
 /** A cold start begins locked whenever the lock is on. */
@@ -94,50 +95,97 @@ export async function promptBiometric(): Promise<boolean> {
 /** Switches the lock on with a new PIN. Rejects when the PIN cannot be stored, leaving the lock off. */
 export async function enableLock(pin: string, length: PinLength): Promise<void> {
   if (!isValidPin(pin, length)) throw new Error('invalid pin');
-  await savePinRecord(await makePinRecord(pin));
-  failures = 0;
+  await savePinRecord(JSON.stringify({ ...JSON.parse(await makePinRecord(pin)), attemptVersion: 1 }));
+  await saveAttemptRecord(JSON.stringify({ failures: 0, blockedUntil: 0 }));
   update({ enabled: true, pinLength: length, locked: false });
 }
 
 /** Replaces the PIN (the caller has already checked the old one). */
 export async function changePin(pin: string, length: PinLength): Promise<void> {
   if (!isValidPin(pin, length)) throw new Error('invalid pin');
-  await savePinRecord(await makePinRecord(pin));
+  const record = JSON.stringify({ ...JSON.parse(await makePinRecord(pin)), attemptVersion: 1 });
+  // Complete fallible throttle persistence before replacing the still-working PIN.
+  await saveAttemptRecord(JSON.stringify({ failures: 0, blockedUntil: 0 }));
+  await savePinRecord(record);
   update({ pinLength: length });
 }
 
 /** Switches the lock off and forgets the PIN. */
 export async function disableLock(): Promise<void> {
   await clearPinRecord();
-  failures = 0;
   update({ enabled: false, biometric: false, locked: false });
 }
 
-export const setBiometric = (biometric: boolean) => update({ biometric });
+export const setBiometric = (biometric: boolean) => { if (!getLockState().locked) update({ biometric }); };
 export const setLockTimeout = (timeout: LockTimeout) => update({ timeout });
 
-let failures = 0;
-let blockedUntil = 0;
+let verificationQueue: Promise<unknown> = Promise.resolve();
+export type PinResult = { ok: true } | { ok: false; waitSeconds: number; storageError?: boolean };
 
-export type PinResult = { ok: true } | { ok: false; waitSeconds: number };
-
-/** Checks a PIN. Too many wrong ones in a row make the keypad wait, longer each time. */
-export async function verifyPin(pin: string, now: number = Date.now()): Promise<PinResult> {
-  if (now < blockedUntil) return { ok: false, waitSeconds: Math.ceil((blockedUntil - now) / 1000) };
-  if (await checkPin(await loadPinRecord(), pin)) {
-    failures = 0;
-    return { ok: true };
-  }
-  failures += 1;
-  const wait = lockoutSeconds(failures);
-  blockedUntil = wait > 0 ? now + wait * 1000 : 0;
-  return { ok: false, waitSeconds: wait };
+/** Each admission reads durable state; no PIN is checked if storage cannot enforce the budget. */
+export function verifyPin(pin: string, now: number = Date.now()): Promise<PinResult> {
+  const run = verificationQueue.then(async (): Promise<PinResult> => {
+    try {
+      let raw = await loadAttemptRecord();
+      const pinRecord = await loadPinRecord();
+      const storedPin = JSON.parse(pinRecord ?? 'null');
+      if (!storedPin || typeof storedPin.salt !== 'string' || !/^[a-f0-9]{64}$/i.test(storedPin.hash)) throw new Error('invalid pin record');
+      // Legacy PINs predate throttle storage. Stamp the protected PIN after initializing it once.
+      if (storedPin.attemptVersion === undefined) {
+        if (raw === null) {
+          raw = JSON.stringify({ failures: 0, blockedUntil: 0 });
+          await saveAttemptRecord(raw);
+        }
+        await savePinRecord(JSON.stringify({ ...storedPin, attemptVersion: 1 }));
+      } else if (storedPin.attemptVersion !== 1) throw new Error('invalid attempt version');
+      if (raw === null) throw new Error('missing attempt record');
+      const record = JSON.parse(raw);
+      if (!Number.isSafeInteger(record.failures) || record.failures < 0 || !Number.isSafeInteger(record.blockedUntil) || record.blockedUntil < 0) throw new Error('invalid attempts');
+      if (now < record.blockedUntil) return { ok: false, waitSeconds: Math.ceil((record.blockedUntil - now) / 1000) };
+      const ok = await checkPin(pinRecord, pin);
+      const failures = ok ? 0 : Math.min(record.failures + 1, 1000);
+      const wait = ok ? 0 : lockoutSeconds(failures);
+      await saveAttemptRecord(JSON.stringify({ failures, blockedUntil: wait > 0 ? now + wait * 1000 : 0 }));
+      return ok ? { ok: true } : { ok: false, waitSeconds: wait };
+    } catch {
+      return { ok: false, waitSeconds: 0, storageError: true };
+    }
+  });
+  verificationQueue = run.catch(() => undefined);
+  return run;
 }
 
 /** Unlocks after a correct PIN or biometric check. */
-export const unlock = () => update({ locked: false }, false);
+export const unlock = () => { lifecycle++; update({ locked: false }, false); };
+
+/** PIN checks used for unlocking are bound to the foreground lifecycle that requested them. */
+export async function authenticateWithPin(pin: string): Promise<PinResult> {
+  const epoch = lifecycle;
+  const result = await verifyPin(pin);
+  if (!result.ok) return result;
+  if (epoch !== lifecycle || leftAt !== null || !getLockState().locked) return { ok: false, waitSeconds: 0 };
+  unlock();
+  return result;
+}
+
+/** A configured biometric may repair the throttle, only for the current foreground lock. */
+export async function authenticateToUnlock(): Promise<boolean> {
+  const epoch = lifecycle;
+  if (!getLockState().biometric || !getLockState().locked || leftAt !== null) return false;
+  if (!(await promptBiometric()) || epoch !== lifecycle || leftAt !== null || !getLockState().locked) return false;
+  const repair = verificationQueue.then(async () => {
+    if (epoch !== lifecycle) return false;
+    await saveAttemptRecord(JSON.stringify({ failures: 0, blockedUntil: 0 }));
+    if (epoch !== lifecycle || leftAt !== null) return false;
+    unlock();
+    return true;
+  });
+  verificationQueue = repair.catch(() => undefined);
+  try { return await repair; } catch { return false; }
+}
 
 export const lockNow = () => {
+  lifecycle++;
   if (getLockState().enabled) update({ locked: true }, false);
 };
 
@@ -145,6 +193,7 @@ let leftAt: number | null = null;
 
 /** Call when the app goes to the background. */
 export function noteBackground(now: number = Date.now()): void {
+  lifecycle++;
   leftAt ??= now;
 }
 
@@ -164,7 +213,7 @@ export function noteForeground(now: number = Date.now()): boolean {
 /** For tests: forget everything held in memory. */
 export function resetLockForTests(): void {
   state = undefined;
-  failures = 0;
-  blockedUntil = 0;
+  verificationQueue = Promise.resolve();
+  lifecycle++;
   leftAt = null;
 }

@@ -11,10 +11,12 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261023.1",
-    "sql.js": "^1.15.1",
     "@types/sql.js": "^1.4.11",
+    "esbuild": "0.28.2",
+    "miniflare": "5.20261023.2-beta",
+    "sql.js": "^1.15.1",
     "typescript": "~5.9.0",
-    "vitest": "^3.2.0",
+    "vitest": "5.0.5",
     "wrangler": "^4.0.0"
   }
 }

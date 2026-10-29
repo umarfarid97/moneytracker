@@ -35,3 +35,6 @@ export async function clearPinRecord(): Promise<void> {
     // Nothing stored.
   }
 }
+
+export async function loadAttemptRecord(): Promise<string | null> { return localStorage.getItem('duit.pinAttempts'); }
+export async function saveAttemptRecord(value: string): Promise<void> { localStorage.setItem('duit.pinAttempts', value); }

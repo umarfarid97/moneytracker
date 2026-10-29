@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { AppState } from 'react-native';
 import AddExpense from '@/app/add-expense';
 import { addExpenseRow, CAT, freshDb, renderWithData } from './helpers';
 
@@ -12,6 +13,7 @@ const { confirmDelete } = jest.requireMock('@/ui/confirm');
 
 beforeEach(() => {
   jest.clearAllMocks();
+  AppState.currentState = 'active';
   useLocalSearchParams.mockReturnValue({});
 });
 

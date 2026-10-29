@@ -16,10 +16,12 @@ export function AppLockGate({ children }: { children: ReactNode }) {
     const sub = AppState.addEventListener('change', (next) => {
       setAppState(next);
       if (next === 'background') noteBackground();
-      else if (next === 'active' && noteForeground()) closeModals();
+      else if (next === 'active') noteForeground();
     });
     return () => sub.remove();
   }, []);
+
+  useEffect(() => { if (enabled && locked) closeModals(); }, [enabled, locked]);
 
   // A native iOS modal (Add spending) sits above this gate, so close any open one when the lock engages.
   const covered = enabled && (locked || appState === 'inactive' || appState === 'background');

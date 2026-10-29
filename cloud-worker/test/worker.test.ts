@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import worker, { type Env } from '../src/index';
-import { createFakeD1, createFakeR2, migration } from './fakeD1';
+import { createFakeD1, createFakeR2, createFakeAccounts, migration } from './fakeD1';
 
 let env: Env;
 let mails: { to: string; code: string }[];
@@ -9,6 +9,7 @@ const ORIGIN = 'https://umarfarid97.github.io';
 beforeEach(async () => {
   mails = [];
   env = {
+    ACCOUNTS: null as unknown as Env['ACCOUNTS'],
     DB: await createFakeD1(migration()),
     RECEIPTS: createFakeR2(),
     PEPPER: 'test-pepper',
@@ -16,6 +17,7 @@ beforeEach(async () => {
     ALLOWED_ORIGINS: ORIGIN,
     SEND_MAIL: async (to, code) => void mails.push({ to, code }),
   };
+  env.ACCOUNTS = createFakeAccounts(env);
 });
 
 const call = (method: string, path: string, init: { token?: string; body?: BodyInit; headers?: Record<string, string> } = {}) =>
@@ -193,7 +195,7 @@ describe('receipts', () => {
     const a = await signIn();
     await call('PUT', '/receipts/r.enc', { token: a.token, body: bytes(7) });
     const r2 = env.RECEIPTS as unknown as { map: Map<string, Uint8Array> };
-    expect([...r2.map.keys()]).toEqual([`${a.accountId}/r.enc`]);
+    expect([...r2.map.values()]).toEqual([bytes(7)]);
     expect((await env.DB.prepare('SELECT COUNT(*) AS n FROM blob_chunks').first<{ n: number }>())?.n).toBe(0);
     expect((await call('DELETE', '/receipts/r.enc', { token: a.token })).status).toBe(204);
     expect(r2.map.size).toBe(0);
@@ -218,7 +220,8 @@ describe('receipts', () => {
     await old('b.enc', 2);
     const got = await call('GET', '/receipts/a.enc', { token: a.token });
     expect(new Uint8Array(await got.arrayBuffer())).toEqual(bytes(4, 1));
-    expect((env.RECEIPTS as unknown as { map: Map<string, unknown> }).map.has(`${a.accountId}/a.enc`)).toBe(true);
+    const migrated = await env.DB.prepare('SELECT object_key FROM receipts WHERE name = ?').bind('a.enc').first<{ object_key: string }>();
+    expect((env.RECEIPTS as unknown as { map: Map<string, unknown> }).map.has(migrated!.object_key)).toBe(true);
     const list = (await (await call('GET', '/receipts', { token: a.token })).json()) as { receipts: unknown[] };
     expect(list.receipts).toHaveLength(2);
     expect((await env.DB.prepare('SELECT COUNT(*) AS n FROM blob_chunks').first<{ n: number }>())?.n).toBe(0);
@@ -264,5 +267,56 @@ describe('CORS', () => {
   it('exposes sync headers on real responses', async () => {
     const res = await worker.fetch(new Request('https://api.test/', { headers: { origin: ORIGIN } }), env);
     expect(res.headers.get('access-control-expose-headers')).toContain('X-Sync-Version');
+  });
+});
+
+// Removing guarded admission must let more than five concurrent guesses through.
+describe('atomic OTP admission', () => {
+  it('admits at most five guesses even when seven arrive together', async () => {
+    await post('/auth/start', { email: 'race@example.com' });
+    const wrong = mails[0].code === '000000' ? '111111' : '000000';
+    const responses = await Promise.all(Array.from({ length: 7 }, () => post('/auth/verify', { email: 'race@example.com', code: wrong })));
+    expect(responses.map(r => r.status)).toEqual(Array(7).fill(401));
+    expect(await env.DB.prepare('SELECT tries FROM login_codes').first()).toEqual({ tries: 5 });
+  });
+
+  it('mints exactly one token for simultaneous correct submissions', async () => {
+    await post('/auth/start', { email: 'race@example.com' });
+    const responses = await Promise.all(Array.from({ length: 2 }, () => post('/auth/verify', { email: 'race@example.com', code: mails[0].code })));
+    expect(responses.map(r => r.status).sort()).toEqual([200, 401]);
+    expect(await env.DB.prepare('SELECT COUNT(*) AS n FROM devices').first()).toEqual({ n: 1 });
+  });
+
+  it('cannot consume a replacement generation even when its digits are identical', async () => {
+    await post('/auth/start', { email: 'race@example.com' });
+    const db = env.DB;
+    let entered!: () => void;
+    let release!: () => void;
+    const admitted = new Promise<void>(resolve => entered = resolve);
+    const gate = new Promise<void>(resolve => release = resolve);
+    let held = false;
+    env.DB = new Proxy(db, { get(target, key) {
+      if (key !== 'prepare') return Reflect.get(target, key);
+      return (sql: string) => {
+        const statement = target.prepare(sql);
+        const wrap = (s: D1PreparedStatement): D1PreparedStatement => new Proxy(s, { get(t, k) {
+          if (k === 'bind') return (...args: unknown[]) => wrap(t.bind(...args));
+          if (k === 'first') return async () => {
+            const result = await t.first();
+            if (!held && /login_codes/.test(sql) && !/DELETE/.test(sql)) { held = true; entered(); await gate; }
+            return result;
+          };
+          const v = Reflect.get(t, k); return typeof v === 'function' ? v.bind(t) : v;
+        }});
+        return wrap(statement);
+      };
+    }});
+    const pending = post('/auth/verify', { email: 'race@example.com', code: mails[0].code });
+    await admitted;
+    // Simulates a newly issued generation with the same randomly generated digits.
+    await db.prepare("UPDATE login_codes SET generation = 'replacement', tries = 0").run();
+    release();
+    expect((await pending).status).toBe(401);
+    expect(await db.prepare('SELECT generation, tries FROM login_codes').first()).toEqual({ generation: 'replacement', tries: 0 });
   });
 });

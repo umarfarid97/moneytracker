@@ -65,11 +65,12 @@ function inflate(bytes: Uint8Array, budget: ParseBudget): Uint8Array | null {
 /** Object number -> its dictionary text and (decoded) stream, including objects packed inside object streams. */
 function readObjects(bytes: Uint8Array, raw: string, budget: ParseBudget): Map<number, PdfObject> {
   const objects = new Map<number, PdfObject>();
-  const re = /(\d+)\s+(\d+)\s+obj\b/g;
+  // Consume a token boundary: without it the engine retries at every digit of a long run.
+  const re = /(^|[\x00\t\n\f\r ])(\d+)\s+(\d+)\s+obj\b/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(raw))) {
     budget.object();
-    const id = Number(m[1]);
+    const id = Number(m[2]);
     if (!Number.isSafeInteger(id)) invalid();
     const bodyStart = m.index + m[0].length;
     const end = raw.indexOf('endobj', bodyStart);
@@ -171,7 +172,7 @@ function readCMap(text: string, budget: ParseBudget): CMap {
   return { map, bytes };
 }
 
-const refsOf = (text: string): number[] => [...text.matchAll(/(\d+)\s+\d+\s+R/g)].map((m) => Number(m[1]));
+const refsOf = (text: string): number[] => [...text.matchAll(/(^|[\x00\t\n\f\r ])(\d+)\s+\d+\s+R/g)].map((m) => Number(m[2]));
 
 /** Resolves `/Key 12 0 R` or an inline `/Key << ... >>` to the dictionary text. */
 function dictFor(objects: Map<number, PdfObject>, text: string, key: string, budget: ParseBudget): string | null {

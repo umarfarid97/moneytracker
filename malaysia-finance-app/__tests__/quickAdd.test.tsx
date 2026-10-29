@@ -1,4 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { mem } from '../test-support/securityMocks';
+import { enableLock, resetLockForTests, unlock } from '@/security/appLock';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import * as Notifications from 'expo-notifications';
 import * as QuickActions from 'expo-quick-actions';
 import { Platform } from 'react-native';
@@ -10,6 +12,8 @@ import {
 } from '@/quickAdd/quickAdd';
 import { freshDb, renderWithData } from './screens/helpers';
 
+jest.mock('expo-crypto', () => jest.requireActual('../test-support/securityMocks').cryptoMock());
+jest.mock('@/security/lockStorage', () => jest.requireActual('../test-support/securityMocks').lockStorageMock());
 jest.mock('expo-notifications', () => ({
   AndroidImportance: { LOW: 2, HIGH: 4 },
   SchedulableTriggerInputTypes: { DATE: 'date' },
@@ -35,6 +39,7 @@ const { router } = jest.requireMock('expo-router');
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mem.settings = null; mem.pin = null; mem.failWrite = false; resetLockForTests();
   Platform.OS = 'android';
   setQuickAddEnabled(false);
   n.getPermissionsAsync.mockResolvedValue({ granted: true, canAskAgain: true } as never);
@@ -148,4 +153,18 @@ describe('Reminders & quick add screen', () => {
     await waitFor(() => expect(screen.getByText(/Allow notifications for Duit/)).toBeTruthy());
     expect(getQuickAddEnabled()).toBe(false);
   });
+});
+
+test('shortcut waits through cold lock and opens exactly once after unlock', async () => {
+  jest.useFakeTimers();
+  await enableLock('824613', 6); resetLockForTests();
+  (QuickActions as { initial: unknown }).initial = { id: 'add-spending', title: 'Add spending', icon: undefined, subtitle: undefined, params: { href: '/add-expense' } };
+  n.useLastNotificationResponse.mockReturnValue(undefined);
+  await render(<QuickAddSync />);
+  await act(async () => jest.runAllTimers());
+  expect(router.push).not.toHaveBeenCalled();
+  await act(async () => unlock());
+  await act(async () => jest.runAllTimers());
+  expect(router.push).toHaveBeenCalledTimes(1);
+  (QuickActions as { initial: unknown }).initial = null; jest.useRealTimers();
 });

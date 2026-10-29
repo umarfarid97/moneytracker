@@ -1,23 +1,17 @@
+import { AccountCoordinator } from './accountCoordinator';
+export { AccountCoordinator };
 import { hmacHex, normalizeEmail, randomCode, randomId, randomToken, safeEqual, sha256Hex, validEmail } from './util';
 
-export interface Env {
-  DB: D1Database;
-  /** Private R2 bucket holding receipt ciphertext, keyed `<accountId>/<name>`. */
-  RECEIPTS: R2Bucket;
+export interface Env extends CloudflareBindings {
   /** Mixed into email and code hashes. Set with `wrangler secret put PEPPER`. */
   PEPPER: string;
   /** Resend API key. Set with `wrangler secret put RESEND_API_KEY`. */
   RESEND_API_KEY?: string;
-  MAIL_FROM: string;
-  ALLOWED_ORIGINS: string;
   /** Test hook: replaces the Resend call. */
   SEND_MAIL?: (to: string, code: string) => Promise<void>;
 }
 
 const MAX_SNAPSHOT = 8 * 1024 * 1024;
-// Room for a 10 MB receipt file (the app's limit) plus encryption overhead.
-const MAX_RECEIPT = 10 * 1024 * 1024 + 1024;
-const MAX_RECEIPTS_TOTAL = 150 * 1024 * 1024;
 /** Old receipts still in D1 that one list call moves to R2. */
 const MIGRATE_PER_LIST = 5;
 const CHUNK = 900 * 1024;
@@ -27,13 +21,13 @@ const MAX_DEVICES = 10;
 const MAX_KEY_BUNDLE = 4096;
 const NAME = /^[A-Za-z0-9._-]{1,100}$/;
 
-class HttpError extends Error {
+export class HttpError extends Error {
   constructor(public status: number, public body: unknown = { error: 'error' }) {
     super(String(status));
   }
 }
 
-const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
+export const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...headers } });
 
 function corsHeaders(req: Request, env: Env): Record<string, string> {
@@ -81,7 +75,15 @@ async function route(req: Request, env: Env): Promise<Response> {
   if (path === '/auth/start' && m === 'POST') return authStart(req, env);
   if (path === '/auth/verify' && m === 'POST') return authVerify(req, env);
 
-  const auth = await authenticate(req, env);
+  const auth = await authenticate(req, env, false);
+  const headers = new Headers(req.headers);
+  headers.set('x-duit-account', auth.accountId);
+  return env.ACCOUNTS.get(env.ACCOUNTS.idFromName(auth.accountId)).fetch(new Request(req, { headers }));
+}
+
+export async function accountRoute(req: Request, env: Env, auth: { accountId: string; deviceId: string }, coordinator: AccountCoordinator): Promise<Response> {
+  const path = new URL(req.url).pathname.replace(/\/+$/, '') || '/';
+  const m = req.method;
 
   if (path === '/auth/logout' && m === 'POST') {
     await env.DB.prepare('DELETE FROM devices WHERE id = ?').bind(auth.deviceId).run();
@@ -103,7 +105,7 @@ async function route(req: Request, env: Env): Promise<Response> {
       return json(200, { bundle: row?.key_bundle ? JSON.parse(row.key_bundle) : null });
     }
     if (m === 'PUT') {
-      const text = await req.text();
+      const text = new TextDecoder().decode(await readBody(req, MAX_KEY_BUNDLE));
       if (text.length > MAX_KEY_BUNDLE) throw new HttpError(413);
       try {
         if (typeof JSON.parse(text) !== 'object') throw 0;
@@ -119,7 +121,7 @@ async function route(req: Request, env: Env): Promise<Response> {
     if (m === 'PUT') return syncPut(req, env, auth.accountId);
   }
   if (path === '/receipts' && m === 'GET') {
-    await migrateSome(env, auth.accountId, MIGRATE_PER_LIST);
+    await migrateSome(env, auth.accountId, MIGRATE_PER_LIST, coordinator);
     const { results } = await env.DB.prepare('SELECT name, size FROM receipts WHERE account_id = ? ORDER BY name').bind(auth.accountId).all();
     return json(200, { receipts: results });
   }
@@ -127,12 +129,12 @@ async function route(req: Request, env: Env): Promise<Response> {
   if (rc) {
     const name = decodeURIComponent(rc[1]);
     if (!NAME.test(name)) throw new HttpError(400);
-    if (m === 'GET') return receiptGet(env, auth.accountId, name);
-    if (m === 'PUT') return receiptPut(req, env, auth.accountId, name);
-    if (m === 'DELETE') return receiptDelete(env, auth.accountId, name);
+    if (m === 'GET') return receiptGet(env, auth.accountId, name, coordinator);
+    if (m === 'PUT') return coordinator.putReceipt(req, auth.accountId, name);
+    if (m === 'DELETE') return coordinator.removeReceipt(auth.accountId, name);
   }
   if (path === '/account' && m === 'DELETE') {
-    await deleteAccount(env, auth.accountId);
+    await coordinator.deleteAccount(auth.accountId);
     return new Response(null, { status: 204 });
   }
   throw new HttpError(404);
@@ -156,7 +158,7 @@ const clientIp = (req: Request) => req.headers.get('cf-connecting-ip') ?? 'unkno
 // ---- auth -------------------------------------------------------------------------------------
 
 async function readJson<T>(req: Request): Promise<T> {
-  const text = await req.text();
+  const text = new TextDecoder().decode(await readBody(req, 16_384));
   if (text.length > 16_384) throw new HttpError(413);
   try {
     return JSON.parse(text) as T;
@@ -191,9 +193,9 @@ async function authStart(req: Request, env: Env): Promise<Response> {
 
   const code = randomCode();
   await env.DB.prepare(
-    `INSERT INTO login_codes (email_hash, code_hash, expires_at, tries) VALUES (?, ?, ?, 0)
-     ON CONFLICT(email_hash) DO UPDATE SET code_hash = excluded.code_hash, expires_at = excluded.expires_at, tries = 0`,
-  ).bind(emailHash, await hmacHex(env.PEPPER, `${emailHash}:${code}`), Date.now() + CODE_TTL).run();
+    `INSERT INTO login_codes (email_hash, code_hash, expires_at, tries, generation) VALUES (?, ?, ?, 0, ?)
+     ON CONFLICT(email_hash) DO UPDATE SET code_hash = excluded.code_hash, expires_at = excluded.expires_at, tries = 0, generation = excluded.generation`,
+  ).bind(emailHash, await hmacHex(env.PEPPER, `${emailHash}:${code}`), Date.now() + CODE_TTL, randomId()).run();
   await sendMail(env, email, code);
   // Same answer for every address, so this cannot be used to find out who has an account.
   return new Response(null, { status: 204 });
@@ -208,24 +210,34 @@ async function authVerify(req: Request, env: Env): Promise<Response> {
   await hit(env, `ip:${clientIp(req)}`, 60, 3_600_000);
 
   const emailHash = await hmacHex(env.PEPPER, email);
-  const row = await env.DB.prepare('SELECT code_hash, expires_at, tries FROM login_codes WHERE email_hash = ?')
-    .bind(emailHash).first<{ code_hash: string; expires_at: number; tries: number }>();
-  if (!row || row.expires_at < Date.now() || row.tries >= CODE_TRIES) throw new HttpError(401, { error: 'code' });
-  const ok = safeEqual(row.code_hash, await hmacHex(env.PEPPER, `${emailHash}:${code}`));
-  if (!ok) {
-    await env.DB.prepare('UPDATE login_codes SET tries = tries + 1 WHERE email_hash = ?').bind(emailHash).run();
+  const row = await env.DB.prepare(
+    `UPDATE login_codes SET tries = tries + 1
+     WHERE email_hash = ? AND expires_at > ? AND tries < ? RETURNING code_hash, generation`,
+  ).bind(emailHash, Date.now(), CODE_TRIES).first<{ code_hash: string; generation: string }>();
+  if (!row || !safeEqual(row.code_hash, await hmacHex(env.PEPPER, `${emailHash}:${code}`))) {
     throw new HttpError(401, { error: 'code' });
   }
-  await env.DB.prepare('DELETE FROM login_codes WHERE email_hash = ?').bind(emailHash).run();
+  const consumed = await env.DB.prepare(
+    `DELETE FROM login_codes WHERE email_hash = ? AND generation = ? AND code_hash = ? AND expires_at > ? RETURNING email_hash`,
+  ).bind(emailHash, row.generation, row.code_hash, Date.now()).first();
+  if (!consumed) throw new HttpError(401, { error: 'code' });
 
   const now = Date.now();
   let account = await env.DB.prepare('SELECT id, key_bundle FROM accounts WHERE email_hash = ?')
     .bind(emailHash).first<{ id: string; key_bundle: string | null }>();
   if (!account) {
     const id = randomId();
-    await env.DB.prepare('INSERT INTO accounts (id, email_hash, created_at) VALUES (?, ?, ?)').bind(id, emailHash, now).run();
-    account = { id, key_bundle: null };
+    await env.DB.prepare('INSERT OR IGNORE INTO accounts (id, email_hash, created_at) VALUES (?, ?, ?)').bind(id, emailHash, now).run();
+    account = (await env.DB.prepare('SELECT id, key_bundle FROM accounts WHERE email_hash = ?').bind(emailHash).first<{ id: string; key_bundle: string | null }>())!;
   }
+  return env.ACCOUNTS.get(env.ACCOUNTS.idFromName(account.id)).register(account.id, emailHash, deviceName);
+}
+
+export async function registerDevice(env: Env, accountId: string, emailHash: string, deviceName: string): Promise<Response> {
+  const account = await env.DB.prepare('SELECT id, key_bundle FROM accounts WHERE id = ? AND email_hash = ?')
+    .bind(accountId, emailHash).first<{ id: string; key_bundle: string | null }>();
+  if (!account) throw new HttpError(401, { error: 'auth' });
+  const now = Date.now();
   // Keep the newest devices when over the limit.
   const { results: devices } = await env.DB.prepare('SELECT id FROM devices WHERE account_id = ? ORDER BY last_seen DESC')
     .bind(account.id).all<{ id: string }>();
@@ -238,7 +250,7 @@ async function authVerify(req: Request, env: Env): Promise<Response> {
   return json(200, { token, deviceId, accountId: account.id, bundle: account.key_bundle ? JSON.parse(account.key_bundle) : null });
 }
 
-async function authenticate(req: Request, env: Env): Promise<{ accountId: string; deviceId: string }> {
+export async function authenticate(req: Request, env: Env, update = true): Promise<{ accountId: string; deviceId: string }> {
   const header = req.headers.get('authorization') ?? '';
   const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
   if (token.length < 20 || token.length > 100) throw new HttpError(401, { error: 'auth' });
@@ -246,8 +258,8 @@ async function authenticate(req: Request, env: Env): Promise<{ accountId: string
     .bind(await sha256Hex(token)).first<{ id: string; account_id: string; last_seen: number }>();
   if (!row) throw new HttpError(401, { error: 'auth' });
   const now = Date.now();
-  if (now - row.last_seen > 3_600_000) await env.DB.prepare('UPDATE devices SET last_seen = ? WHERE id = ?').bind(now, row.id).run();
-  await hit(env, `acct:${row.account_id}`, 3000, 3_600_000);
+  if (update && now - row.last_seen > 3_600_000) await env.DB.prepare('UPDATE devices SET last_seen = ? WHERE id = ?').bind(now, row.id).run();
+  if (update) await hit(env, `acct:${row.account_id}`, 3000, 3_600_000);
   return { accountId: row.account_id, deviceId: row.id };
 }
 
@@ -281,7 +293,7 @@ async function syncPut(req: Request, env: Env, accountId: string): Promise<Respo
   const expected = Number(req.headers.get('if-match'));
   const schema = Number(req.headers.get('x-sync-schema') ?? 0);
   if (!Number.isInteger(expected) || expected < 0 || !Number.isInteger(schema) || schema < 0) throw new HttpError(400);
-  const data = new Uint8Array(await req.arrayBuffer());
+  const data = await readBody(req, MAX_SNAPSHOT);
   if (data.length === 0) throw new HttpError(400);
   if (data.length > MAX_SNAPSHOT) throw new HttpError(413);
 
@@ -319,64 +331,34 @@ async function syncPut(req: Request, env: Env, accountId: string): Promise<Respo
 const r2Key = (accountId: string, name: string) => `${accountId}/${name}`;
 
 /** Receipts saved before R2 sit in D1 chunks (`in_r2 = 0`); they are copied over on first read or list. */
-async function moveToR2(env: Env, accountId: string, name: string): Promise<Uint8Array | null> {
+async function moveToR2(env: Env, accountId: string, name: string, coordinator: AccountCoordinator): Promise<Uint8Array | null> {
   const data = await readChunks(env, accountId, `rcpt:${name}`);
   if (data.length === 0) return null;
-  await env.RECEIPTS.put(r2Key(accountId, name), data);
-  // Only forget the D1 copy once R2 has the object.
-  await env.DB.batch([
-    env.DB.prepare('UPDATE receipts SET in_r2 = 1 WHERE account_id = ? AND name = ?').bind(accountId, name),
-    env.DB.prepare('DELETE FROM blob_chunks WHERE account_id = ? AND upload_id = ?').bind(accountId, `rcpt:${name}`),
-  ]);
+  await coordinator.writeReceipt(accountId, name, data);
   return data;
 }
 
-async function migrateSome(env: Env, accountId: string, limit: number) {
+async function migrateSome(env: Env, accountId: string, limit: number, coordinator: AccountCoordinator) {
   const { results } = await env.DB.prepare('SELECT name FROM receipts WHERE account_id = ? AND in_r2 = 0 LIMIT ?')
     .bind(accountId, limit).all<{ name: string }>();
-  for (const r of results) await moveToR2(env, accountId, r.name);
+  for (const r of results) await moveToR2(env, accountId, r.name, coordinator);
 }
 
-async function receiptGet(env: Env, accountId: string, name: string): Promise<Response> {
-  const row = await env.DB.prepare('SELECT in_r2 FROM receipts WHERE account_id = ? AND name = ?').bind(accountId, name).first<{ in_r2: number }>();
+async function receiptGet(env: Env, accountId: string, name: string, coordinator: AccountCoordinator): Promise<Response> {
+  const row = await env.DB.prepare('SELECT in_r2, object_key FROM receipts WHERE account_id = ? AND name = ?').bind(accountId, name).first<{ in_r2: number; object_key: string | null }>();
   if (!row) throw new HttpError(404);
   const headers = { 'content-type': 'application/octet-stream' };
   if (row.in_r2) {
-    const obj = await env.RECEIPTS.get(r2Key(accountId, name));
+    const obj = await env.RECEIPTS.get(row.object_key ?? r2Key(accountId, name));
     if (!obj) throw new HttpError(404);
     return new Response(obj.body, { headers });
   }
-  const data = await moveToR2(env, accountId, name);
+  const data = await moveToR2(env, accountId, name, coordinator);
   if (!data) throw new HttpError(404);
   return new Response(data, { headers });
 }
 
-async function receiptPut(req: Request, env: Env, accountId: string, name: string): Promise<Response> {
-  const data = new Uint8Array(await req.arrayBuffer());
-  if (data.length === 0) throw new HttpError(400);
-  if (data.length > MAX_RECEIPT) throw new HttpError(413);
-  const total = await env.DB.prepare('SELECT COALESCE(SUM(size), 0) AS n FROM receipts WHERE account_id = ? AND name <> ?')
-    .bind(accountId, name).first<{ n: number }>();
-  if ((total?.n ?? 0) + data.length > MAX_RECEIPTS_TOTAL) throw new HttpError(413, { error: 'quota' });
-  await env.RECEIPTS.put(r2Key(accountId, name), data);
-  await env.DB.batch([
-    env.DB.prepare('DELETE FROM blob_chunks WHERE account_id = ? AND upload_id = ?').bind(accountId, `rcpt:${name}`),
-    env.DB.prepare('INSERT OR REPLACE INTO receipts (account_id, name, size, updated_at, in_r2) VALUES (?, ?, ?, ?, 1)')
-      .bind(accountId, name, data.length, Date.now()),
-  ]);
-  return new Response(null, { status: 204 });
-}
-
-async function receiptDelete(env: Env, accountId: string, name: string): Promise<Response> {
-  await env.RECEIPTS.delete(r2Key(accountId, name));
-  await env.DB.batch([
-    env.DB.prepare('DELETE FROM blob_chunks WHERE account_id = ? AND upload_id = ?').bind(accountId, `rcpt:${name}`),
-    env.DB.prepare('DELETE FROM receipts WHERE account_id = ? AND name = ?').bind(accountId, name),
-  ]);
-  return new Response(null, { status: 204 });
-}
-
-async function deleteAccount(env: Env, accountId: string) {
+export async function cleanupAccount(env: Env, accountId: string) {
   let cursor: string | undefined;
   do {
     const page = await env.RECEIPTS.list({ prefix: `${accountId}/`, cursor });
@@ -390,4 +372,32 @@ async function deleteAccount(env: Env, accountId: string) {
     env.DB.prepare('DELETE FROM devices WHERE account_id = ?').bind(accountId),
     env.DB.prepare('DELETE FROM accounts WHERE id = ?').bind(accountId),
   ]);
+}
+
+/** Bound allocation while reading, including clients omitting Content-Length. */
+export async function readBody(req: Request, limit: number): Promise<Uint8Array> {
+  const length = Number(req.headers.get('content-length'));
+  if (Number.isFinite(length) && length > limit) throw new HttpError(413);
+  if (!req.body) return new Uint8Array();
+  const reader = req.body.getReader();
+  const parts: Uint8Array[] = [];
+  let size = 0;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new HttpError(408)), 15_000); });
+  try {
+    while (true) {
+      const part = await Promise.race([reader.read(), deadline]);
+      if (part.done) break;
+      size += part.value.byteLength;
+      if (size > limit) throw new HttpError(413);
+      parts.push(part.value);
+    }
+  } catch (error) {
+    void reader.cancel().catch(() => {});
+    throw error;
+  } finally { clearTimeout(timer); }
+  const data = new Uint8Array(size);
+  let offset = 0;
+  for (const part of parts) { data.set(part, offset); offset += part.byteLength; }
+  return data;
 }

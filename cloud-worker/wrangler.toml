@@ -19,3 +19,11 @@ migrations_dir = "migrations"
 binding = "RECEIPTS"
 # Private bucket, only reachable through the Worker. The deploy workflow creates it if missing.
 bucket_name = "duit-receipts"
+
+[[durable_objects.bindings]]
+name = "ACCOUNTS"
+class_name = "AccountCoordinator"
+
+[[migrations]]
+tag = "v1-account-coordinator"
+new_sqlite_classes = ["AccountCoordinator"]

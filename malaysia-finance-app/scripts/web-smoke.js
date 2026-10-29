@@ -15,11 +15,11 @@ const server = http.createServer((req, res) => {
   res.end(fs.readFileSync(file));
 });
 
-server.listen(0, async () => {
+server.listen(0, '127.0.0.1', async () => {
   const errors = [];
   let text = '';
   try {
-    const browser = await chromium.launch();
+    const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined });
     const page = await browser.newPage();
     page.on('pageerror', (e) => errors.push(e.message));
     // Simulate Safari before 15.4, which lacks these built-ins; a missing one used to leave a blank page on iPhones.
@@ -29,9 +29,9 @@ server.listen(0, async () => {
       if (crypto.randomUUID) delete crypto.randomUUID;
     });
     // The page must not load anything from another origin: Safari's privacy protections flag that and show a banner.
-    const origin = `http://localhost:`;
+    const origin = `http://127.0.0.1:`;
     page.on('request', (r) => { if (!r.url().startsWith(origin) && !r.url().startsWith('data:') && !r.url().startsWith('blob:')) errors.push(`third-party request: ${r.url()}`); });
-    await page.goto(`http://localhost:${server.address().port}/`);
+    await page.goto(`http://127.0.0.1:${server.address().port}/`);
     await page.waitForTimeout(6000);
     text = (await page.innerText('body')).trim();
     // Home's category tiles must form equal-width columns that fill the row at every screen size.

@@ -1,3 +1,4 @@
+import { AccountCoordinator } from '../src/accountCoordinator';
 import initSqlJs, { type Database, type SqlValue } from 'sql.js';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -77,4 +78,27 @@ export function createFakeR2() {
     },
   };
   return bucket as unknown as R2Bucket & { map: Map<string, Uint8Array> };
+}
+
+/** Lightweight route fixture; the runtime suite supplies real SQLite Durable Objects. */
+export function createFakeAccounts(env: import('../src/index').Env): import('../src/index').Env['ACCOUNTS'] {
+  const instances = new Map<string, import('../src/accountCoordinator').AccountCoordinator>();
+  return {
+    idFromName: (name: string) => name,
+    get(id: string) {
+      let instance = instances.get(id);
+      if (!instance) {
+        const values = new Map<string, unknown>();
+        const storage = {
+          async get(key: string) { return values.get(key); },
+          async put(key: string, value: unknown) { values.set(key, structuredClone(value)); },
+          async delete(key: string) { values.delete(key); },
+          async setAlarm() {}, async deleteAlarm() {},
+        };
+        instance = new AccountCoordinator({ storage } as unknown as DurableObjectState, env);
+        instances.set(id, instance);
+      }
+      return instance;
+    },
+  } as unknown as import('../src/index').Env['ACCOUNTS'];
 }
