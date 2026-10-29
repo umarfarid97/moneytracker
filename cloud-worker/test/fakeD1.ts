@@ -95,7 +95,7 @@ export function createFakeAccounts(env: import('../src/index').Env): import('../
           async delete(key: string) { values.delete(key); },
           async setAlarm() {}, async deleteAlarm() {},
         };
-        instance = new AccountCoordinator({ storage } as unknown as DurableObjectState, env);
+        instance = new AccountCoordinator({ storage, getWebSockets: () => [] } as unknown as DurableObjectState, env);
         instances.set(id, instance);
       }
       return instance;

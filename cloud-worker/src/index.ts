@@ -1,4 +1,5 @@
 import { AccountCoordinator } from './accountCoordinator';
+import { liveTicketParts, requireLiveOrigin } from './liveConnections';
 export { AccountCoordinator };
 import { hmacHex, normalizeEmail, randomCode, randomId, randomToken, safeEqual, sha256Hex, validEmail } from './util';
 
@@ -58,6 +59,8 @@ export default {
         res = json(500, { error: 'server' });
       }
     }
+    // A WebSocket upgrade response must retain its webSocket handle.
+    if (res.status === 101) return res;
     const out = new Response(res.body, res);
     for (const [k, v] of Object.entries(cors)) out.headers.set(k, v);
     out.headers.set('X-Server-Time', String(Date.now()));
@@ -74,6 +77,15 @@ async function route(req: Request, env: Env): Promise<Response> {
   if (path === '/' && m === 'GET') return json(200, { app: 'duit-cloud', ok: true });
   if (path === '/auth/start' && m === 'POST') return authStart(req, env);
   if (path === '/auth/verify' && m === 'POST') return authVerify(req, env);
+
+  if (path === '/events') {
+    requireLiveOrigin(req, env, true);
+    const [, accountId] = liveTicketParts(url.searchParams.get('ticket') ?? '');
+    const headers = new Headers(req.headers);
+    headers.set('x-duit-account', accountId);
+    return env.ACCOUNTS.get(env.ACCOUNTS.idFromName(accountId)).fetch(new Request(req, { headers }));
+  }
+  if (path === '/events/ticket') requireLiveOrigin(req, env);
 
   const auth = await authenticate(req, env, false);
   const headers = new Headers(req.headers);

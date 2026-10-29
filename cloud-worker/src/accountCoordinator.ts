@@ -1,6 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { accountRoute, authenticate, cleanupAccount, HttpError, json, readBody, registerDevice, type Env } from './index';
 import { randomId } from './util';
+import { LiveConnections } from './liveConnections';
 
 const MAX_RECEIPT = 10 * 1024 * 1024 + 1024;
 const MAX_TOTAL = 150 * 1024 * 1024;
@@ -12,6 +13,7 @@ type Fence = { accountId: string; status: 'deleting' | 'deleted' };
  * The queue orders awaits in a live instance; durable journals/fences recover its lost work.
  */
 export class AccountCoordinator extends DurableObject<Env> {
+  private live = new LiveConnections(this.ctx, this.env);
   private tail: Promise<unknown> = Promise.resolve();
   private pending = 0;
 
@@ -37,11 +39,26 @@ export class AccountCoordinator extends DurableObject<Env> {
     return this.respond(async () => {
       await this.recover();
       if (await this.ctx.storage.get<Fence>('fence')) throw new HttpError(410, { error: 'deleted' });
+      const path = new URL(req.url).pathname;
+      if (path === '/events') {
+        const accountId = req.headers.get('x-duit-account') ?? '';
+        // Issuing a valid ticket already bound this object. Unauthenticated guesses must not
+        // create persistent account state before the ticket has been checked.
+        return this.live.accept(req, accountId);
+      }
       // Routing authentication outside this boundary is only a lookup. Recheck after queued work.
       const auth = await authenticate(req, this.env);
       if (auth.accountId !== req.headers.get('x-duit-account')) throw new HttpError(401, { error: 'auth' });
       await this.bindAccount(auth.accountId);
-      return accountRoute(req, this.env, auth, this);
+      if (path === '/events/ticket' && req.method === 'POST') return this.live.issue(auth.accountId, auth.deviceId);
+      const response = await accountRoute(req, this.env, auth, this);
+      if (response.ok && ['PUT', 'DELETE', 'POST'].includes(req.method)) {
+        const changed = req.method === 'PUT' || path.startsWith('/receipts/');
+        // Hints are best effort after commit; reconnect and periodic sync repair missed hints.
+        try { await this.live.refresh(auth.accountId, changed ? auth.deviceId : undefined); }
+        catch { console.error('Live hint unavailable; clients will reconcile on sync'); }
+      }
+      return response;
     });
   }
 
@@ -50,7 +67,9 @@ export class AccountCoordinator extends DurableObject<Env> {
       await this.recover();
       if (await this.ctx.storage.get<Fence>('fence')) throw new HttpError(410, { error: 'deleted' });
       await this.bindAccount(accountId);
-      return registerDevice(this.env, accountId, emailHash, deviceName);
+      const response = await registerDevice(this.env, accountId, emailHash, deviceName);
+      try { await this.live.refresh(accountId); } catch { /* Next sync reconciles. */ }
+      return response;
     });
   }
 
@@ -122,6 +141,8 @@ export class AccountCoordinator extends DurableObject<Env> {
   async deleteAccount(accountId: string): Promise<void> {
     await this.ctx.storage.setAlarm(Date.now() + RETRY_MS);
     await this.ctx.storage.put('fence', { accountId, status: 'deleting' } satisfies Fence);
+    this.live.closeAll();
+    await this.ctx.storage.delete('liveTickets');
     await this.recover();
   }
 
@@ -144,4 +165,13 @@ export class AccountCoordinator extends DurableObject<Env> {
   async alarm(): Promise<void> {
     await this.ordered(() => this.recover());
   }
+
+  webSocketMessage(ws: WebSocket): void {
+    // This is a server-to-client hint channel; only auto-response ping is accepted.
+    ws.close(1008, 'Unsupported message');
+  }
+
+  // The configured compatibility date automatically replies to Close frames (including code 1005).
+  webSocketClose(): void {}
+  webSocketError(ws: WebSocket): void { ws.close(1011, 'Connection error'); }
 }

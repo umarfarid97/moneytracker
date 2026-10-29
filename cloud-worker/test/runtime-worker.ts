@@ -3,9 +3,14 @@ import worker from '../src/index';
 export class TestCoordinator extends AccountCoordinator {
   constructor(ctx: DurableObjectState, env: Env) { super(ctx, wrap(env)); }
   async fetch(req: Request): Promise<Response> {
+    if (new URL(req.url).pathname.endsWith('/__expireLiveTickets')) {
+      const tickets = await this.ctx.storage.get<{ deviceId: string; hash: string; expires: number }[]>('liveTickets') ?? [];
+      await this.ctx.storage.put('liveTickets', tickets.map(ticket => ({ ...ticket, expires: 0 })));
+      return new Response('ok');
+    }
     if (new URL(req.url).pathname.endsWith('/__alarm')) { await this.alarm(); return new Response('ok'); }
     if (new URL(req.url).pathname.endsWith('/__state')) return Response.json({
-      journal: await this.ctx.storage.get('journal'), fence: await this.ctx.storage.get('fence'), alarm: await this.ctx.storage.getAlarm(),
+      journal: await this.ctx.storage.get('journal'), fence: await this.ctx.storage.get('fence'), alarm: await this.ctx.storage.getAlarm(), boundAccount: await this.ctx.storage.get('account'),
     });
     return super.fetch(req);
   }

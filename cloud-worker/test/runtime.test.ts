@@ -25,7 +25,7 @@ beforeAll(async () => {
   script = result.outputFiles[0].text;
 });
 async function startRuntime() {
-  mf = new Miniflare({ ...convertV4MiniflareOptions({ name: 'security-test', modules: true, script, durableObjects: { ACCOUNTS: { className: 'TestCoordinator', useSQLite: true } }, serviceBindings: { TEST_IO: async (req: Request) => { const url = new URL(req.url); if (url.pathname === '/mail') mailedCode = url.searchParams.get('code')!; await onIo(url.pathname); return new Response('ok'); } }, compatibilityDate: '2026-10-01', d1Databases: { DB: 'local-db' }, r2Buckets: { RECEIPTS: 'local-receipts' }, bindings: { PEPPER: 'local', ALLOWED_ORIGINS: '', MAIL_FROM: 'local@example.test' } }), resourcePersistencePath: persist });
+  mf = new Miniflare({ ...convertV4MiniflareOptions({ name: 'security-test', modules: true, script, durableObjects: { ACCOUNTS: { className: 'TestCoordinator', useSQLite: true } }, serviceBindings: { TEST_IO: async (req: Request) => { const url = new URL(req.url); if (url.pathname === '/mail') mailedCode = url.searchParams.get('code')!; await onIo(url.pathname); return new Response('ok'); } }, compatibilityDate: '2026-10-01', d1Databases: { DB: 'local-db' }, r2Buckets: { RECEIPTS: 'local-receipts' }, bindings: { PEPPER: 'local', ALLOWED_ORIGINS: 'https://app.test', MAIL_FROM: 'local@example.test' } }), resourcePersistencePath: persist });
   db = await mf.getD1Database('DB') as unknown as D1Database;
   bucket = await mf.getR2Bucket('RECEIPTS') as unknown as R2Bucket;
 }
@@ -46,6 +46,123 @@ afterEach(async () => {
 const state = async () => (await mf.dispatchFetch(`https://local.test/__test/${account}/__state`)).json() as Promise<{ journal?: unknown; fence?: { status: string }; alarm: number | null }>;
 async function restart() { await mf.dispose(); await startRuntime(); }
 const alarm = () => mf.dispatchFetch(`https://local.test/__test/${account}/__alarm`);
+
+async function liveTicket(bearer = token) {
+  const response = await call('POST', '/events/ticket', undefined, { authorization: 'Bearer ' + bearer });
+  expect(response.status).toBe(200);
+  return (await response.json() as { ticket: string }).ticket;
+}
+async function connectLive(ticket: string, origin?: string) {
+  const response = await mf.dispatchFetch('https://local.test/events?ticket=' + encodeURIComponent(ticket), { headers: { upgrade: 'websocket', ...(origin ? { origin } : {}) } });
+  expect(response.status).toBe(101);
+  const ws = response.webSocket!;
+  const messages: string[] = [];
+  ws.addEventListener('message', event => messages.push(String(event.data)));
+  ws.accept();
+  await new Promise(resolve => setTimeout(resolve, 30));
+  return { ws, messages };
+}
+async function secondDevice() {
+  const bearer = 'second-local-device-token-000000000000';
+  await db.prepare('INSERT INTO devices(id,account_id,token_hash,name,created_at,last_seen) VALUES (?,?,?,?,0,?)')
+    .bind('e'.repeat(32), account, createHash('sha256').update(bearer).digest('hex'), 'second', Date.now()).run();
+  return bearer;
+}
+
+describe('live account change hints', () => {
+  it('accepts configured browser origins and the Worker origin sent by Android native WebSockets', async () => {
+    const browser = await connectLive(await liveTicket(), 'https://app.test');
+    browser.ws.close();
+    const android = await connectLive(await liveTicket(), 'https://local.test');
+    expect(android.messages).toEqual(['{"type":"ready"}']);
+    android.ws.close();
+  });
+  it('rejects expired, replaced and account-tampered tickets; pending tickets survive object restart', async () => {
+    const first = await liveTicket();
+    const second = await liveTicket();
+    const upgrade = (ticket: string) => mf.dispatchFetch('https://local.test/events?ticket=' + ticket, { headers: { upgrade: 'websocket' } });
+    expect((await upgrade(first)).status).toBe(401);
+    expect((await upgrade(second.replace(account, 'b'.repeat(32)))).status).toBe(401);
+    const unauthorizedState = await (await mf.dispatchFetch(`https://local.test/__test/${'b'.repeat(32)}/__state`)).json() as { boundAccount?: string };
+    expect(unauthorizedState.boundAccount).toBeUndefined();
+    await mf.dispatchFetch(`https://local.test/__test/${account}/__expireLiveTickets`);
+    expect((await upgrade(second)).status).toBe(401);
+    const pending = await liveTicket();
+    await restart();
+    const live = await connectLive(pending);
+    expect(live.messages).toEqual(['{"type":"ready"}']);
+    live.ws.close();
+  });
+
+  it('does not echo changes to the originating device or another account', async () => {
+    const own = await connectLive(await liveTicket());
+    const otherToken = 'other-account-token-0000000000000000';
+    const otherAccount = 'b'.repeat(32);
+    await db.prepare('INSERT INTO accounts(id,email_hash,created_at) VALUES (?,?,0)').bind(otherAccount, 'other-email').run();
+    await db.prepare('INSERT INTO devices(id,account_id,token_hash,name,created_at,last_seen) VALUES (?,?,?,?,0,?)')
+      .bind('c'.repeat(32), otherAccount, createHash('sha256').update(otherToken).digest('hex'), 'other', Date.now()).run();
+    const other = await connectLive(await liveTicket(otherToken));
+    expect((await call('PUT', '/sync', 'encrypted', { 'if-match': '0', 'x-sync-schema': '17' })).status).toBe(200);
+    await new Promise(resolve => setTimeout(resolve, 50));
+    expect(own.messages).toEqual(['{"type":"ready"}']);
+    expect(other.messages).toEqual(['{"type":"ready"}']);
+    own.ws.close(); other.ws.close();
+  });
+
+  it('rejects excess device connections without evicting the existing connection', async () => {
+    const live = [];
+    for (let i = 0; i < 8; i++) live.push(await connectLive(await liveTicket()));
+    const ticket = await liveTicket();
+    expect((await mf.dispatchFetch('https://local.test/events?ticket=' + ticket, { headers: { upgrade: 'websocket' } })).status).toBe(429);
+    live[0].ws.send('ping');
+    await new Promise(resolve => setTimeout(resolve, 30));
+    expect(live[0].messages.at(-1)).toBe('pong');
+    live.forEach(connection => connection.ws.close());
+  });
+
+  it('requires authentication and an allowed browser origin for tickets and upgrades', async () => {
+    expect((await call('POST', '/events/ticket', undefined, { authorization: '' })).status).toBe(401);
+    expect((await call('POST', '/events/ticket', undefined, { origin: 'https://evil.test' })).status).toBe(403);
+    const ticket = await liveTicket();
+    expect(ticket).not.toContain(token);
+    expect((await mf.dispatchFetch('https://local.test/events?ticket=' + ticket, { headers: { upgrade: 'websocket', origin: 'https://evil.test' } })).status).toBe(403);
+    const live = await connectLive(ticket);
+    expect(live.messages).toEqual(['{"type":"ready"}']);
+    expect((await mf.dispatchFetch('https://local.test/events?ticket=' + ticket, { headers: { upgrade: 'websocket' } })).status).toBe(401);
+    live.ws.close();
+  });
+
+  it('notifies another device only after successful data commits, including receipts', async () => {
+    const peer = await secondDevice();
+    const live = await connectLive(await liveTicket(peer));
+    expect((await call('PUT', '/sync', 'ciphertext', { 'if-match': '0', 'x-sync-schema': '17' })).status).toBe(200);
+    expect((await call('PUT', '/receipts/a.enc', 'photo-ciphertext')).status).toBe(204);
+    expect((await call('PUT', '/sync', 'conflict', { 'if-match': '0', 'x-sync-schema': '17' })).status).toBe(409);
+    await new Promise(resolve => setTimeout(resolve, 40));
+    expect(live.messages).toEqual(['{"type":"ready"}', '{"type":"changed"}', '{"type":"changed"}']);
+    live.ws.send('ping');
+    await new Promise(resolve => setTimeout(resolve, 30));
+    expect(live.messages.at(-1)).toBe('pong');
+    live.ws.close();
+  });
+
+  it('closes revoked devices and rejects tickets issued before revocation', async () => {
+    const peer = await secondDevice();
+    const live = await connectLive(await liveTicket(peer));
+    const ticket = await liveTicket(peer);
+    const closed = new Promise<number>(resolve => live.ws.addEventListener('close', event => resolve(event.code)));
+    expect((await call('DELETE', '/devices/' + 'e'.repeat(32))).status).toBe(204);
+    expect(await closed).toBe(4001);
+    expect((await mf.dispatchFetch('https://local.test/events?ticket=' + ticket, { headers: { upgrade: 'websocket' } })).status).toBe(401);
+  });
+
+  it('closes live connections when account deletion begins', async () => {
+    const live = await connectLive(await liveTicket());
+    const closed = new Promise<number>(resolve => live.ws.addEventListener('close', event => resolve(event.code)));
+    expect((await call('DELETE', '/account')).status).toBe(204);
+    expect(await closed).toBe(4001);
+  });
+});
 
 describe('local Cloudflare account ordering', () => {
   it('admits only one of two concurrent uploads that together exceed remaining quota', async () => {
