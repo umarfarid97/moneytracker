@@ -16,17 +16,17 @@ Ticket replay/revocation after issuance; successful receipt transfer after snaps
 ### Task 1: Server admission and notifications
 Files: cloud-worker/src/index.ts, accountCoordinator.ts, new liveConnections.ts; test/runtime.test.ts.
 Interfaces: LiveConnections issues/consumes tickets, accepts hibernating sockets and prunes/broadcasts by device ID. Coordinator remains the ordering boundary.
-- [ ] Add failing real-runtime tests for ticket, upgrade, isolation, post-commit hints and revocation/deletion.
-- [ ] Implement ticket endpoint, guarded unauthenticated upgrade routing, hibernation and post-commit notifications. Preserve 101 response in outer Worker.
-- [ ] Run backend suite/types; commit.
+- [x] Add failing real-runtime tests for ticket, upgrade, isolation, post-commit hints and revocation/deletion.
+- [x] Implement ticket endpoint, guarded unauthenticated upgrade routing, hibernation and post-commit notifications. Preserve 101 response in outer Worker.
+- [x] Run backend suite/types; commit.
 
 ### Task 2: Foreground client and sync integration
 Files: src/sync/liveSync.ts, cloudApi.ts, SyncProvider.tsx; tests/sync/liveSync.test.ts and provider integration coverage.
 Interfaces: startLiveSync(api,onChange,onAuthError) returns stop(); API exposes liveUrl(); ready/changed coalesce into existing sync run.
-- [ ] Add failing tests for ready/change, single retry, heartbeat, auth errors, stale requests and stop.
-- [ ] Implement connection manager; wire foreground lifetime and one-second edits into provider, retain fallback.
-- [ ] Run focused tests/types; commit.
+- [x] Add failing tests for ready/change, single retry, heartbeat, auth errors, stale requests and stop.
+- [x] Implement connection manager; wire foreground lifetime and one-second edits into provider, retain fallback.
+- [x] Run focused tests/types; commit.
 
 ### Task 3: Validation and rollout
-- [ ] Run full app/backend suites, lint/types, web export/smoke. Obtain one fresh whole-branch review; fix important findings with regression-first tests.
-- [ ] Document rollout/manual device gaps and verification; commit, keep reviewable local branch.
+- [x] Run full app/backend suites, lint/types, web export/smoke. Obtain one fresh whole-branch review; fix important findings with regression-first tests.
+- [x] Document rollout/manual device gaps and verification; commit, keep reviewable local branch.
