@@ -154,6 +154,22 @@ describe('loans', () => {
     expect(screen.getByLabelText('Name').props.value).toBe('ShopeePayLater');
   });
 
+  test('every loan suggestion replaces the current name and only the chosen suggestion is selected', async () => {
+    const db = await freshDb();
+    await openAdd(db, 'Loan / Instalment');
+    await fireEvent.press(screen.getByRole('button', { name: 'Pay later Grab PayLater' }));
+    expect(screen.getByLabelText('Name').props.value).toBe('Grab PayLater');
+    for (const label of ['Home loan', 'Car loan', 'PTPTN', 'Personal loan', 'Pay later', 'Installment']) {
+      await fireEvent.press(screen.getByRole('button', { name: label }));
+      expect(screen.getByLabelText('Name').props.value).toBe(label);
+      expect(screen.getByRole('button', { name: label }).props.accessibilityState.selected).toBe(true);
+      expect(screen.getByRole('button', { name: 'Pay later Grab PayLater' }).props.accessibilityState.selected).toBe(false);
+    }
+    await fireEvent.press(screen.getByRole('button', { name: 'Pay later Atome' }));
+    expect(screen.getByLabelText('Name').props.value).toBe('Atome');
+    expect(screen.getByRole('button', { name: 'Pay later' }).props.accessibilityState.selected).toBe(false);
+  });
+
   test('a loan with no balance entered still works like before', async () => {
     const db = await freshDb();
     await openAdd(db, 'Loan / Instalment');

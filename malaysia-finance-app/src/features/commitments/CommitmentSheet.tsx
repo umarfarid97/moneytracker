@@ -4,7 +4,7 @@ import { Pressable, TextInput, View } from 'react-native';
 import { resolveTaxData } from '@/data/tax';
 import { BILLERS } from '@/domain/billers';
 import { SUBSCRIPTIONS } from '@/domain/subscriptions';
-import { BNPL_PROVIDERS, bnplFor, instalmentNumber, LOAN_TYPES, startFromCycle } from '@/domain/loanTracker';
+import { BNPL_PROVIDERS, instalmentNumber, LOAN_TYPES, startFromCycle } from '@/domain/loanTracker';
 import { isValidDate } from '@/domain/dates';
 import { parsePercent, parseRM, senToInput, type Sen } from '@/domain/money';
 import type { Commitment, CommitmentKind, LoanType, NewCommitment } from '@/domain/types';
@@ -504,10 +504,10 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
                       key={lt}
                       label={t(`loans.type.${lt}`)}
                       leading={<BrandBadge {...brandForBill('', 'loan', lt)!} size={22} />}
-                      selected={loanType === lt}
+                      selected={loanType === lt && name === t(`loans.type.${lt}`)}
                       onPress={() => {
                         setLoanType(lt);
-                        if (!existing && name.trim() === '' && lt !== 'bnpl') setName(t(`loans.type.${lt}`));
+                        setName(t(`loans.type.${lt}`));
                       }}
                     />
                   ))}
@@ -517,7 +517,7 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
                         label={p.name}
                         accessibilityLabel={`Pay later ${p.name}`}
                         leading={<BrandBadge id={p.id} initials={p.initials} color={p.color} ink={p.ink} size={22} />}
-                        selected={bnplFor(name)?.id === p.id}
+                        selected={loanType === 'bnpl' && name === p.name}
                         onPress={() => { setLoanType('bnpl'); setName(p.name); }}
                       />
                     ))}
