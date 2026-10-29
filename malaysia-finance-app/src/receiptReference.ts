@@ -1,7 +1,9 @@
 import { RECEIPT_EXTENSIONS } from './receiptKind';
 
+export type ReceiptReference = string & { readonly __receiptReference: unique symbol };
+
 /** Portable database keys, never browser URLs or platform file paths. */
-export function isReceiptReference(value: unknown): value is string {
+export function isReceiptReference(value: unknown): value is ReceiptReference {
   if (typeof value !== 'string') return false;
   const match = /^receipts\/([A-Za-z0-9_-][A-Za-z0-9._-]{0,99})$/.exec(value);
   if (!match) return false;
@@ -9,6 +11,6 @@ export function isReceiptReference(value: unknown): value is string {
   return match[1].includes('.') && RECEIPT_EXTENSIONS.includes(extension);
 }
 
-export function requireReceiptReference(value: unknown): asserts value is string {
+export function requireReceiptReference(value: unknown): asserts value is ReceiptReference {
   if (!isReceiptReference(value)) throw new Error('Invalid receipt reference');
 }
