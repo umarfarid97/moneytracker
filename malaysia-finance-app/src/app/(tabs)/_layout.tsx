@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, Tabs } from 'expo-router';
 import type { BottomTabBarProps } from 'expo-router/tabs';
-import { Pressable, View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { t } from '@/i18n/t';
 import type { StringKey } from '@/i18n/en';
@@ -10,6 +10,8 @@ import { PressableScale } from '@/ui/PressableScale';
 import { glow } from '@/ui/theme';
 import { THEMES } from '@/ui/themeDefs';
 import { useTheme } from '@/ui/useTheme';
+import { MOTION, motionEase, navigationMotion } from '@/ui/motion';
+import { useMotion } from '@/ui/useMotion';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -48,7 +50,7 @@ function TabBar({ state, descriptors, navigateToTab, emitter }: BottomTabBarProp
       if (!focused && !event.defaultPrevented) navigateToTab(route.key);
     };
     return (
-      <Pressable
+      <PressableScale
         key={route.key}
         accessibilityRole="tab"
         accessibilityLabel={label}
@@ -74,7 +76,7 @@ function TabBar({ state, descriptors, navigateToTab, emitter }: BottomTabBarProp
         <AppText variant="small" color={color} numberOfLines={1} style={{ fontSize: 12, lineHeight: 16 }}>
           {label}
         </AppText>
-      </Pressable>
+      </PressableScale>
     );
   };
 
@@ -131,10 +133,11 @@ function TabBar({ state, descriptors, navigateToTab, emitter }: BottomTabBarProp
 
 export default function TabsLayout() {
   const { c } = useTheme();
+  const reduced = useMotion();
   return (
     <Tabs
       tabBar={(props) => <TabBar {...props} />}
-      screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: c.ground } }}
+      screenOptions={{ headerShown: false, animation: navigationMotion(reduced, Platform.OS).tabs, transitionSpec: { animation: 'timing', config: { duration: reduced ? 0 : MOTION.change, easing: motionEase } }, sceneStyle: { backgroundColor: c.ground } }}
     >
       {TABS.map((tab) => (
         <Tabs.Screen key={tab.name} name={tab.name} options={{ title: t(tab.label) }} />

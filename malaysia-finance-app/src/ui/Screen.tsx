@@ -1,11 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { AppState, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useAppLock } from '@/security/appLock';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { space } from './theme';
 import { useTheme } from './useTheme';
 import { Wallpaper } from './Wallpaper';
+import { ScreenEntry } from './ScreenEntry';
 
 type Props = {
   children: ReactNode;
@@ -21,8 +21,6 @@ type Props = {
   /** Pinned under the content, e.g. a form's Save button. The content then stretches to fill the height. */
   footer?: ReactNode;
 };
-
-const ANIMATE_IN = Platform.OS !== 'android';
 
 /** Page frame: plain ground colour, safe area, 20px padding, 16px between blocks. */
 export function Screen({ children, scroll = true, fab = false, compact = false, footer }: Props) {
@@ -47,22 +45,17 @@ export function Screen({ children, scroll = true, fab = false, compact = false, 
     paddingBottom: fab ? 100 : pad,
     ...(footer ? { flexGrow: 1 } : null),
   };
-  // Content rises in gently when a screen opens. Not on Android: fading a whole screen there
-  // redraws it offscreen every frame, which stutters on tablets.
-  const shown = useSharedValue(ANIMATE_IN ? 0 : 1);
-  useEffect(() => {
-    if (ANIMATE_IN) shown.value = withTiming(1, { duration: 320 });
-  }, [shown]);
-  const enter = useAnimatedStyle(() => ({ opacity: shown.value, transform: [{ translateY: (1 - shown.value) * 10 }] }));
+  // Navigators own screen transitions. The privacy cover must never wait for an animation.
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.ground }}>
       <Wallpaper />
-      <Animated.View
-        style={[{ flex: 1 }, enter, covered && { opacity: 0 }]}
+      <View
+        style={[{ flex: 1 }, covered && { opacity: 0 }]}
         accessibilityElementsHidden={covered}
         importantForAccessibility={covered ? 'no-hide-descendants' : 'auto'}
         pointerEvents={covered ? 'none' : 'auto'}
       >
+      <ScreenEntry>
         {/* On iOS the keyboard lifts the pinned footer with the content; Android and web resize the window instead. */}
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {scroll ? (
@@ -82,7 +75,8 @@ export function Screen({ children, scroll = true, fab = false, compact = false, 
           </SafeAreaView>
         ) : null}
         </KeyboardAvoidingView>
-      </Animated.View>
+      </ScreenEntry>
+      </View>
       {covered ? <View testID="screen-privacy-cover" style={[StyleSheet.absoluteFill, { backgroundColor: c.ground, zIndex: 1000 }]} /> : null}
     </SafeAreaView>
   );

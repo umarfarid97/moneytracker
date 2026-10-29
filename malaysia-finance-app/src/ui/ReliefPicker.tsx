@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { TextInput, View } from 'react-native';
 import type { ReliefDef } from '@/data/tax/types';
 import { reliefLabel } from '@/i18n/content';
 import { t } from '@/i18n/t';
@@ -75,17 +75,17 @@ export function ReliefPicker({ reliefs, value, onChange, compact = false }: Prop
           }}
         />
         <View>
-            <Pressable accessibilityRole="button" onPress={() => choose(null)} style={row}>
+            <PressableScale accessibilityRole="button" onPress={() => choose(null)} style={row}>
               <AppText variant="bodyStrong" tone="muted">
                 {t('relief.none')}
               </AppText>
-            </Pressable>
+            </PressableScale>
             {shown.map((r) => (
-              <Pressable key={r.id} accessibilityRole="button" onPress={() => choose(r.id)} style={row}>
+              <PressableScale key={r.id} accessibilityRole="button" onPress={() => choose(r.id)} style={row}>
                 <AppText variant="body" tone={r.id === value ? 'accent' : 'text'}>
                   {reliefLabel(r)}
                 </AppText>
-              </Pressable>
+              </PressableScale>
             ))}
         </View>
       </Sheet>

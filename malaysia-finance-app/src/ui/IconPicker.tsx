@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
+import { PressableScale } from './PressableScale';
 import { t } from '@/i18n/t';
 import { Sheet } from './Sheet';
 import { CATEGORY_ICONS, radius, type IconName } from './theme';
@@ -26,7 +27,7 @@ export function IconPicker({ visible, selected, onPick, onClose }: Props) {
           const on = icon === selected;
           return (
             <View key={icon} style={{ width: '16.66%', aspectRatio: 1, padding: 4 }}>
-              <Pressable
+              <PressableScale
                 accessibilityRole="button"
                 accessibilityLabel={t('categories.iconOption', { name: spoken(icon) })}
                 accessibilityState={{ selected: on }}
@@ -42,7 +43,7 @@ export function IconPicker({ visible, selected, onPick, onClose }: Props) {
                 }}
               >
                 <Ionicons name={icon} size={24} color={on ? c.accent : c.text} />
-              </Pressable>
+              </PressableScale>
             </View>
           );
         })}

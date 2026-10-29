@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Pressable } from 'react-native';
+import { PressableScale } from './PressableScale';
 import { t } from '@/i18n/t';
 import { useTheme } from './useTheme';
 
@@ -8,7 +8,7 @@ import { useTheme } from './useTheme';
 export function BackButton() {
   const { c } = useTheme();
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={t('common.back')}
       hitSlop={12}
@@ -16,6 +16,6 @@ export function BackButton() {
       style={{ alignSelf: 'flex-start', marginLeft: -4 }}
     >
       <Ionicons name="chevron-back" size={28} color={c.text} />
-    </Pressable>
+    </PressableScale>
   );
 }

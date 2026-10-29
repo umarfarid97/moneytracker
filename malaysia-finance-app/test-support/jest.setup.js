@@ -1,13 +1,15 @@
 // Reanimated's own jest mode needs a browser DOM, so tests use this small stand-in:
 // animated styles resolve immediately and timings jump straight to their target.
 jest.mock('react-native-reanimated', () => {
+  const React = require('react');
   const { View } = require('react-native');
   return {
     __esModule: true,
+    ReduceMotion: { System: 'system', Always: 'always', Never: 'never' },
     default: { View, createAnimatedComponent: (component) => component },
-    useSharedValue: (value) => ({ value }),
+    useSharedValue: (value) => React.useRef({ value }).current,
     useAnimatedStyle: (factory) => factory(),
-    withTiming: (value) => value,
+    withTiming: (value, _config, callback) => { callback?.(true); return value; },
     withSpring: (value) => value,
     runOnJS: (fn) => fn,
   };

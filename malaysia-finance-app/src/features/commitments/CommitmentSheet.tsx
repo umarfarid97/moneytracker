@@ -5,6 +5,7 @@ import { resolveTaxData } from '@/data/tax';
 import { BILLERS } from '@/domain/billers';
 import { SUBSCRIPTIONS } from '@/domain/subscriptions';
 import { BNPL_PROVIDERS, instalmentNumber, LOAN_TYPES, startFromCycle } from '@/domain/loanTracker';
+import { Reveal } from '@/ui/Reveal';
 import { isValidDate } from '@/domain/dates';
 import { parsePercent, parseRM, senToInput, type Sen } from '@/domain/money';
 import type { Commitment, CommitmentKind, LoanType, NewCommitment } from '@/domain/types';
@@ -249,7 +250,7 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
         onPress={() => setCatOpen((v) => !v)}
       />
       {catOpen ? (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        <Reveal style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {categories.map((cat) => (
             <Chip
               key={cat.id}
@@ -262,7 +263,7 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
               }}
             />
           ))}
-        </View>
+        </Reveal>
       ) : null}
       <AppText variant="small" tone="muted">{t('commitments.recordsAs')}</AppText>
     </View>
@@ -351,11 +352,11 @@ export function CommitmentSheet({ visible, existing, currentBalance = null, onCl
         <Ionicons name={moreOpen ? 'chevron-up' : 'chevron-down'} size={20} color={c.muted} />
       </Pressable>
       {moreOpen ? (
-        <View style={{ gap: 16, padding: 14, paddingTop: 2 }}>
+        <Reveal style={{ gap: 16, padding: 14, paddingTop: 2 }}>
           {methodBlock}
           {reliefBlock}
           {autoRow}
-        </View>
+        </Reveal>
       ) : null}
     </View>
   );

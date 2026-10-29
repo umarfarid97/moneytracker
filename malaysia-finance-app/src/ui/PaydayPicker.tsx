@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
+import { PressableScale } from './PressableScale';
 import { t } from '@/i18n/t';
 import { AppText } from './AppText';
 import { Sheet } from './Sheet';
@@ -21,7 +22,7 @@ export function PaydayPicker({ value, onChange }: { value: number; onChange: (da
 
   return (
     <>
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel={`${t('profile.salaryDay')}: ${dayLabel(value)}`}
         onPress={() => setOpen(true)}
@@ -32,7 +33,7 @@ export function PaydayPicker({ value, onChange }: { value: number; onChange: (da
       >
         <AppText variant="bodyStrong">{dayLabel(value)}</AppText>
         <Ionicons name="chevron-down" size={18} color={c.muted} />
-      </Pressable>
+      </PressableScale>
       <DaySheet visible={open} title={t('profile.salaryDay')} value={value} onPick={onChange} onClose={() => setOpen(false)} a11yPrefix="Budget starts on" />
     </>
   );
@@ -65,7 +66,7 @@ export function DaySheet({
 function Cell({ width, selected, label, a11y, onPress }: { width: `${number}%`; selected: boolean; label: string; a11y: string; onPress: () => void }) {
   const { c } = useTheme();
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={a11y}
       accessibilityState={{ selected }}
@@ -76,6 +77,6 @@ function Cell({ width, selected, label, a11y, onPress }: { width: `${number}%`; 
       }}
     >
       <AppText variant="bodyStrong" color={selected ? c.onAccent : c.text}>{label}</AppText>
-    </Pressable>
+    </PressableScale>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -6,8 +6,9 @@ import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { t } from '@/i18n/t';
 import { AppText } from './AppText';
-import { radius } from './theme';
 import { useTheme } from './useTheme';
+import { motionTiming } from './motion';
+import { useMotion } from './useMotion';
 
 type Props = {
   visible: boolean;
@@ -22,33 +23,69 @@ type Props = {
   onBack?: () => void;
 };
 
-const OFFSCREEN = 700;
 const DISMISS_DISTANCE = 120;
 
 /** Bottom sheet: slides up, closes by dragging down, the backdrop or the close button. */
 export function Sheet({ visible, title, onClose, children, footer, tall = false, onBack }: Props) {
   const { c } = useTheme();
   const { height } = useWindowDimensions();
-  const y = useSharedValue(OFFSCREEN);
+  const reduced = useMotion();
+  const y = useSharedValue(height);
   const backdrop = useSharedValue(0);
+  const dismissing = useSharedValue(false);
+  const epoch = useRef({ value: 0 });
+  const settle = motionTiming('change', reduced);
+
+  useEffect(() => {
+    const lifetime = epoch.current;
+    lifetime.value++;
+    return () => { lifetime.value++; };
+  }, [visible]);
+
+  const finishDismiss = (started: number) => {
+    if (epoch.current.value !== started || !visible || !dismissing.value) return;
+    dismissing.value = false;
+    onClose();
+  };
 
   useEffect(() => {
     if (visible) {
-      y.value = withTiming(0, { duration: 260 });
-      backdrop.value = withTiming(1, { duration: 260 });
+      if (dismissing.value) {
+        if (reduced) {
+          dismissing.value = false;
+          onClose();
+        }
+        return;
+      }
+      y.value = withTiming(0, motionTiming('sheet', reduced));
+      backdrop.value = withTiming(1, motionTiming('sheet', reduced));
     } else {
-      y.value = OFFSCREEN;
+      dismissing.value = false;
+      y.value = height;
       backdrop.value = 0;
     }
-  }, [visible, y, backdrop]);
+  }, [visible, reduced, height, y, backdrop, dismissing, onClose]);
+
+  const requestClose = () => {
+    if (dismissing.value) return;
+    if (reduced || tall) { onClose(); return; }
+    dismissing.value = true;
+    const started = epoch.current.value;
+    backdrop.value = withTiming(0, motionTiming('dismiss', false));
+    y.value = withTiming(height, motionTiming('dismiss', false), finished => {
+      if (finished) runOnJS(finishDismiss)(started);
+    });
+  };
 
   const drag = Gesture.Pan()
     .onUpdate((e) => {
+      if (dismissing.value) return;
       y.value = Math.max(0, e.translationY);
     })
     .onEnd((e) => {
-      if (e.translationY > DISMISS_DISTANCE) runOnJS(onClose)();
-      else y.value = withTiming(0, { duration: 180 });
+      if (dismissing.value) return;
+      if (e.translationY > DISMISS_DISTANCE) runOnJS(requestClose)();
+      else y.value = withTiming(0, settle);
     });
 
   const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
@@ -57,7 +94,7 @@ export function Sheet({ visible, title, onClose, children, footer, tall = false,
   if (!visible) return null;
   if (tall) {
     return (
-      <Modal animationType="slide" visible onRequestClose={onClose} statusBarTranslucent>
+      <Modal animationType={reduced ? 'none' : 'slide'} visible onRequestClose={requestClose} statusBarTranslucent>
         <SafeAreaView style={{ flex: 1, backgroundColor: c.ground }}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, width: '100%', maxWidth: 640, alignSelf: 'center' }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 }}>
@@ -83,10 +120,10 @@ export function Sheet({ visible, title, onClose, children, footer, tall = false,
     );
   }
   return (
-    <Modal transparent animationType="none" visible onRequestClose={onClose} statusBarTranslucent>
+    <Modal transparent animationType="none" visible onRequestClose={requestClose} statusBarTranslucent>
       <GestureHandlerRootView style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Animated.View style={[{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: '#000' }, backdropStyle]}>
-          <Pressable accessibilityLabel={t('common.dismiss')} style={{ flex: 1 }} onPress={onClose} />
+          <Pressable accessibilityLabel={t('common.dismiss')} style={{ flex: 1 }} onPress={requestClose} />
         </Animated.View>
         <KeyboardAvoidingView
           testID="sheet-keyboard-avoider"
@@ -106,7 +143,7 @@ export function Sheet({ visible, title, onClose, children, footer, tall = false,
               <View style={{ alignSelf: 'center', width: 36, height: 5, borderRadius: 3, backgroundColor: c.control }} />
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <AppText variant="section">{title}</AppText>
-                <Pressable accessibilityRole="button" accessibilityLabel={t('common.close')} onPress={onClose} hitSlop={12}>
+                <Pressable accessibilityRole="button" accessibilityLabel={t('common.close')} onPress={requestClose} hitSlop={12}>
                   <AppText variant="bodyStrong" tone="muted">
                     {t('common.close')}
                   </AppText>

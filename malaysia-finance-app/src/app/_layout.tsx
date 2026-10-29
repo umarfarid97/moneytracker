@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BillsSync } from '@/features/commitments/BillsSync';
@@ -16,6 +17,8 @@ import { getThemeName } from '@/ui/appearance';
 import { loadThemeFonts } from '@/ui/themeFonts';
 import { useTheme } from '@/ui/useTheme';
 import { syncBrowserChrome } from '@/ui/browserChrome';
+import { MOTION, navigationMotion } from '@/ui/motion';
+import { useMotion } from '@/ui/useMotion';
 
 const FONT_WAIT_MS = 700;
 
@@ -37,6 +40,8 @@ export default function RootLayout() {
   const ready = fontsLoaded || fontWaitOver;
   const { scheme, c } = useTheme();
   const language = useLanguage();
+  const reduced = useMotion();
+  const motion = navigationMotion(reduced, Platform.OS);
 
   // Web: paint the page behind the app, the browser's status bar and the overscroll area in the theme's ground colour.
   useEffect(() => {
@@ -60,9 +65,9 @@ export default function RootLayout() {
           <SyncProvider>
             <AppLockGate>
               {/* Screens read strings through t(), so a new language needs a fresh render of the navigator. */}
-              <Stack key={language} screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.ground } }}>
+              <Stack key={language} screenOptions={{ headerShown: false, animation: motion.stack, animationDuration: reduced ? 0 : MOTION.screen, contentStyle: { backgroundColor: c.ground } }}>
                 <Stack.Screen name="(tabs)" />
-                <Stack.Screen name="add-expense" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+                <Stack.Screen name="add-expense" options={{ presentation: 'modal', animation: motion.modal }} />
               </Stack>
             </AppLockGate>
           </SyncProvider>

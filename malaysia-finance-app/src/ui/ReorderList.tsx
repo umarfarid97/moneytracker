@@ -7,6 +7,8 @@ import { t } from '@/i18n/t';
 import { AppText } from './AppText';
 import { cardChrome, radius } from './theme';
 import { useTheme } from './useTheme';
+import { motionTiming } from './motion';
+import { useMotion } from './useMotion';
 
 export type ReorderItem = {
   key: string;
@@ -73,6 +75,7 @@ type RowProps = {
 
 function Row({ item, index, count, from, to, dy, onMove, onToggle }: RowProps) {
   const { c, scheme } = useTheme();
+  const timing = motionTiming('reorder', useMotion());
 
   const drag = Gesture.Pan()
     .activeOffsetY([-4, 4])
@@ -89,7 +92,7 @@ function Row({ item, index, count, from, to, dy, onMove, onToggle }: RowProps) {
       const target = to.value;
       from.value = -1;
       to.value = -1;
-      dy.value = withTiming(0, { duration: 120 });
+      dy.value = withTiming(0, timing);
       if (target !== index && target >= 0) runOnJS(onMove)(index, target);
     });
 
@@ -100,7 +103,7 @@ function Row({ item, index, count, from, to, dy, onMove, onToggle }: RowProps) {
     let shift = 0;
     if (from.value < index && index <= to.value) shift = -STRIDE;
     else if (to.value <= index && index < from.value) shift = STRIDE;
-    return { transform: [{ translateY: withTiming(shift, { duration: 120 }) }], zIndex: 0 };
+    return { transform: [{ translateY: withTiming(shift, timing) }], zIndex: 0 };
   });
 
   const name = item.title;
