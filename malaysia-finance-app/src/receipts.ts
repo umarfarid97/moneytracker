@@ -2,6 +2,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import * as Sharing from 'expo-sharing';
+import { nativeReceiptFile, nativeReceiptReference } from './nativeReceiptFile';
 import {
   checkReceiptFile, documentFileName, extensionOf, IMAGE_EXTENSIONS, isImageReceipt, MAX_RECEIPT_BYTES, ReceiptError,
   receiptMime,
@@ -40,17 +41,20 @@ export async function storeReceipt(sourceUri: string, now: number = Date.now(), 
   return `receipts/${dest.name}`;
 }
 
-/** Full uri for a stored receipt path; uris saved by earlier versions (already absolute) pass through. */
+/** Resolves only receipts inside this app's current receipt directory. */
 export function resolveReceiptUri(stored: string): string {
-  if (/^[a-z][a-z0-9+.-]*:/i.test(stored)) return stored;
-  const file = new File(Paths.document, stored);
+  const reference = nativeReceiptReference(stored);
+  if (!reference) return '';
+  const file = nativeReceiptFile(reference);
   // A receipt added on another device is not here until sync brings it over; '' lets the screen say so.
   return file.exists ? file.uri : '';
 }
 
 /** Size in bytes of a stored receipt on this device, or null when it is not here. */
 export function receiptSize(stored: string): number | null {
-  const file = new File(Paths.document, stored);
+  const reference = nativeReceiptReference(stored);
+  if (!reference) return null;
+  const file = nativeReceiptFile(reference);
   return file.exists ? file.size : null;
 }
 

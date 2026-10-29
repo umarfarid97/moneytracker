@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { isReceiptReference, requireReceiptReference } from './receiptReference';
 import {
   checkReceiptFile, documentFileName, extensionOf, IMAGE_EXTENSIONS, isImageReceipt, MAX_RECEIPT_BYTES, RECEIPT_ACCEPT,
   ReceiptError, receiptMime,
@@ -75,7 +76,7 @@ export function loadReceipts(): Promise<void> {
           req.onerror = () => reject(req.error);
         });
         db.close();
-        for (const [key, blob] of entries) if (!urls.has(key)) {
+        for (const [key, blob] of entries) if (isReceiptReference(key) && !urls.has(key)) {
           urls.set(key, URL.createObjectURL(blob));
           sizes.set(key, blob.size);
         }
@@ -154,10 +155,11 @@ export function receiptPending(stored: string): boolean {
 }
 
 /** Whether the picture for this key is in this browser. Call after loadReceipts. */
-export const hasReceipt = (key: string): boolean => urls.has(key);
+export const hasReceipt = (key: string): boolean => isReceiptReference(key) && urls.has(key);
 
 /** The saved picture for a key, or null. */
 export async function readReceiptBlob(key: string): Promise<Blob | null> {
+  if (!isReceiptReference(key)) return null;
   await loadReceipts();
   try {
     const blob = await withStore<Blob | undefined>('readonly', (s) => s.get(key));
@@ -169,6 +171,7 @@ export async function readReceiptBlob(key: string): Promise<Blob | null> {
 
 /** Saves a receipt exactly as given (it came from a backup or another device, already shrunk). */
 export async function saveReceiptBlob(key: string, given: Blob): Promise<void> {
+  requireReceiptReference(key);
   await loadReceipts();
   // A download may arrive untyped; the type is what lets the browser show a PDF instead of saving it as a blob.
   const blob = given.type === receiptMime(key) ? given : new Blob([given], { type: receiptMime(key) });
@@ -182,16 +185,17 @@ export async function saveReceiptBlob(key: string, given: Blob): Promise<void> {
 
 /** Picture uri for a stored receipt key; empty until saved receipts have loaded (see useReceiptVersion). */
 export function resolveReceiptUri(stored: string): string {
-  if (/^[a-z][a-z0-9+.-]*:/i.test(stored)) return stored;
+  if (!isReceiptReference(stored)) return '';
   void loadReceipts();
   return urls.get(stored) ?? '';
 }
 
 /** Size in bytes of a receipt saved in this browser, or null. */
-export const receiptSize = (stored: string): number | null => sizes.get(stored) ?? null;
+export const receiptSize = (stored: string): number | null => isReceiptReference(stored) ? sizes.get(stored) ?? null : null;
 
 /** Shows a receipt in a new tab when the browser can display it (PDF, text), otherwise saves it. Call straight from a tap. */
 export async function openReceipt(stored: string, _dialogTitle: string): Promise<void> {
+  if (!isReceiptReference(stored)) return;
   const url = resolveReceiptUri(stored);
   if (!url) return;
   const mime = receiptMime(stored);

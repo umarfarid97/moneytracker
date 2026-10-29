@@ -5,6 +5,7 @@ import { demoUids, realProfile } from '@/db/repos/demo';
 import { getSetting, setSetting } from '@/db/repos/appSettings';
 import { THEME_KEY, APPEARANCE_KEY, THEME_AT_KEY } from '@/domain/themePrefs';
 import { HOME_LAYOUT_KEY, HOME_LAYOUT_AT_KEY, parseHomeLayout } from '@/domain/homeLayout';
+import { isReceiptReference } from '@/receiptReference';
 
 /**
  * A copy of all the user's data that does not depend on this phone's row ids, so it can be merged with
@@ -180,6 +181,8 @@ export function isSnapshot(value: unknown): value is Snapshot {
   return (
     !!s && s.app === 'duit' && s.format === 1 && typeof s.schema === 'number' && !!s.tables &&
     ORIGINAL_TABLES.every((t) => Array.isArray(s.tables[t])) && Array.isArray(s.deleted) &&
+    [s.tables.expenses, s.tables.relief_claims].every((rows) => rows.every((r) =>
+      !!r && typeof r === 'object' && (r.receipt_uri == null || isReceiptReference(r.receipt_uri)))) &&
     (s.homeLayout == null || isHomeLayoutSync(s.homeLayout)) &&
     (s.themePrefs == null || isThemeSync(s.themePrefs))
   );
@@ -218,6 +221,7 @@ function withProjects(tables: Snapshot['tables']): Snapshot['tables'] {
  * screens that hold an id stay valid. Runs in one transaction with the change-tracking triggers paused.
  */
 export async function applySnapshot(db: Db, snap: Snapshot): Promise<void> {
+  if (!isSnapshot(snap)) throw new Error('Invalid snapshot');
   await db.transaction(async () => {
     // A category can be removed before the spending that used it is moved; checked again at commit.
     await db.exec('PRAGMA defer_foreign_keys = ON');

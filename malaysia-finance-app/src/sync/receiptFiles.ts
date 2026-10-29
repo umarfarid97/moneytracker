@@ -1,4 +1,6 @@
 import { Directory, File, Paths } from 'expo-file-system';
+import { nativeReceiptFile } from '../nativeReceiptFile';
+import { isReceiptReference } from '../receiptReference';
 import { receiptMime } from '../receiptKind';
 import { createFile, downloadUrl, DriveAuthError, mediaUrl } from './drive';
 
@@ -6,9 +8,9 @@ import { createFile, downloadUrl, DriveAuthError, mediaUrl } from './drive';
 export const RECEIPT_FILES = true;
 
 /** Receipts saved by this app version ("receipts/receipt-123.jpg"); older absolute paths are left alone. */
-export const isStoredReceipt = (stored: string | null): stored is string => !!stored && /^receipts\/[^/]+$/.test(stored);
+export const isStoredReceipt = isReceiptReference;
 
-const fileFor = (stored: string) => new File(Paths.document, stored);
+const fileFor = nativeReceiptFile;
 function ensureDir() {
   const dir = new Directory(Paths.document, 'receipts');
   if (!dir.exists) dir.create({ idempotent: true, intermediates: true });

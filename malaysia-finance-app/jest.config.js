@@ -1,7 +1,8 @@
 module.exports = {
   preset: 'jest-expo',
   setupFiles: ['<rootDir>/test-support/jest.setup.js'],
-  testMatch: ['<rootDir>/__tests__/**/*.test.(ts|tsx)'],
+  // Keep globs platform-neutral: an expanded Windows root uses backslashes and matches no files.
+  testMatch: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     // jest-expo + Expo 58: dev-only HMR client needs a browser `window`; stub it in tests.

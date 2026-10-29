@@ -92,6 +92,22 @@ test('reports an expired token', async () => {
   await expect(syncWithDrive(phone, 'good')).rejects.toBeInstanceOf(DriveAuthError);
 });
 
+test('does not overwrite or apply a Drive snapshot with an unsafe receipt', async () => {
+  const phone = await freshDb();
+  await spend(phone, 'keep');
+  await syncWithDrive(phone, 'good');
+  const file = [...drive.files.values()][0];
+  const malicious = JSON.parse(file.text);
+  malicious.tables.expenses[0].receipt_uri = 'javascript:window.audit=1//.docx';
+  malicious.tables.expenses[0].note = 'must not write';
+  file.text = JSON.stringify(malicious);
+  drive.fetchMock.mockClear();
+  await expect(syncWithDrive(phone, 'good')).rejects.toThrow();
+  expect(file.text).toBe(JSON.stringify(malicious));
+  expect((await listAllExpenses(phone))[0].note).toBe('keep');
+  expect(drive.fetchMock.mock.calls.some(([, init]) => init?.method === 'PATCH' || init?.method === 'POST')).toBe(false);
+});
+
 test('uploads receipt photos Drive lacks and downloads missing ones', async () => {
   const phone = await freshDb();
   await spend(phone, 'a', 'receipts/here.jpg');

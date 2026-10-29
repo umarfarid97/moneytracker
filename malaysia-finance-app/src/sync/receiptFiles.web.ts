@@ -1,12 +1,13 @@
 import { hasReceipt, loadReceipts, readReceiptBlob, saveReceiptBlob } from '../receipts.web';
 import { receiptMime } from '../receiptKind';
+import { isReceiptReference, requireReceiptReference } from '../receiptReference';
 import { createFile, downloadUrl, DriveAuthError, mediaUrl } from './drive';
 
 /** The web build keeps receipt photos in the browser's IndexedDB; they go into backups and cloud sync like phone files. */
 export const RECEIPT_FILES = true;
 
 /** Receipts saved by this app version ("receipts/receipt-123.jpg"). */
-export const isStoredReceipt = (stored: string | null): stored is string => !!stored && /^receipts\/[^/]+$/.test(stored);
+export const isStoredReceipt = isReceiptReference;
 
 const mimeOf = receiptMime;
 
@@ -25,6 +26,7 @@ export async function readReceiptBase64(stored: string): Promise<string | null> 
 }
 
 export async function writeReceiptBase64(stored: string, base64: string): Promise<void> {
+  requireReceiptReference(stored);
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
@@ -32,6 +34,7 @@ export async function writeReceiptBase64(stored: string, base64: string): Promis
 }
 
 export async function uploadReceipt(token: string, stored: string, name: string): Promise<void> {
+  requireReceiptReference(stored);
   const blob = await readReceiptBlob(stored);
   if (!blob) return;
   const id = await createFile(token, name, mimeOf(stored));
@@ -45,6 +48,7 @@ export async function uploadReceipt(token: string, stored: string, name: string)
 }
 
 export async function downloadReceipt(token: string, id: string, stored: string): Promise<void> {
+  requireReceiptReference(stored);
   const res = await fetch(downloadUrl(id), { headers: { Authorization: `Bearer ${token}` } });
   if (res.status === 401) throw new DriveAuthError();
   if (!res.ok) throw new Error(`Receipt download failed (${res.status})`);

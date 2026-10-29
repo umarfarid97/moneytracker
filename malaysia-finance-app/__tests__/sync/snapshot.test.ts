@@ -15,6 +15,22 @@ import { ENTITY_TABLES, applySnapshot, canonical, exportSnapshot, isSnapshot, re
 const spend = (db: Db, amount: number, note: string, categoryId: number = CAT.Makan, date = '2026-10-01') =>
   addExpense(db, { amount, categoryId, date, note, receiptUri: null });
 
+describe('receipt reference import boundary', () => {
+  it.each(['javascript:window.audit=1//.docx', 'https://example.test/a.jpg', 'receipts/%2e%2e%2fx.pdf', 'receipts/a\\b.jpg'])(
+    'rejects unsafe receipts before applying any database changes: %s', async (uri) => {
+      const db = await freshDb();
+      await spend(db, 100, 'keep');
+      const original = await exportSnapshot(db);
+      const incoming = structuredClone(original);
+      incoming.tables.expenses[0].receipt_uri = uri;
+      incoming.tables.expenses[0].note = 'must not write';
+      expect(isSnapshot(incoming)).toBe(false);
+      await expect(applySnapshot(db, incoming)).rejects.toThrow();
+      expect(canonical(await exportSnapshot(db))).toBe(canonical(original));
+    },
+  );
+});
+
 /** One sync round between a phone and the Drive copy: merge, write the result to the phone, return it. */
 async function sync(db: Db, remote: Awaited<ReturnType<typeof exportSnapshot>> | null) {
   const local = await exportSnapshot(db);

@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { hasReceipt, pickReceipt, receiptSize, readReceiptBlob, receiptPending, resolveReceiptUri, saveReceiptBlob, storeReceipt, loadReceipts } from '@/receipts.web';
+import { hasReceipt, openReceipt, pickReceipt, receiptSize, readReceiptBlob, receiptPending, resolveReceiptUri, saveReceiptBlob, storeReceipt, loadReceipts } from '@/receipts.web';
 
 class FakeInput extends EventTarget {
   type = '';
@@ -36,11 +36,21 @@ describe('web receipts', () => {
     expect(resolveReceiptUri(key)).toMatch(/^blob:/);
   });
 
-  it('passes absolute uris through and gives nothing for an unknown key', async () => {
+  it('rejects imported absolute uris and gives nothing for an unknown key', async () => {
     await loadReceipts();
-    expect(resolveReceiptUri('https://x/y.jpg')).toBe('https://x/y.jpg');
+    expect(resolveReceiptUri('https://x/y.jpg')).toBe('');
     expect(resolveReceiptUri('receipts/missing.jpg')).toBe('');
   });
+
+  it.each(['javascript:window.audit=1//.docx', 'data:text/html,hello', 'blob:foreign/1', 'receipts/../x.pdf', 'receipts/%2e%2e%2fx.pdf', 'receipts/a\\b.pdf'])(
+    'does not navigate or persist an unsafe imported receipt: %s', async (key) => {
+      inputs.length = 0;
+      expect(resolveReceiptUri(key)).toBe('');
+      await openReceipt(key, 'Open');
+      expect(inputs).toHaveLength(0);
+      await expect(saveReceiptBlob(key, new Blob(['x']))).rejects.toThrow();
+    },
+  );
 
   it('keeps a photo that arrived from sync and can read it back', async () => {
     await saveReceiptBlob('receipts/from-cloud.jpg', new Blob(['abc'], { type: 'image/jpeg' }));

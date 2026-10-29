@@ -1,5 +1,6 @@
 import { forgetDemoData } from '@/db/repos/demo';
 import type { Db } from '@/db/types';
+import { isReceiptReference } from '@/receiptReference';
 import { isStoredReceipt, readReceiptBase64, writeReceiptBase64 } from './receiptFiles';
 import { exportSnapshot, isSnapshot, restoreSnapshot, schemaVersion, withAllTables, type Snapshot } from './snapshot';
 
@@ -38,12 +39,14 @@ export async function parseBackup(db: Db, text: string): Promise<Backup> {
     throw new InvalidBackupError();
   }
   if (!isSnapshot(parsed)) throw new InvalidBackupError();
+  if (!validBackupReceipts(parsed as Backup)) throw new InvalidBackupError();
   if (parsed.schema > (await schemaVersion(db))) throw new BackupTooNewError();
   return withAllTables(parsed) as Backup;
 }
 
 /** Replaces all data on this device with the backup's, receipt photos included. */
 export async function restoreBackup(db: Db, backup: Backup): Promise<void> {
+  if (!isSnapshot(backup) || !validBackupReceipts(backup)) throw new InvalidBackupError();
   for (const [path, data] of Object.entries(backup.receipts ?? {})) {
     if (isStoredReceipt(path)) await writeReceiptBase64(path, data);
   }
@@ -52,6 +55,13 @@ export async function restoreBackup(db: Db, backup: Backup): Promise<void> {
   // The restore replaced everything, demo rows included.
   await forgetDemoData(db);
 }
+
+function validBackupReceipts(backup: Backup): boolean {
+  if (backup.receipts === undefined) return true;
+  return !!backup.receipts && typeof backup.receipts === 'object' && !Array.isArray(backup.receipts) &&
+    Object.entries(backup.receipts).every(([path, data]) => isReceiptReference(path) && typeof data === 'string');
+}
+
 
 export const backupFileName = (now: Date = new Date()) => {
   const pad = (n: number) => String(n).padStart(2, '0');

@@ -77,9 +77,12 @@ describe('resolveReceiptUri', () => {
   test('gives an empty uri for a photo that is not on this device', () => {
     expect(resolveReceiptUri('receipts/missing-9.jpg')).toBe('');
   });
-  test('leaves full uris from older saves untouched', () => {
-    expect(resolveReceiptUri('file:///old/container/receipts/a.jpg')).toBe('file:///old/container/receipts/a.jpg');
-    expect(resolveReceiptUri('content://media/1')).toBe('content://media/1');
+  test('permits only old file uris inside the current receipt directory', () => {
+    expect(resolveReceiptUri('file:///docs/receipts/a.jpg')).toBe('file:///docs/receipts/a.jpg');
+    expect(resolveReceiptUri('file:///old/container/receipts/a.jpg')).toBe('');
+    expect(resolveReceiptUri('content://media/1')).toBe('');
+    expect(resolveReceiptUri('receipts/%2e%2e%2fprivate.pdf')).toBe('');
+    expect(resolveReceiptUri('receipts/../private.pdf')).toBe('');
   });
 });
 

@@ -24,7 +24,8 @@ export async function syncWithDrive(db: Db, token: string): Promise<{ changedLoc
   let remote: Snapshot | null = null;
   if (dataFile) {
     const parsed: unknown = JSON.parse(await readText(token, dataFile.id));
-    if (isSnapshot(parsed)) remote = withAllTables(parsed);
+    if (!isSnapshot(parsed)) throw new Error('Invalid Drive snapshot');
+    remote = withAllTables(parsed);
   }
   if (remote && remote.schema > (await schemaVersion(db))) throw new SyncTooNewError();
 
