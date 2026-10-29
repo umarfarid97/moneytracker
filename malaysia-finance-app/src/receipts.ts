@@ -8,8 +8,7 @@ import {
   receiptMime,
 } from './receiptKind';
 
-/** Native pictures are plain files, so nothing needs reloading when the screen shows them. */
-export const useReceiptVersion = (): number => 0;
+export { useReceiptVersion } from './receiptVersion';
 
 /** True while a stored receipt may still be loading. Phone receipts are files, so never. */
 export const receiptPending = (_stored: string): boolean => false;

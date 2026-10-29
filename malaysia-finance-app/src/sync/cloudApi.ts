@@ -37,10 +37,10 @@ export type Remote = { version: number; schema: number; bytes: Uint8Array };
 export class CloudApi {
   constructor(private base: string, private token: string | null = null) {}
 
-  private async call(method: string, path: string, init: { body?: BodyInit; headers?: Record<string, string> } = {}): Promise<Response> {
+  private async call(method: string, path: string, init: { body?: BodyInit; headers?: Record<string, string>; signal?: AbortSignal } = {}): Promise<Response> {
     const headers: Record<string, string> = { ...init.headers };
     if (this.token) headers.Authorization = `Bearer ${this.token}`;
-    const res = await fetch(`${this.base}${path}`, { method, headers, body: init.body });
+    const res = await fetch(`${this.base}${path}`, { method, headers, body: init.body, ...(init.signal ? { signal: init.signal } : {}) });
     if (res.status === 401 && this.token) throw new CloudAuthError();
     if (res.status === 429) throw new CloudRateError();
     return res;
@@ -63,6 +63,19 @@ export class CloudApi {
 
   async logout(): Promise<void> {
     await this.call('POST', '/auth/logout');
+  }
+
+  /** Never put the long-lived device token into a URL or WebSocket subprotocol. */
+  async liveUrl(signal?: AbortSignal): Promise<string> {
+    const response = await this.ok(await this.call('POST', '/events/ticket', { signal }));
+    const body: unknown = await response.json();
+    if (!body || typeof body !== 'object' || !('ticket' in body) || typeof body.ticket !== 'string'
+      || !/^[0-9a-f]{24,32}\.[0-9a-f]{24,32}\.[A-Za-z0-9_-]{43}$/.test(body.ticket)) throw new CloudError(502);
+    const url = new URL(this.base + '/events');
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new CloudError(502);
+    url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+    url.searchParams.set('ticket', body.ticket);
+    return url.toString();
   }
 
   async getKeys(): Promise<unknown> {

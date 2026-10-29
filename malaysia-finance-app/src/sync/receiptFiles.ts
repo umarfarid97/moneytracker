@@ -2,6 +2,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { nativeReceiptFile } from '../nativeReceiptFile';
 import { isReceiptReference } from '../receiptReference';
 import { receiptMime } from '../receiptKind';
+import { receiptFilesChanged } from '../receiptVersion';
 import { createFile, downloadUrl, DriveAuthError, mediaUrl } from './drive';
 
 /** Phones keep receipt photos as files, so they go into backups and Drive sync. */
@@ -34,6 +35,7 @@ export async function writeReceiptBase64(stored: string, base64: string): Promis
   const file = fileFor(stored);
   if (!file.exists) file.create();
   await file.write(base64, { encoding: 'base64' });
+  receiptFilesChanged();
 }
 
 export async function uploadReceipt(token: string, stored: string, name: string): Promise<void> {
@@ -53,4 +55,5 @@ export async function downloadReceipt(token: string, id: string, stored: string)
     headers: { Authorization: `Bearer ${token}` },
     idempotent: true,
   });
+  receiptFilesChanged();
 }

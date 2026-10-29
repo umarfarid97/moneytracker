@@ -9,6 +9,7 @@ import { CLOUD_API_URL } from './cloudConfig';
 import { clearCloudSession, loadCloudSession, saveCloudSession } from './cloudSession';
 import type { CloudSession } from './cloudSessionType';
 import { syncWithCloud } from './cloudSync';
+import { startLiveSync } from './liveSync';
 import { BadBlobError, isKeyBundle, type KeyBundle } from './cryptoBox';
 import { deviceName } from './deviceName';
 import { DriveAuthError } from './drive';
@@ -62,7 +63,7 @@ export function useSync(): SyncValue {
 }
 
 /** Wait after the last change before syncing, so a burst of edits goes up together. */
-const CHANGE_DELAY = 5_000;
+const CHANGE_DELAY = 1_000;
 /** While the app is open, also check the cloud this often for changes from other devices. */
 const POLL_EVERY = 3 * 60_000;
 /** Coming back to the app syncs unless a sync ran this recently. */
@@ -206,6 +207,34 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       sub.remove();
     };
   }, [active, run]);
+
+  // Live hints are advisory; the HTTP sync above remains the source of truth and fallback.
+  useEffect(() => {
+    if (!active || !session?.token) return;
+    let dispose: (() => void) | undefined;
+    let foreground = false;
+    let mounted = true;
+    const token = session.token;
+    const connect = () => {
+      if (dispose) return;
+      foreground = true;
+      dispose = startLiveSync(new CloudApi(CLOUD_API_URL, token), () => {
+        if (mounted && foreground && sessionRef.current?.token === token) void run(false);
+      }, () => {
+        if (mounted && foreground && sessionRef.current?.token === token) setProblem('signIn');
+      });
+    };
+    if (AppState.currentState === 'active' || AppState.currentState == null) connect();
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active') connect();
+      else {
+        foreground = false;
+        dispose?.();
+        dispose = undefined;
+      }
+    });
+    return () => { mounted = false; foreground = false; sub.remove(); dispose?.(); };
+  }, [active, session?.token, run]);
 
   // A few seconds after the user changes something (but not after a sync reloaded the data).
   const {
