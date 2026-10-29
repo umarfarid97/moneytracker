@@ -1,4 +1,5 @@
 import { File } from 'expo-file-system';
+import { assertStatementSize } from './statementLimits';
 
 /** A statement the user chose: CSV text, or the bytes of a PDF. */
 export type StatementFile = { name: string; kind: 'csv'; text: string } | { name: string; kind: 'pdf'; bytes: Uint8Array };
@@ -9,6 +10,7 @@ export async function pickStatementFile(): Promise<StatementFile | null> {
   const picked = await File.pickFileAsync({ mimeTypes: ['text/csv', 'text/comma-separated-values', 'application/pdf', '*/*'] });
   if (picked.canceled) return null;
   const file = picked.result;
+  assertStatementSize(file.size);
   const name = file.name;
   if (/\.pdf$/i.test(name)) return { name, kind: 'pdf', bytes: new Uint8Array(await file.arrayBuffer()) };
   return { name, kind: 'csv', text: await file.text() };

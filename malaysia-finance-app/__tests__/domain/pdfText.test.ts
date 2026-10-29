@@ -1,3 +1,4 @@
+import * as vm from 'node:vm';
 import { zlibSync } from 'fflate';
 import { extractPdfLines } from '@/domain/pdfText';
 import { parseStatementLines } from '@/domain/statementParse';
@@ -56,3 +57,82 @@ describe('extractPdfLines', () => {
     expect(parseStatementLines(lines, 2026)).toMatchObject([{ date: '2026-10-01', description: 'GRAB RIDE', amount: 1250, direction: 'out' }]);
   });
 });
+
+describe('PDF resource limits', () => {
+  test('rejects input over 10 MiB at parser entry', () => {
+    expect(() => extractPdfLines(new Uint8Array(10 * 1024 * 1024 + 1))).toThrow(/limit|large/i);
+  });
+  test('rejects more than 10000 objects including duplicate identifiers', () => {
+    expect(() => extractPdfLines(enc('%PDF\n' + '1 0 obj <<>> endobj\n'.repeat(10001)))).toThrow(/limit/i);
+  });
+  test.each([
+    ['/N 2 /First 4', '3 0 << /Type /Page >>'],
+    ['/N 1 /First 4', '3 9 <<>>'],
+    ['/N 1 /First 999', '3 0 <<>>'],
+    ['/N 1 /First 4', '3 -1 <<>>'],
+    ['/N 10001 /First 4', '3 0 <<>>'],
+    ['/N Infinity /First 4', '3 0 <<>>'],
+    ['/N ' + '9'.repeat(310) + ' /First 4', '3 0 <<>>'],
+    ['/N 1 /First Infinity', '3 0 <<>>'],
+    ['/N 2 /First 8', '3 0 4 0 <<>>'],
+  ])('rejects invalid object-stream headers %s %s', (dict, stream) => {
+    const pdf = enc(`%PDF\n1 0 obj << /Type /ObjStm ${dict} >> stream\n${stream}\nendstream\nendobj`);
+    expect(() => vm.runInNewContext('parse(bytes)', { parse: extractPdfLines, bytes: pdf }, { timeout: 1500 })).toThrow(/invalid|limit/i);
+  });
+  test('reads a valid page packed in an object stream', () => {
+    const page = '<< /Type /Page /Contents 2 0 R >>';
+    expect(extractPdfLines(enc(`%PDF\n1 0 obj << /Type /ObjStm /N 1 /First 4 >> stream\n3 0 ${page}\nendstream\nendobj\n2 0 obj <<>> stream\nBT (Packed statement) Tj ET\nendstream\nendobj`))).toEqual(['Packed statement']);
+  });
+  test('rejects aggregate decoded expansion over 32 MiB', () => {
+    const compressed = zlibSync(new Uint8Array(17 * 1024 * 1024));
+    const parts = [enc('%PDF\n1 0 obj << /Filter /FlateDecode >> stream\n'), compressed,
+      enc('\nendstream\nendobj\n2 0 obj << /Filter /FlateDecode >> stream\n'), compressed, enc('\nendstream\nendobj')];
+    const pdf = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+    let at = 0;
+    for (const part of parts) { pdf.set(part, at); at += part.length; }
+    expect(() => extractPdfLines(pdf)).toThrow(/limit/i);
+  });
+  test('rejects repeated content references exhausting aggregate work', () => {
+    const refs = '2 0 R '.repeat(1100);
+    expect(() => extractPdfLines(enc(`%PDF\n1 0 obj << /Type /Page /Contents [${refs}] >> endobj\n2 0 obj <<>> stream\n${' '.repeat(65536)}\nendstream\nendobj`))).toThrow(/limit/i);
+  });
+});
+
+// VM deadline guards hostile fixtures even if the parser's numeric/work checks regress.
+describe('PDF aggregate scan and numeric work', () => {
+  const bounded = (pdf: Uint8Array) => {
+    return vm.runInNewContext('parse(bytes)', { parse: extractPdfLines, bytes: pdf }, { timeout: 1500 });
+  };
+  test('rejects repeated large resource dictionary scans', () => {
+    const resource = '1 0 obj << /Font << ' + ' '.repeat(1024 * 1024) + ' >> >> endobj\n';
+    const pages = Array.from({ length: 80 }, (_, i) => `${i + 2} 0 obj << /Type /Page /Resources 1 0 R >> endobj\n`).join('');
+    expect(() => bounded(enc('%PDF\n' + resource + pages))).toThrow(/limit/i);
+  });
+  test.each(['F'.repeat(300), '20000000000000'])('rejects unsafe CMap range %s without a non-advancing loop', (code) => {
+    const cmap = `beginbfrange <${code}> <${code}> <0041> endbfrange`;
+    const pdf = enc(`%PDF\n1 0 obj << /Type /Page /Resources << /Font << /F1 2 0 R >> >> >> endobj\n2 0 obj << /ToUnicode 3 0 R >> endobj\n3 0 obj <<>> stream\n${cmap}\nendstream\nendobj`);
+    expect(() => bounded(pdf)).toThrow(/invalid/i);
+  });
+});
+
+test('bounds CMap expansion with padded destination widths', () => {
+  const cmap = `beginbfrange <0000> <FFFF> <${'0'.repeat(1020)}0041> endbfrange`;
+  const pdf = enc(`%PDF\n1 0 obj << /Type /Page /Resources << /Font << /F1 2 0 R >> >> >> endobj\n2 0 obj << /ToUnicode 3 0 R >> endobj\n3 0 obj <<>> stream\n${cmap}\nendstream\nendobj`);
+  expect(() => vm.runInNewContext('parse(bytes)', { parse: extractPdfLines, bytes: pdf }, { timeout: 1500 })).toThrow(/limit/i);
+});
+
+test('bounds glyph substitution output before concatenation', () => {
+  const cmap = `beginbfchar <01> <${'0041'.repeat(1024)}> endbfchar`;
+  const content = `BT /F1 10 Tf <${'01'.repeat(65536)}> Tj ET`;
+  const pdf = enc(`%PDF\n1 0 obj << /Type /Page /Contents 4 0 R /Resources << /Font << /F1 2 0 R >> >> >> endobj\n2 0 obj << /ToUnicode 3 0 R >> endobj\n3 0 obj <<>> stream\n${cmap}\nendstream\nendobj\n4 0 obj <<>> stream\n${content}\nendstream\nendobj`);
+  expect(() => vm.runInNewContext('parse(bytes)', { parse: extractPdfLines, bytes: pdf }, { timeout: 1500 })).toThrow(/limit/i);
+});
+
+
+test('bounds repeated scans of a referenced font object', () => {
+  const font = '1 0 obj << ' + ' '.repeat(1024 * 1024) + ' /ToUnicode 3 0 R >> endobj\n';
+  const fonts = Array.from({ length: 80 }, (_, i) => `/F${i} 1 0 R`).join(' ');
+  const pdf = enc(`%PDF\n${font}\n2 0 obj << /Type /Page /Resources << /Font << ${fonts} >> >> >> endobj\n3 0 obj <<>> stream\nbeginbfchar <01> <0041> endbfchar\nendstream\nendobj`);
+  expect(() => vm.runInNewContext('parse(bytes)', { parse: extractPdfLines, bytes: pdf }, { timeout: 1500 })).toThrow(/limit/i);
+});
+
