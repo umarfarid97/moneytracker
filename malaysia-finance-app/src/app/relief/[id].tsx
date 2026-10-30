@@ -264,12 +264,10 @@ export default function ReliefPage() {
                 <AppText variant="bodyStrong">{formatRM(claim.amount)}</AppText>
               </View>
               {def.requiresReceipt && !claim.receiptUri ? missingBadge : null}
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={{ flex: 1 }}>
-              <Button title={t('common.edit')} variant="secondary" onPress={() => startEdit(claim)} disabled={busy} />
-              </View>
-              <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 8 }}>
+              <Button compact title={t('common.edit')} variant="secondary" onPress={() => startEdit(claim)} disabled={busy} />
               <Button
+                compact
                 title={t('common.delete')}
                 variant="secondary"
                 onPress={async () => {
@@ -282,7 +280,6 @@ export default function ReliefPage() {
                   }
                 }}
               />
-              </View>
               </View>
             </View>
           ))}
