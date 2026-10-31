@@ -4,9 +4,9 @@
   "main": "index.js",
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
-    "@expo-google-fonts/urbanist": "^0.4.1",
     "@expo-google-fonts/manrope": "^0.4.2",
     "@expo-google-fonts/outfit": "^0.4.3",
+    "@expo-google-fonts/urbanist": "^0.4.1",
     "@expo/ui": "~58.0.22",
     "@expo/vector-icons": "^15.1.1",
     "@noble/ciphers": "^2.4.0",
@@ -16,6 +16,7 @@
     "@react-native-ml-kit/text-recognition": "^2.0.0",
     "@types/jest": "30.0.0",
     "expo": "~58.0.17",
+    "expo-clipboard": "~58.0.4",
     "expo-constants": "~58.0.13",
     "expo-crypto": "~58.0.7",
     "expo-device": "~58.0.5",

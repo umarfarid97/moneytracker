@@ -1,3 +1,4 @@
+import { taxPreparationEn } from './taxPreparation';
 import { cleanupEn } from './cleanup';
 import { cloudEn } from './cloud';
 import { homeLayoutEn } from './homeLayout';
@@ -150,7 +151,7 @@ export const en = {
   'tax.missingReceipt': 'Receipt missing',
   'tax.notClaimable': '{amount} is above the limit and cannot be claimed',
   'tax.automatic': 'Claimed automatically',
-  'tax.notPublished': 'LHDN has not published YA {year} figures yet, so YA {ya} rates and limits are used.',
+  'tax.notPublished': 'This app does not yet include YA {year} rules. YA {ya} figures are used for planning only.',
   'tax.fromSpending': 'From spending · {date}',
   'tax.fromSpendingShort': 'Spending',
   'tax.claimableOf': '{claimable} of {amount}',
@@ -720,6 +721,7 @@ export const en = {
   ...homeLayoutEn,
   ...cleanupEn,
   ...cloudEn,
+  ...taxPreparationEn,
 } as const;
 
 export type StringKey = keyof typeof en;

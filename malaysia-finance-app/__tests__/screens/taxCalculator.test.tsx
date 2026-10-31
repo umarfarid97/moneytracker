@@ -16,6 +16,25 @@ async function ready() {
 const type = (label: string, text: string) => fireEvent.changeText(screen.getByLabelText(label), text);
 
 describe('Tax calculator', () => {
+  test('projects profile PCB and previews the actual saving, not the relief amount', async () => {
+    const db = await freshDb();
+    await db.run('UPDATE profile SET gross_monthly = 500000, pcb_monthly = 20000 WHERE id = 1');
+    await renderWithData(db, <TaxCalculator />);
+    await ready();
+    expect(screen.getByLabelText('Tax already paid (PCB)').props.value).toBe('2400.00');
+    expect(screen.getByTestId('balance').props.children).toBe('RM 790.00');
+    await type('Salary for the year', '80000');
+    await type('Additional eligible expense', '1000');
+    expect(screen.getByTestId('preview-saving').props.children).toBe('RM 190.00');
+    expect(screen.getByTestId('preview-eligible').props.children).toBe('RM 1,000.00');
+  });
+  test('invalid large annual input does not silently display a zero-tax result', async () => {
+    const db = await freshDb();
+    await renderWithData(db, <TaxCalculator />); await ready();
+    await type('Salary for the year', '9999999999999999999999');
+    expect(screen.getByText('Enter valid non-negative amounts in every completed field.')).toBeTruthy();
+    expect(screen.getByTestId('tax-payable').props.children).toBe('—');
+  });
   test('starts at zero and shows the estimate notice and the tax year', async () => {
     const db = await freshDb();
     await renderWithData(db, <TaxCalculator />);
@@ -92,7 +111,7 @@ describe('Tax calculator', () => {
     const db = await freshDb();
     await renderWithData(db, <TaxCalculator />);
     await ready();
-    expect(screen.getByText('LHDN has not published YA 2026 figures yet, so YA 2025 rates and limits are used.')).toBeTruthy();
+    expect(screen.getByText('This app does not yet include YA 2026 rules. YA 2025 figures are used for planning only.')).toBeTruthy();
   });
 
   test('typing keeps only digits and two decimals', async () => {

@@ -1,3 +1,4 @@
+import { taxPreparationMs } from './taxPreparation';
 import type { StringKey } from './en';
 import { homeLayoutMs } from './homeLayout';
 import { lockRemindersMs } from './lockReminders';
@@ -150,7 +151,7 @@ export const ms: Record<StringKey, string> = {
   'tax.missingReceipt': 'Resit tiada',
   'tax.notClaimable': '{amount} melebihi had dan tidak boleh dituntut',
   'tax.automatic': 'Dituntut secara automatik',
-  'tax.notPublished': 'LHDN belum menerbitkan angka TT {year}, jadi kadar dan had TT {ya} digunakan.',
+  'tax.notPublished': 'Aplikasi ini belum mempunyai peraturan TT {year}. Angka TT {ya} digunakan untuk perancangan sahaja.',
   'tax.fromSpending': 'Daripada perbelanjaan · {date}',
   'tax.fromSpendingShort': 'Perbelanjaan',
   'tax.claimableOf': '{claimable} daripada {amount}',
@@ -679,6 +680,7 @@ export const ms: Record<StringKey, string> = {
   ...homeLayoutMs,
   ...cleanupMs,
   ...cloudMs,
+  ...taxPreparationMs,
 
   'owed.view.person': 'Ikut orang',
   'owed.people': '{count} orang',

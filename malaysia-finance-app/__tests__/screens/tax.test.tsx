@@ -77,7 +77,7 @@ describe('Tax year selection (review finding: 2026 receipts were filed under 202
     await claim(db, 'lifestyle', 100000, 'x');
     await renderWithData(db, <Tax />);
     await waitFor(() => expect(screen.getByText('Year of assessment 2026')).toBeTruthy());
-    expect(screen.getByText('LHDN has not published YA 2026 figures yet, so YA 2025 rates and limits are used.')).toBeTruthy();
+    expect(screen.getByText('This app does not yet include YA 2026 rules. YA 2025 figures are used for planning only.')).toBeTruthy();
     expect(screen.getByTestId('total-relief').props.children).toBe('RM 9,000.00');
   });
 

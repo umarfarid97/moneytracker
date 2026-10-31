@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { router } from 'expo-router';
 import { Share, View } from 'react-native';
 import { dayMonth } from '@/domain/dates';
 import { formatRM } from '@/domain/money';
@@ -84,6 +85,8 @@ export default function TaxPack() {
         ) : null}
       </View>
 
+      <AppText variant="small" tone="warning">{t('prep.provisional')}</AppText>
+      <Button title={t('prep.title')} onPress={() => router.push('/tax-preparation')} />
       <Card style={{ gap: 4 }}>
         <AppText variant="small" tone="muted">
           {t('tax.totalRelief')}

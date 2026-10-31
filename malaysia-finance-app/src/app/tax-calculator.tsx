@@ -15,6 +15,7 @@ import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { useTheme } from '@/ui/useTheme';
 import { Toggle } from '@/ui/Toggle';
+import { SavingsPreview } from '@/features/tax/SavingsPreview';
 
 type Field = 'salary' | 'freelance' | 'business' | 'expenses' | 'pcb' | 'zakat' | 'donations';
 
@@ -44,21 +45,21 @@ export default function TaxCalculator() {
     freelance: '',
     business: '',
     expenses: '',
-    pcb: '',
+    pcb: profile.pcbMonthly > 0 ? senToInput(profile.pcbMonthly * 12) : '',
     zakat: giving.zakatForTax > 0 ? senToInput(giving.zakatForTax) : '',
     donations: giving.donationsForTax > 0 ? senToInput(giving.donationsForTax) : '',
   }));
   const [spouse, setSpouse] = useState(false);
   const set = (field: Field) => (next: string) => setText((prev) => ({ ...prev, [field]: next }));
   const amount = (field: Field) => parseRM(text[field]) ?? 0;
+  const valid = Object.values(text).every(value => !value.trim() || parseRM(value) !== null);
 
   const reliefsTotal = useMemo(
     () =>
       data.automaticReliefs.reduce((sum, r) => sum + r.amount, 0) + capReliefClaims(claims, data.reliefs).total,
     [claims, data],
   );
-  const bill = calculateTaxBill(
-    {
+  const input = {
       salary: amount('salary'),
       freelanceGross: amount('freelance'),
       businessGross: amount('business'),
@@ -68,9 +69,8 @@ export default function TaxCalculator() {
       zakat: amount('zakat'),
       donations: amount('donations'),
       spouseRebate: spouse,
-    },
-    data,
-  );
+    };
+  const bill = calculateTaxBill(input, data);
   const refund = bill.balance < 0;
 
   return (
@@ -81,6 +81,7 @@ export default function TaxCalculator() {
         <AppText variant="bodyStrong" tone="muted">
           {t('tax.year', { ya: year })}
         </AppText>
+        <AppText variant="small" tone="muted">{t('prep.rules', { ya: data.ya, date: data.fetchedOn })}</AppText>
         {notice ? (
           <AppText variant="small" tone="muted">
             {notice}
@@ -94,11 +95,14 @@ export default function TaxCalculator() {
             {t('taxCalc.tax')}
           </AppText>
           <AppText testID="tax-payable" variant="kpi">
-            {formatRM(bill.tax)}
+            {valid ? formatRM(bill.tax) : '—'}
           </AppText>
         </View>
-        <Row label={t(refund ? 'taxCalc.refund' : 'taxCalc.balance')} value={formatRM(Math.abs(bill.balance))} testID="balance" strong />
+        <Row label={t(refund ? 'taxCalc.refund' : 'taxCalc.balance')} value={valid ? formatRM(Math.abs(bill.balance)) : '—'} testID="balance" strong />
       </Card>
+      <AppText variant="small" tone="muted">{t('prep.projection')}</AppText>
+      <AppText variant="small" tone="muted">{t('prep.provisional')}</AppText>
+      {!valid ? <AppText accessibilityRole="alert" tone="negative">{t('prep.invalidInput')}</AppText> : null}
 
       <AmountInput label={t('taxCalc.salary')} value={text.salary} onChange={set('salary')} />
       <AmountInput label={t('taxCalc.freelance')} value={text.freelance} onChange={set('freelance')} />
@@ -114,7 +118,7 @@ export default function TaxCalculator() {
         <Toggle accessibilityLabel={t('taxCalc.spouse')} value={spouse} onValueChange={setSpouse} />
       </View>
 
-      <Card style={{ gap: 8 }}>
+      {valid ? <Card style={{ gap: 8 }}>
         <AppText variant="section">{t('taxCalc.breakdown')}</AppText>
         <Row label={t('tax.title')} value={formatRM(reliefsTotal)} testID="reliefs" />
         <Row label={t('taxCalc.chargeable')} value={formatRM(bill.chargeable)} testID="chargeable" />
@@ -131,7 +135,9 @@ export default function TaxCalculator() {
           <Row label={t('taxCalc.donationDeduction')} value={formatRM(bill.donationDeduction)} testID="donation-deduction" />
         ) : null}
         {bill.rebate > 0 ? <Row label={t('taxCalc.rebate')} value={formatRM(bill.rebate)} testID="rebate" /> : null}
-      </Card>
+      </Card> : null}
+
+      <SavingsPreview input={input} claims={claims} data={data} valid={valid} />
 
       <AppText variant="small" style={{ color: c.muted }}>
         {t('common.estimate')}

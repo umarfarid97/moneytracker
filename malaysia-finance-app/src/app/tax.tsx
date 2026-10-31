@@ -4,6 +4,9 @@ import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 import { formatRM } from '@/domain/money';
 import { capReliefClaims, groupReliefs } from '@/domain/reliefs';
+import { buildReliefPack } from '@/domain/reliefPack';
+import { reviewTaxPack } from '@/domain/taxPreparation';
+import { useExpenses } from '@/hooks/useExpenses';
 import { useAllReliefClaims } from '@/hooks/useAllReliefClaims';
 import { useTaxYear } from '@/hooks/useTaxYear';
 import { reliefLabel } from '@/i18n/content';
@@ -22,7 +25,9 @@ import { useTheme } from '@/ui/useTheme';
 export default function Tax() {
   const { c, scheme } = useTheme();
   const { year, setYear, options, data, notice } = useTaxYear();
-  const { data: claims } = useAllReliefClaims(year);
+  const { data: claims, manual } = useAllReliefClaims(year);
+  const { data: expenses } = useExpenses();
+  const readiness = reviewTaxPack(buildReliefPack({ year, data, expenses, manualClaims: manual }), data);
   const summary = useMemo(() => capReliefClaims(claims, data.reliefs), [claims, data]);
   const automatic = data.automaticReliefs.reduce((sum, r) => sum + r.amount, 0);
   const sections = useMemo(() => groupReliefs(data.reliefs), [data]);
@@ -60,6 +65,11 @@ export default function Tax() {
           </AppText>
         ))}
       </HeroCard>
+      <Card style={{ gap: 8 }}>
+        <AppText variant="bodyStrong">{t('prep.claims', { count: readiness.items })}</AppText>
+        <AppText variant="small" tone="muted">{t('prep.issue.missing', { count: readiness.issues.filter(i => i.kind === 'missing').reduce((n, i) => n + i.count, 0) })}</AppText>
+        <Button title={t('prep.title')} onPress={() => router.push('/tax-preparation')} />
+      </Card>
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <View style={{ flex: 1 }}>
           <Button title={t('taxCalc.title')} onPress={() => router.push('/tax-calculator')} />
