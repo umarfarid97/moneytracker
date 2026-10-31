@@ -11,6 +11,15 @@ export async function shareTextFile(name: string, text: string, mimeType: string
   await Sharing.shareAsync(file.uri, { mimeType, dialogTitle });
 }
 
+/** Shares a binary export without converting receipt bytes into text. */
+export async function shareBinaryFile(name: string, bytes: Uint8Array, mimeType: string, dialogTitle: string): Promise<void> {
+  const file = new File(Paths.cache, name);
+  if (file.exists) file.delete();
+  file.create();
+  await file.write(bytes);
+  await Sharing.shareAsync(file.uri, { mimeType, dialogTitle });
+}
+
 /** Renders HTML to a PDF and opens the share sheet. */
 export async function sharePdf(html: string, dialogTitle: string): Promise<void> {
   const { uri } = await Print.printToFileAsync({ html });

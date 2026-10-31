@@ -10,6 +10,14 @@ export async function shareTextFile(name: string, text: string, mimeType: string
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
+export async function shareBinaryFile(name: string, bytes: Uint8Array, mimeType: string): Promise<void> {
+  const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: mimeType }));
+  const link = document.createElement('a');
+  link.href = url; link.download = name;
+  document.body.appendChild(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
 /** Browser: opens the print dialog, where "Save as PDF" is one of the choices. */
 export async function sharePdf(html: string): Promise<void> {
   const frame = document.createElement('iframe');
