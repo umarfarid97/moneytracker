@@ -1,6 +1,6 @@
 import { YA2025 } from '@/data/tax/ya2025';
 import { buildReliefPack } from '@/domain/reliefPack';
-import { auditTaxRecords, confirmedTaxPack, previewTaxSaving, reviewKey, reviewTaxPack } from '@/domain/taxPreparation';
+import { auditTaxRecords, confirmedTaxPack, previewTaxSaving, reviewedFilingCsv, reviewKey, reviewTaxPack } from '@/domain/taxPreparation';
 import { suggestReliefs } from '@/domain/taxGuide';
 import type { ReliefClaim } from '@/domain/types';
 
@@ -47,9 +47,9 @@ test('savings applies relief caps and computes actual progressive tax difference
   expect(previewTaxSaving(input, [claim({ reliefId: 'education-self', amount: 700000 })], 'education-upskilling', 100000, YA2025).eligible).toBe(0);
   expect(previewTaxSaving({ ...input, salary: 1000000 }, [], 'lifestyle', 100000, YA2025).saving).toBe(0);
 });
-test('savings includes rebate threshold effects and per-child claim limits', () => {
+test('savings includes rebate threshold effects; expenses cannot create another child', () => {
   expect(previewTaxSaving({ ...input, salary: 4500000 }, [], 'lifestyle', 100000, YA2025).saving).toBe(46000);
-  expect(previewTaxSaving(input, [], 'child-under-18', 500000, YA2025).eligible).toBe(200000);
+  expect(previewTaxSaving(input, [claim({ reliefId: 'child-under-18', amount: 200000 })], 'child-under-18', 100000, YA2025)).toMatchObject({ eligible: 0, saving: 0 });
 });
 test('unknown and malformed imported records cannot silently disappear from readiness', () => {
   expect(auditTaxRecords(2025, YA2025, [], [claim({ reliefId: 'unknown' }), claim({ id: 2, amount: -20 })])).toBe(2);
@@ -63,4 +63,14 @@ test('same receipt in another category invalidates previous confirmation and req
   const changed = pack([claim(), claim({ id: 2, reliefId: 'sports', note: 'Gym' })]);
   expect(confirmedTaxPack(changed, YA2025, [key], []).sections).toHaveLength(0);
   expect(reviewTaxPack(changed, YA2025).issues.filter(i => i.kind === 'duplicate')).toHaveLength(2);
+});
+test('reviewed CSV identifies partial scope, actual rules year and source', () => {
+  const p = pack([claim(), claim({ id: 2, reliefId: 'sports', receiptUri: 'receipts/b.jpg', note: 'Gym' })]);
+  const confirmed = confirmedTaxPack(p, YA2025, [reviewKey(p, p.sections[0])], []);
+  const csv = reviewedFilingCsv(p, confirmed, YA2025);
+  expect(csv).toContain('Reviewed categories,1,of,2');
+  expect(csv).toContain('Rules year,2025');
+  expect(csv).toContain(YA2025.reliefSourceUrl);
+  expect(csv).toContain(YA2025.fetchedOn);
+  expect(csv).toContain('Partial relief reference');
 });

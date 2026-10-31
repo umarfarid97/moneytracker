@@ -1,7 +1,7 @@
 export const taxPreparationEn = {
   'prep.title': 'Tax preparation',
   'prep.intro': 'Review your claims, prepare your MyTax reference and keep the supporting evidence together.',
-  'prep.session': 'Your guide answers and eligibility confirmations stay on this screen only. Review again after leaving. Your saved claims are unchanged.',
+  'prep.session': 'Answers and confirmations are temporary and are not saved or synced. Changing claims requires a fresh review.',
   'prep.rules': 'Rules: YA {ya} · checked {date}',
   'prep.source': 'View LHDN relief guidance',
   'prep.fallback': 'Planning only: confirmed filing figures are unavailable for this year.',
@@ -68,7 +68,7 @@ export const taxPreparationEn = {
 export const taxPreparationMs: Record<keyof typeof taxPreparationEn, string> = {
   'prep.title': 'Persediaan cukai',
   'prep.intro': 'Semak tuntutan, sediakan rujukan MyTax dan kumpulkan dokumen sokongan anda.',
-  'prep.session': 'Jawapan panduan dan pengesahan kelayakan hanya kekal pada skrin ini. Semak semula selepas keluar. Tuntutan tersimpan tidak berubah.',
+  'prep.session': 'Jawapan dan pengesahan adalah sementara, tidak disimpan atau disegerakkan. Perubahan tuntutan memerlukan semakan baharu.',
   'prep.rules': 'Peraturan: TT {ya} · disemak {date}',
   'prep.source': 'Lihat panduan pelepasan LHDN',
   'prep.fallback': 'Untuk perancangan sahaja: angka pemfailan yang disahkan belum tersedia untuk tahun ini.',

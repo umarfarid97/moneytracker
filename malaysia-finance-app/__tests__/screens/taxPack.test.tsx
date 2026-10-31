@@ -5,11 +5,12 @@ import TaxPack from '@/app/tax-pack';
 import { freshDb, renderWithData } from './helpers';
 
 jest.mock('@/receipts', () => ({ pickReceipt: jest.fn(), resolveReceiptUri: (u: string) => u, useReceiptVersion: () => 0 }));
-jest.mock('@/hooks/useToday', () => ({ useToday: () => '2025-12-01' }));
+let mockToday = '2025-12-01';
+jest.mock('@/hooks/useToday', () => ({ useToday: () => mockToday }));
 const { router } = jest.requireMock('expo-router');
 
 type TestDb = Awaited<ReturnType<typeof freshDb>>;
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => { jest.clearAllMocks(); mockToday = '2025-12-01'; });
 
 async function seed(db: TestDb) {
   await db.run("INSERT INTO expenses (amount, category_id, date, note, receipt_uri, relief_id, relief_amount) VALUES (120000, 1, '2025-06-10', 'Phone', 'receipts/a.jpg', 'lifestyle', 100000)");
@@ -18,6 +19,18 @@ async function seed(db: TestDb) {
 }
 
 describe('Tax filing pack (e-Filing)', () => {
+  test('legacy shared summary warns that unsupported years use earlier provisional rules', async () => {
+    mockToday = '2026-12-01';
+    const db = await freshDb();
+    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' } as never);
+    await renderWithData(db, <TaxPack />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Share e-Filing summary' })).toBeTruthy());
+    await fireEvent.press(screen.getByRole('button', { name: 'Share e-Filing summary' }));
+    const message = (share.mock.calls[0][0] as { message: string }).message;
+    expect(message).toContain('provisional');
+    expect(message).toContain('Rules: YA 2025');
+    expect(message).toContain('Planning only: confirmed filing figures are unavailable for this year.');
+  });
   test('shows the Form BE summary and links a receipt to a claim that has none', async () => {
     const db = await freshDb();
     await seed(db);

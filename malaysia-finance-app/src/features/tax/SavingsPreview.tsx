@@ -19,7 +19,7 @@ export function SavingsPreview({ input, claims, data, valid }: { input: TaxBillI
   return <Card style={{ gap: 12 }}>
     <AppText variant="section">{t('prep.preview')}</AppText>
     <AppText variant="small" tone="muted">{t('prep.previewHint')}</AppText>
-    <ReliefPicker reliefs={data.reliefs} value={reliefId} onChange={id => setReliefId(id ?? '')} />
+    <ReliefPicker reliefs={data.reliefs.filter(r => !r.perItem)} value={reliefId} onChange={id => setReliefId(id ?? '')} />
     <AmountInput label={t('prep.expense')} value={text} onChange={setText} />
     <View style={{ gap: 4 }}>
       <AppText tone="muted">{t('prep.eligible')}</AppText>

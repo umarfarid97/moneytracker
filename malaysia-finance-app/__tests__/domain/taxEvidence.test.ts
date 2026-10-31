@@ -12,7 +12,7 @@ test('ZIP contains actual receipt bytes, ledger, filing summary and manifest; sa
   const result = await buildTaxEvidence(pack(), 'Confirmed summary', read);
   const files = unzipSync(result.bytes);
   expect(read).toHaveBeenCalledTimes(1);
-  expect(Object.keys(files).filter(x => x.endsWith('.jpg'))).toHaveLength(2);
+  expect(Object.keys(files).filter(x => x.endsWith('.jpg'))).toHaveLength(1);
   expect(files['YA2025/lifestyle/a.jpg']).toEqual(new Uint8Array([1, 2, 3]));
   expect(strFromU8(files['YA2025/filing-summary.txt'])).toBe('Confirmed summary');
   expect(strFromU8(files['YA2025/claims.csv'])).toContain("'=Phone");
@@ -27,8 +27,22 @@ test('unavailable and unsafe files are explicitly listed, never fetched as URLs'
   expect(strFromU8(files['YA2025/manifest.json'])).toContain('invalid-reference');
   expect((await buildTaxEvidence(pack(), '', read)).unavailable).toBe(2);
 });
-test('archive refuses oversized input including copies under separate categories', async () => {
+test('archive refuses oversized input', async () => {
   await expect(buildTaxEvidence(pack(), '', async () => new Uint8Array(8), 10)).rejects.toThrow('EvidenceTooLarge');
+});
+test('one receipt shared by categories takes space only once', async () => {
+  const result = await buildTaxEvidence(pack(), '', async () => new Uint8Array(2 * 1024 * 1024), 3 * 1024 * 1024);
+  const files = unzipSync(result.bytes);
+  const manifest = JSON.parse(strFromU8(files['YA2025/manifest.json']));
+  expect(manifest.receipts[0].file).toBe(manifest.receipts[1].file);
+  expect(Object.keys(files).filter(x => x.endsWith('.jpg'))).toHaveLength(1);
+});
+test('identical bytes under different references are archived once', async () => {
+  const p = pack();
+  p.sections[1].items[0].receiptUri = 'receipts/b.jpg';
+  const result = await buildTaxEvidence(p, '', async () => new Uint8Array([1, 2, 3]));
+  const files = unzipSync(result.bytes);
+  expect(Object.keys(files).filter(x => x.endsWith('.jpg'))).toHaveLength(1);
 });
 test('receipt read failures are reported without discarding the rest of the pack', async () => {
   const result = await buildTaxEvidence(pack(), '', async () => { throw new Error('not downloaded'); });

@@ -2,10 +2,10 @@ import { router } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { useState } from 'react';
 import { Linking, View } from 'react-native';
-import { buildBeSummary, beSummaryCsv, beSummaryText } from '@/domain/beForm';
+import { buildBeSummary, beSummaryText } from '@/domain/beForm';
 import { formatRM, senToInput } from '@/domain/money';
 import { buildReliefPack } from '@/domain/reliefPack';
-import { auditTaxRecords, confirmedTaxPack, reviewKey, reviewTaxPack } from '@/domain/taxPreparation';
+import { auditTaxRecords, confirmedTaxPack, reviewedFilingCsv, reviewKey, reviewTaxPack } from '@/domain/taxPreparation';
 import { GUIDE_ANSWERS, guideCondition, suggestReliefs, type GuideAnswer } from '@/domain/taxGuide';
 import { shareBinaryFile, shareTextFile } from '@/exportFile';
 import { useExpenses } from '@/hooks/useExpenses';
@@ -133,7 +133,7 @@ export default function TaxPreparation() {
         </View>)}
       </View>)}
       <Button compact title={t('prep.download')} disabled={busy || !review.exact || !confirmed.sections.length} onPress={() => void action(() => shareTextFile(`Duit-reviewed-${year}.txt`, summaryText, 'text/plain', t('prep.filing')))} />
-      <Button compact variant="secondary" title={t('prep.csv')} disabled={busy || !review.exact || !confirmed.sections.length} onPress={() => void action(() => shareTextFile(`Duit-reviewed-${year}.csv`, beSummaryCsv(summary), 'text/csv', t('prep.filing')))} />
+      <Button compact variant="secondary" title={t('prep.csv')} disabled={busy || !review.exact || !confirmed.sections.length} onPress={() => void action(() => shareTextFile(`Duit-reviewed-${year}.csv`, reviewedFilingCsv(pack, confirmed, data), 'text/csv', t('prep.filing')))} />
     </Card>
     <Card style={{ gap: 10 }}>
       <AppText variant="section">{t('prep.evidence')}</AppText>

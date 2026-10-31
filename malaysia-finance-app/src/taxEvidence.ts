@@ -1,4 +1,5 @@
 import { strToU8, zipSync } from 'fflate';
+import { sha256 } from '@noble/hashes/sha2.js';
 import { reliefPackCsv, type ReliefPack } from './domain/reliefPack';
 import { isReceiptReference } from './receiptReference';
 
@@ -12,6 +13,7 @@ export async function buildTaxEvidence(pack: ReliefPack, filingText: string,
   const files: Record<string, Uint8Array> = {};
   const receipts: { source: string; id: number; reliefId: string; file: string | null; status: string }[] = [];
   const cache = new Map<string, Uint8Array | null>();
+  const archived = new Map<string, string>();
   let total = 0;
   const add = (path: string, bytes: Uint8Array) => {
     total += bytes.byteLength;
@@ -31,8 +33,11 @@ export async function buildTaxEvidence(pack: ReliefPack, filingText: string,
         }
         const bytes = cache.get(uri);
         if (bytes) {
-          file = `${prefix}/${section.reliefId}/${uri.slice('receipts/'.length)}`;
-          if (!files[file]) add(file, bytes);
+          const hash = Array.from(sha256(bytes), n => n.toString(16).padStart(2, '0')).join('');
+          file = archived.get(hash) ?? `${prefix}/${section.reliefId}/${uri.slice('receipts/'.length)}`;
+          if (!archived.has(hash)) { add(file, bytes); archived.set(hash, file); }
+          // Different references to identical content must not retain multiple large byte arrays either.
+          cache.set(uri, files[file]);
           status = 'included';
         } else status = 'unavailable';
       }

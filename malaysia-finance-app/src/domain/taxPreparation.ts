@@ -5,6 +5,17 @@ import type { ReliefPack, PackSection } from './reliefPack';
 import { capReliefClaims } from './reliefs';
 import { calculateTaxBill, type TaxBillInput } from './taxBill';
 import type { Expense, ReliefClaim } from './types';
+import { beSummaryCsv, buildBeSummary } from './beForm';
+import { toCsv } from './csv';
+
+/** A standalone export must preserve scope and rules provenance even when separated from the app. */
+export function reviewedFilingCsv(full: ReliefPack, confirmed: ReliefPack, data: TaxYearData): string {
+  return toCsv([
+    ['Partial relief reference: reviewed categories only; compare with MyTax. Not a complete return.'],
+    ['Reviewed categories', confirmed.sections.length, 'of', full.sections.length],
+    ['Rules year', data.ya], ['Rules checked', data.fetchedOn], ['LHDN source', data.reliefSourceUrl], [],
+  ]) + '\r\n' + beSummaryCsv(buildBeSummary(confirmed));
+}
 
 /** Detect records a category-based pack cannot display (e.g. imported unknown relief ids). */
 export function auditTaxRecords(year: number, data: TaxYearData, expenses: Expense[], claims: ReliefClaim[]): number {
@@ -61,8 +72,10 @@ export function confirmedTaxPack(pack: ReliefPack, data: TaxYearData, confirmati
 
 export function previewTaxSaving(input: TaxBillInput, claims: ReliefClaim[], reliefId: string, amount: number, data: TaxYearData) {
   const beforeReliefs = capReliefClaims(claims, data.reliefs).total;
+  // The expense preview cannot infer a new eligible child from an amount of money.
+  const expenseBased = data.reliefs.some(r => r.id === reliefId && !r.perItem);
   const candidate: ReliefClaim = { id: Math.max(0, ...claims.map(c => c.id)) + 1, year: data.ya, reliefId,
-    amount: Number.isSafeInteger(amount) ? Math.max(0, amount) : 0, note: '', receiptUri: null };
+    amount: expenseBased && Number.isSafeInteger(amount) ? Math.max(0, amount) : 0, note: '', receiptUri: null };
   const afterReliefs = capReliefClaims([...claims, candidate], data.reliefs).total;
   const automatic = data.automaticReliefs.reduce((n, r) => n + r.amount, 0);
   const before = calculateTaxBill({ ...input, reliefsTotal: automatic + beforeReliefs }, data);

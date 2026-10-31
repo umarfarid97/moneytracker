@@ -14,6 +14,7 @@ test('shows readiness and personal guide without creating claims', async () => {
   await waitFor(() => expect(screen.getByRole('button', { name: '2025' })).toBeTruthy());
   await fireEvent.press(screen.getByRole('button', { name: '2025' }));
   await waitFor(() => expect(screen.getByText('Tax preparation')).toBeTruthy());
+  expect(screen.getByText('Answers and confirmations are temporary and are not saved or synced. Changing claims requires a fresh review.')).toBeTruthy();
   expect(screen.getByText('0 claims recorded')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: 'Children' }));
   expect(screen.getByText('SSPN net deposit')).toBeTruthy();

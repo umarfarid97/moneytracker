@@ -7,14 +7,14 @@ Choose the assessment year. All screens show the actual rules year and the date 
 
 Review each category's claims and eligibility conditions. Fill missing descriptions and receipts in its detail screen. Check possible duplicates before acknowledging them; the app never removes them automatically. Caps include shared group limits. Confirming a category means you reviewed the eligibility of its claims, not that LHDN approved them. Changes to any claim invalidate the confirmations because shared limits and duplicates can span categories.
 
-Guide answers, confirmations, duplicate acknowledgements and calculator inputs are **session-only**. They are not saved or synced. Saved claims and receipts continue using the existing encrypted sync. Leaving the preparation screen requires reviewing again; normal transaction data is untouched.
+Guide answers, confirmations, duplicate acknowledgements and calculator inputs are **session-only**. They are not saved or synced. Saved claims and receipts continue using the existing encrypted sync. Navigation can retain the mounted screen's temporary state; remounting or restarting clears it, and changing claims invalidates reviews. Normal transaction data is untouched.
 
 Copy figures or export text/CSV from the reviewed reference. Match category names and any shared sublimits to the current MyTax form. The reference covers reliefs tracked by Duit, not every income source, rebate or field in a complete return. Automatic self-relief is shown separately. Unsupported years are explicitly provisional and omit confirmed figures.
 
 ## Calculator
 Annual salary and PCB initially project the monthly profile amounts ×12. Replace them with actual totals across all employers, bonuses and payments. Recorded zakat/approved donations initialise the existing fields. Inputs remain estimates for resident individuals and do not replace a complete tax return.
 
-The savings preview adds a hypothetical eligible claim to the selected category, applies its individual/per-child/shared caps, then compares full tax before and after, including rebate thresholds and zakat. It never adds a transaction. PCB changes the balance/refund but not the tax saving. A relief amount is not a refund amount.
+The savings preview adds a hypothetical eligible expense to the selected category, applies its individual/shared caps, then compares full tax before and after, including rebate thresholds and zakat. Per-child allowances are excluded: spending does not imply an additional eligible child. It never adds a transaction. PCB changes the balance/refund but not the tax saving. A relief amount is not a refund amount.
 
 ## Evidence ZIP
 Contains `YA<year>/claims.csv` (all provisional recorded claims), `filing-summary.txt` (reviewed subset and provenance), copies of the saved receipts under category folders, `manifest.json` and `README.txt`. The manifest links each claim to its receipt and explicitly identifies missing, invalid and unavailable files. Files not downloaded to this device may be unavailable; sync first and export again. Receipt references are validated before reading, and arbitrary URLs are never fetched. Total input is bounded to 25 MiB; an oversized export fails instead of silently dropping files.

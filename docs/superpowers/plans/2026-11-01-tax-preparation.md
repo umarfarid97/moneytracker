@@ -22,19 +22,19 @@
 
 ### Task 1: Preparation domain
 Files: src/domain/taxPreparation.ts, src/domain/taxGuide.ts; tests under __tests__/domain/taxPreparation.test.ts.
-- [ ] Write and run failing tests for readiness, review fingerprints, duplicates, invalid records, guide selections and shared-cap/rebate savings.
-- [ ] Implement `reviewTaxPack(pack, data)`, `reviewKey(pack, section)`, `confirmedTaxPack(pack, data, confirmations, acknowledged)`, `suggestReliefs(answers, data)`, `previewTaxSaving(input, claims, reliefId, amount, data)`.
-- [ ] Verify targeted tests and commit.
+- [x] Write and run failing tests for readiness, review fingerprints, duplicates, invalid records, guide selections and shared-cap/rebate savings.
+- [x] Implement `reviewTaxPack(pack, data)`, `reviewKey(pack, section)`, `confirmedTaxPack(pack, data, confirmations, acknowledged)`, `suggestReliefs(answers, data)`, `previewTaxSaving(input, claims, reliefId, amount, data)`.
+- [x] Verify targeted tests and commit.
 
 ### Task 2: Evidence and filing export
 Files: src/taxEvidence.ts, src/exportFile.ts, src/exportFile.web.ts; tests __tests__/domain/taxEvidence.test.ts.
-- [ ] Write and run failing tests for ZIP roundtrip, unavailable files, duplicate bytes, unsafe refs and size limit.
-- [ ] Implement bounded `buildTaxEvidence(pack, filingText, readReceipt)` and binary sharing adapters, copy helper using Expo Clipboard.
-- [ ] Verify tests and commit.
+- [x] Write and run failing tests for ZIP roundtrip, unavailable files, duplicate bytes, unsafe refs and size limit.
+- [x] Implement bounded `buildTaxEvidence(pack, filingText, readReceipt)` and binary sharing adapters, copy helper using Expo Clipboard.
+- [x] Verify tests and commit.
 
 ### Task 3: User flows
 Files: src/app/tax-preparation.tsx, src/features/tax/*, src/app/tax.tsx, src/app/tax-calculator.tsx, src/app/tax-pack.tsx, src/i18n/taxPreparation.ts and language tables.
-- [ ] Write and run failing screen tests for guide, confirm/copy, changed records, year fallback and savings/refund inputs.
-- [ ] Build preparation screen, dashboard entry and pack links, calculator projection/validation, translated copy and exports.
-- [ ] Verify screen tests, full suite, typecheck, lint and web export/smoke.
-- [ ] Fresh whole-branch review, fix important findings with reproducing tests, commit, merge main and push; verify remote SHA.
+- [x] Write and run failing screen tests for guide, confirm/copy, changed records, year fallback and savings/refund inputs.
+- [x] Build preparation screen, dashboard entry and pack links, calculator projection/validation, translated copy and exports.
+- [x] Verify screen tests, full suite, typecheck, lint and web export/smoke.
+- [x] Fresh whole-branch review, fix important findings with reproducing tests, commit, merge main and push; verify remote SHA.

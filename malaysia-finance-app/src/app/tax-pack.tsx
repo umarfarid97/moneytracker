@@ -44,7 +44,9 @@ export default function TaxPack() {
   async function shareBe() {
     setError(null);
     try {
-      await Share.share({ title: t('be.shareTitle', { year }), message: beSummaryText(be) });
+      const message = [t('prep.provisional'), t('prep.rules', { ya: data.ya, date: data.fetchedOn }), data.reliefSourceUrl,
+        notice ? t('prep.fallback') : '', beSummaryText(be)].filter(Boolean).join('\n\n');
+      await Share.share({ title: t('be.shareTitle', { year }), message });
     } catch {
       setError(t('pack.shareFailed'));
     }
