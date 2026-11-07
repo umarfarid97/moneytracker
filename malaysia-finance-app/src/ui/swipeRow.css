@@ -1,0 +1,8 @@
+/* RNGH can set touch-action:none on a nested detector even when its swipeable
+   requests pan-y. All ancestors under a card must allow vertical browser
+   scrolling. Keep this local to swipe rows; horizontal pointer gestures and
+   pinch zoom remain available. */
+[data-testid='swipe-row'],
+[data-testid='swipe-row'] * {
+  touch-action: pan-y pinch-zoom !important;
+}

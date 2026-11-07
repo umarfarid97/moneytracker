@@ -4,6 +4,7 @@ const { chromium } = require('playwright');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { spendingTouchSmoke } = require('./spending-touch-smoke');
 
 const root = path.resolve(__dirname, '../dist');
 const types = { '.js': 'text/javascript', '.html': 'text/html', '.css': 'text/css', '.ttf': 'font/ttf', '.png': 'image/png', '.json': 'application/json', '.wasm': 'application/wasm' };
@@ -58,6 +59,7 @@ server.listen(0, '127.0.0.1', async () => {
       });
       if (problem) errors.push(`Home tiles at ${w}px: ${problem}`);
     }
+    await spendingTouchSmoke(browser, `http://127.0.0.1:${server.address().port}`);
     await browser.close();
   } catch (e) {
     errors.push(String(e));
